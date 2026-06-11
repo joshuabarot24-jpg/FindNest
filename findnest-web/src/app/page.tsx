@@ -7,13 +7,7 @@ export default function Home() {
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-12 py-4 bg-[#1a237e]/95 backdrop-blur-md shadow-lg">
         <div className="flex items-center gap-3">
-          <Image
-            src="/images/findnest-logo.svg"
-            alt="FindNest Logo"
-            width={45}
-            height={45}
-            className="rounded-full"
-          />
+
           <span className="text-xl font-black text-white tracking-wide">
             FIND<span className="text-[#ffd700]">NEST</span>
           </span>
@@ -67,7 +61,7 @@ export default function Home() {
             <div className="flex gap-10 mt-12">
               <div>
                 <p className="text-3xl font-black text-[#ffd700]">675+</p>
-                <p className="text-blue-300 text-sm">Students Served</p>
+                <p className="text-blue-300 text-sm">Students</p>
               </div>
               <div className="w-px bg-white/20"></div>
               <div>
@@ -90,8 +84,8 @@ export default function Home() {
               <Image
                 src="/images/findnest-logo.svg"
                 alt="FindNest Logo"
-                width={200}
-                height={200}
+                width={300}
+                height={300}
                 className="rounded-2xl mb-4"
               />
 
@@ -193,13 +187,6 @@ export default function Home() {
         <div className="flex justify-between items-start">
           <div className="max-w-xs">
             <div className="flex items-center gap-3 mb-4">
-              <Image
-                src="/images/findnest-logo.svg"
-                alt="FindNest Logo"
-                width={40}
-                height={40}
-                className="rounded-full"
-              />
               <span className="text-xl font-black text-white">
                 FIND<span className="text-[#ffd700]">NEST</span>
               </span>
