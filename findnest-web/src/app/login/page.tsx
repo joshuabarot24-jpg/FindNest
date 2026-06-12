@@ -45,7 +45,7 @@ export default function LoginPage() {
           {/* Username Field */}
           <div>
             <label className="block text-sm font-bold text-gray-600 mb-2">
-              Username
+              ID Username
             </label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">👤</span>
