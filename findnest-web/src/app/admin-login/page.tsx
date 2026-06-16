@@ -35,7 +35,7 @@ export default function AdminLoginPage() {
               height={96}
             />
           </div>
-          <h1 className="text-2xl font-black text-[#1a237e]">Admin Portal</h1>
+          <h1 className="text-2xl font-black text-[#1a237e]">Admin Log in</h1>
           <p className="text-gray-400 text-sm mt-1 text-center">Secure Access for School Personnel</p>
 
           {/* Role Badge */}
@@ -50,7 +50,7 @@ export default function AdminLoginPage() {
           {/* Username Field */}
           <div>
             <label className="block text-sm font-bold text-gray-600 mb-2">
-              Username
+              Employee Username
             </label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">👤</span>
