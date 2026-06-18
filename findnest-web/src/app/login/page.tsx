@@ -102,6 +102,13 @@ export default function LoginPage() {
             Login to Dashboard
           </button>
 
+          {/* Forgot Password */}
+          <div className="text-center">
+            <a href="#" className="text-gray-400 hover:text-[#1a237e] text-sm transition font-medium">
+              Forgot Password?
+            </a>
+          </div>
+
           {/* Back to Home */}
           <div className="text-center mt-4">
             <a
