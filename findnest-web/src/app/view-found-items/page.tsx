@@ -13,6 +13,16 @@ const foundItems = [
   { id: 8, name: "Wireless Earbuds", category: "Electronics", location: "Gymnasium", date: "Jun 9, 2026", icon: "🎧", color: "purple" },
   { id: 9, name: "Notebook", category: "School Supplies", location: "Room 305", date: "Jun 8, 2026", icon: "📓", color: "green" },
   { id: 10, name: "Wristwatch", category: "Accessories", location: "Parking Lot", date: "Jun 7, 2026", icon: "⌚", color: "amber" },
+  { id: 11, name: "iPhone 15 Pro Max", category: "Electronics", location: "Classroom 201", date: "Jun 16, 2026", icon: "📱", color: "purple" },
+  { id: 12, name: "MacBook Air", category: "Electronics", location: "Computer Lab", date: "Jun 16, 2026", icon: "💻", color: "indigo" },
+  { id: 13, name: "Samsung Galaxy Phone", category: "Electronics", location: "Canteen", date: "Jun 15, 2026", icon: "📱", color: "purple" },
+  { id: 14, name: "Dell Laptop", category: "Electronics", location: "Library", date: "Jun 14, 2026", icon: "💻", color: "indigo" },
+  { id: 15, name: "iPad Tablet", category: "Electronics", location: "Room 402", date: "Jun 13, 2026", icon: "📱", color: "purple" },
+  { id: 16, name: "Power Bank", category: "Electronics", location: "Gymnasium", date: "Jun 12, 2026", icon: "🔋", color: "teal" },
+  { id: 17, name: "USB Flash Drive", category: "Electronics", location: "Computer Lab", date: "Jun 11, 2026", icon: "💾", color: "gray" },
+  { id: 18, name: "Backpack (Black)", category: "Personal Belongings", location: "Main Entrance", date: "Jun 10, 2026", icon: "🎒", color: "amber" },
+  { id: 19, name: "Wired Headphones", category: "Electronics", location: "Room 305", date: "Jun 9, 2026", icon: "🎧", color: "purple" },
+  { id: 20, name: "Smart Watch", category: "Electronics", location: "Parking Lot", date: "Jun 8, 2026", icon: "⌚", color: "indigo" },
 ];
 
 const colorMap: Record<string, { bg: string; text: string; border: string }> = {
@@ -43,13 +53,6 @@ export default function ViewFoundItems() {
       {/* Navbar */}
       <nav className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <Image
-            src="/images/findnest-logo.svg"
-            alt="FindNest Logo"
-            width={38}
-            height={38}
-            className="rounded-lg"
-          />
           <span className="text-lg font-black text-[#1a237e]">
             FIND<span className="text-[#ffd700]">NEST</span>
           </span>
