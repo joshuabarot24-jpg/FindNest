@@ -18,13 +18,6 @@ export default function SupportPage() {
       {/* Navbar */}
       <nav className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <Image
-            src="/images/findnest-logo.svg"
-            alt="FindNest Logo"
-            width={38}
-            height={38}
-            className="rounded-lg"
-          />
           <span className="text-lg font-black text-[#1a237e]">
             FIND<span className="text-[#ffd700]">NEST</span>
           </span>
