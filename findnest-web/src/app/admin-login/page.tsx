@@ -22,11 +22,12 @@ export default function AdminLoginPage() {
       {/* Login Card */}
       <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-10">
 
-        {/* Top accent bar */}
+        {/* Top accent bar — now yellow */}
         <div className="absolute top-0 left-0 right-0 h-2 bg-[#ffd700] rounded-t-3xl"></div>
 
         {/* Logo and Title */}
         <div className="flex flex-col items-center mb-8">
+          {/* Logo border — now yellow */}
           <div className="w-24 h-24 rounded-2xl overflow-hidden mb-4 shadow-lg border-4 border-[#ffd700]">
             <Image
               src="/images/findnest-logo.svg"
@@ -35,12 +36,12 @@ export default function AdminLoginPage() {
               height={96}
             />
           </div>
-          <h1 className="text-2xl font-black text-[#1a237e]">Admin Log in</h1>
+          <h1 className="text-2xl font-black text-[#ffd700]">Admin Login</h1>
           <p className="text-gray-400 text-sm mt-1 text-center">Secure Access for School Personnel</p>
 
           {/* Role Badge */}
           <div className="mt-3 bg-blue-50 border border-blue-100 rounded-full px-4 py-1.5">
-            <p className="text-[#1a237e] text-xs font-bold">👤 Guidance Counselor Access</p>
+            <p className="text-[#ffd700] text-xs font-bold">👤 Guidance Counselor Access</p>
           </div>
         </div>
 
@@ -99,10 +100,10 @@ export default function AdminLoginPage() {
             </div>
           </div>
 
-          {/* Sign In Button */}
+          {/* Sign In Button — now yellow with dark blue text */}
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-[#1a237e] to-[#1565c0] hover:from-[#283593] hover:to-[#1976d2] text-white font-black py-4 rounded-xl transition shadow-lg hover:shadow-xl hover:-translate-y-0.5 transform text-lg mt-2"
+            className="w-full bg-[#ffd700] hover:bg-[#f5c800] text-[white] font-black py-4 rounded-xl transition shadow-lg hover:shadow-xl hover:-translate-y-0.5 transform text-lg mt-2"
           >
             Sign In
           </button>

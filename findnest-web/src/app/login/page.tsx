@@ -23,7 +23,7 @@ export default function LoginPage() {
       <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-10">
 
         {/* Top accent bar */}
-        <div className="absolute top-0 left-0 right-0 h-2 bg-[#ffd700] rounded-t-3xl"></div>
+        <div className="absolute top-0 left-0 right-0 h-2 bg-[#1A237E] rounded-t-3xl"></div>
 
         {/* Logo and Title */}
         <div className="flex flex-col items-center mb-8">
