@@ -24,7 +24,7 @@ export default function StudentLoginScreen({ navigation }: any) {
         {/* Logo */}
         <View style={styles.logoBox}>
           <Image
-            source={require("../assets/images/icon.png")}
+            source={require("../assets/icon.png")}
             style={styles.logo}
           />
         </View>
