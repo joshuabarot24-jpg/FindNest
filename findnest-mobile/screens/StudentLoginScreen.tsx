@@ -14,7 +14,7 @@ export default function StudentLoginScreen({ navigation }: any) {
   const [password, setPassword] = useState("");
 
   const handleLogin = () => {
-    navigation.navigate("StudentHome");
+    navigation.navigate("Home");
   };
 
   return (
