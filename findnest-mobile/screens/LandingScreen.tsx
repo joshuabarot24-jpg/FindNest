@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   StyleSheet,
   SafeAreaView,
   Image,
-  Modal,
   ScrollView,
   Dimensions,
 } from "react-native";
@@ -14,8 +13,6 @@ import {
 const { width } = Dimensions.get("window");
 
 export default function LandingScreen({ navigation }: any) {
-  const [showLoginOptions, setShowLoginOptions] = useState(false);
-
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -104,120 +101,23 @@ export default function LandingScreen({ navigation }: any) {
         <TouchableOpacity
           style={styles.loginButton}
           activeOpacity={0.9}
-          onPress={() => setShowLoginOptions(true)}
+          onPress={() => navigation.navigate("StudentLogin")}
         >
           <Text style={styles.loginButtonText}>LOG IN</Text>
-          <View style={styles.loginButtonNotch} />
         </TouchableOpacity>
 
         <Text style={styles.footerText}>
           SJDM Cornerstone College Inc. © 2026
         </Text>
       </ScrollView>
-
-      {/* ============ LOGIN OPTIONS MODAL ============ */}
-      <Modal
-        visible={showLoginOptions}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowLoginOptions(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowLoginOptions(false)}
-        >
-          <View style={styles.modalCard}>
-            <View style={styles.modalHandle} />
-
-            <Text style={styles.modalTitle}>Select Account Type</Text>
-            <Text style={styles.modalSubtitle}>Choose your login portal</Text>
-
-            {/* Super Admin */}
-            <TouchableOpacity
-              style={styles.optionRow}
-              activeOpacity={0.7}
-              onPress={() => {
-                setShowLoginOptions(false);
-                navigation.navigate("SuperAdminLogin");
-              }}
-            >
-              <View style={[styles.optionIcon, { backgroundColor: "#1a237e" }]}>
-                <Text style={styles.optionEmoji}>👑</Text>
-              </View>
-              <View style={styles.optionTextBox}>
-                <Text style={styles.optionTitle}>Super Admin</Text>
-                <Text style={styles.optionDesc}>CCI IT Coordinator Access</Text>
-              </View>
-              <Text style={styles.optionChevron}>›</Text>
-            </TouchableOpacity>
-
-            <View style={styles.divider} />
-
-            {/* Admin */}
-            <TouchableOpacity
-              style={styles.optionRow}
-              activeOpacity={0.7}
-              onPress={() => {
-                setShowLoginOptions(false);
-                navigation.navigate("AdminLogin");
-              }}
-            >
-              <View style={[styles.optionIcon, { backgroundColor: "#ffd700" }]}>
-                <Text style={styles.optionEmoji}>🛡️</Text>
-              </View>
-              <View style={styles.optionTextBox}>
-                <Text style={styles.optionTitle}>Admin Login</Text>
-                <Text style={styles.optionDesc}>Guidance Counselor Access</Text>
-              </View>
-              <Text style={styles.optionChevron}>›</Text>
-            </TouchableOpacity>
-
-            <View style={styles.divider} />
-
-            {/* Student */}
-            <TouchableOpacity
-              style={styles.optionRow}
-              activeOpacity={0.7}
-              onPress={() => {
-                setShowLoginOptions(false);
-                navigation.navigate("StudentLogin");
-              }}
-            >
-              <View style={[styles.optionIcon, { backgroundColor: "#22c55e" }]}>
-                <Text style={styles.optionEmoji}>🎓</Text>
-              </View>
-              <View style={styles.optionTextBox}>
-                <Text style={styles.optionTitle}>Student Login</Text>
-                <Text style={styles.optionDesc}>Student Portal Access</Text>
-              </View>
-              <Text style={styles.optionChevron}>›</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.modalFooter}>
-              Authorized access only — SJDM Cornerstone College Inc.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setShowLoginOptions(false)}
-            >
-              <Text style={styles.closeButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </SafeAreaView>
   );
 }
 
 const NAVY = "#1a237e";
-const NAVY_DEEP = "#0d133f";
 const GOLD = "#ffd700";
 const CREAM = "#fff8e1";
 const RED = "#e63946";
-const GREEN = "#22c55e";
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -452,21 +352,6 @@ const styles = StyleSheet.create({
     marginTop: 3,
     letterSpacing: 1,
   },
-  stampBadge: {
-    marginTop: 14,
-    borderWidth: 1,
-    borderColor: "rgba(34,197,94,0.4)",
-    borderRadius: 20,
-    paddingVertical: 5,
-    paddingHorizontal: 14,
-    transform: [{ rotate: "-2deg" }],
-  },
-  stampText: {
-    fontSize: 9,
-    fontWeight: "800",
-    color: "#4ade80",
-    letterSpacing: 1.5,
-  },
 
   /* ===== LOGIN BUTTON ===== */
   loginButton: {
@@ -488,101 +373,8 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     textAlign: "center",
   },
-  loginButtonNotch: {
-    display: "none",
-  },
   footerText: {
     color: "#7986cb",
     fontSize: 11,
-  },
-
-  /* ===== MODAL ===== */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(13,19,63,0.6)",
-    justifyContent: "flex-end",
-  },
-  modalCard: {
-    backgroundColor: "white",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    paddingBottom: 36,
-  },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#e5e7eb",
-    alignSelf: "center",
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "900",
-    color: NAVY,
-    textAlign: "center",
-  },
-  modalSubtitle: {
-    fontSize: 12,
-    color: "#9ca3af",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  optionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-  },
-  optionIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 14,
-  },
-  optionEmoji: {
-    fontSize: 22,
-  },
-  optionTextBox: {
-    flex: 1,
-  },
-  optionTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: NAVY,
-  },
-  optionDesc: {
-    fontSize: 12,
-    color: "#9ca3af",
-    marginTop: 2,
-  },
-  optionChevron: {
-    fontSize: 22,
-    color: "#d1d5db",
-    fontWeight: "300",
-  },
-  divider: {
-    height: 1,
-    backgroundColor: "#f0f0f0",
-  },
-  modalFooter: {
-    fontSize: 11,
-    color: "#9ca3af",
-    textAlign: "center",
-    marginTop: 16,
-    marginBottom: 16,
-  },
-  closeButton: {
-    backgroundColor: "#f3f4f6",
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: "center",
-  },
-  closeButtonText: {
-    color: "#6b7280",
-    fontWeight: "700",
-    fontSize: 14,
   },
 });
