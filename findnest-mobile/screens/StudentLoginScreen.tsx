@@ -29,13 +29,13 @@ export default function StudentLoginScreen({ navigation }: any) {
           />
         </View>
 
-        <Text style={styles.title}>Student Portal</Text>
+        <Text style={styles.title}>Student Login</Text>
         <Text style={styles.subtitle}>Use your school credentials</Text>
 
         {/* Student ID Input */}
         <TextInput
           style={styles.input}
-          placeholder="Student Number"
+          placeholder="Student ID"
           placeholderTextColor="#9ca3af"
           value={studentId}
           onChangeText={setStudentId}
