@@ -100,7 +100,7 @@ export default function HomeScreen({ navigation }: any) {
           <Text style={styles.navIcon}>📋</Text>
           <Text style={styles.navLabel}>Status</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Profile")}>
           <Text style={styles.navIcon}>👤</Text>
           <Text style={styles.navLabel}>Profile</Text>
         </TouchableOpacity>
@@ -121,8 +121,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 30,
-    paddingVertical: 40,
+    paddingHorizontal: 15,
+    paddingVertical: 35,
     backgroundColor: "white",
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
