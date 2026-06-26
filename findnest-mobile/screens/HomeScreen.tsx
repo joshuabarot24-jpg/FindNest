@@ -33,8 +33,8 @@ export default function HomeScreen({ navigation }: any) {
             <Text style={styles.iconText}>🔔</Text>
             <View style={styles.iconBadge} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Text style={styles.iconText}>❓</Text>
+          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Support")}>
+            <Text style={styles.iconText}>🎧</Text>
           </TouchableOpacity>
         </View>
       </View>
