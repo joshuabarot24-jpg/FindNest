@@ -177,7 +177,7 @@ export default function SupportScreen({ navigation }: any) {
           <Text style={styles.navIcon}>🏠</Text>
           <Text style={styles.navLabel}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Browse")}>
           <Text style={styles.navIcon}>🔍</Text>
           <Text style={styles.navLabel}>Browse</Text>
         </TouchableOpacity>

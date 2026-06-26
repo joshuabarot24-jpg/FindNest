@@ -34,7 +34,7 @@ export default function HomeScreen({ navigation }: any) {
             <View style={styles.iconBadge} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Support")}>
-            <Text style={styles.iconText}>🎧</Text>
+            <Text style={styles.iconText}>🛠️</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -61,7 +61,7 @@ export default function HomeScreen({ navigation }: any) {
             <Text style={styles.actionText}>Lost Item</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.foundButton} activeOpacity={0.85}>
-            <Text style={styles.actionIcon}>🤲</Text>
+            <Text style={styles.actionIcon}>🔍</Text>
             <Text style={styles.actionText}>Found Item</Text>
           </TouchableOpacity>
         </View>
@@ -92,7 +92,7 @@ export default function HomeScreen({ navigation }: any) {
           <Text style={styles.navIconActive}>🏠</Text>
           <Text style={styles.navLabelActive}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Browse")}>
           <Text style={styles.navIcon}>🔍</Text>
           <Text style={styles.navLabel}>Browse</Text>
         </TouchableOpacity>

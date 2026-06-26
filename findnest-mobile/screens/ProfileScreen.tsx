@@ -27,7 +27,7 @@ export default function ProfileScreen({ navigation }: any) {
             <View style={styles.iconBadge} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Support")}>
-            <Text style={styles.iconText}>🎧</Text>
+            <Text style={styles.iconText}>🛠️</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -114,7 +114,7 @@ export default function ProfileScreen({ navigation }: any) {
           <Text style={styles.navIcon}>🏠</Text>
           <Text style={styles.navLabel}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Browse")}>
           <Text style={styles.navIcon}>🔍</Text>
           <Text style={styles.navLabel}>Browse</Text>
         </TouchableOpacity>

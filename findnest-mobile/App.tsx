@@ -6,6 +6,7 @@ import StudentLoginScreen from "./screens/StudentLoginScreen";
 import HomeScreen from "./screens/HomeScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import SupportScreen from "./screens/SupportScreen";
+import BrowseScreen from "./screens/BrowseScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -18,6 +19,7 @@ export default function App() {
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="Support" component={SupportScreen} />
+        <Stack.Screen name="Browse" component={BrowseScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
