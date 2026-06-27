@@ -5,11 +5,11 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Image,
   ScrollView,
   Modal,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 
 const categories = ["Electronics", "Personal Belongings", "ID/Cards", "Keys", "School Supplies", "Accessories", "Others"];
@@ -212,8 +212,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 15,
-    paddingVertical: 35,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     backgroundColor: "white",
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#f0f0f0",
     paddingVertical: 10,
-    paddingBottom: 60,
+    paddingBottom: 16,
   },
   navItem: {
     flex: 1,
