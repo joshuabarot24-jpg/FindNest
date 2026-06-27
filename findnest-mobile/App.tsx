@@ -10,6 +10,7 @@ import BrowseScreen from "./screens/BrowseScreen";
 import NotificationsScreen from "./screens/NotificationsScreen";
 import ReportLostScreen from "./screens/ReportLostScreen";
 import ReportFoundScreen from "./screens/ReportFoundScreen";
+import ClaimStatusScreen from "./screens/ClaimStatusScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -26,6 +27,7 @@ export default function App() {
         <Stack.Screen name="Notifications" component={NotificationsScreen} />
         <Stack.Screen name="ReportLost" component={ReportLostScreen} />
         <Stack.Screen name="ReportFound" component={ReportFoundScreen} />
+        <Stack.Screen name="ClaimStatus" component={ClaimStatusScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

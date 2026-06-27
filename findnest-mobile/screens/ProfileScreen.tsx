@@ -118,7 +118,7 @@ export default function ProfileScreen({ navigation }: any) {
           <Text style={styles.navIcon}>🔍</Text>
           <Text style={styles.navLabel}>Browse</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ClaimStatus")}>
           <Text style={styles.navIcon}>📋</Text>
           <Text style={styles.navLabel}>Status</Text>
         </TouchableOpacity>

@@ -136,7 +136,7 @@ export default function BrowseScreen({ navigation }: any) {
           <Text style={styles.navIconActive}>🔍</Text>
           <Text style={styles.navLabelActive}>Browse</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ClaimStatus")}>
           <Text style={styles.navIcon}>📋</Text>
           <Text style={styles.navLabel}>Status</Text>
         </TouchableOpacity>
