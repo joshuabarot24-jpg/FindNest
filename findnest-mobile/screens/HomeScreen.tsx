@@ -29,7 +29,7 @@ export default function HomeScreen({ navigation }: any) {
           </Text>
         </View>
         <View style={styles.topBarIcons}>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Notifications")}>
             <Text style={styles.iconText}>🔔</Text>
             <View style={styles.iconBadge} />
           </TouchableOpacity>
