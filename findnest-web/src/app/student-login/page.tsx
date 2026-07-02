@@ -9,25 +9,20 @@ export default function StudentLoginPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Student logging in...");
+    window.location.href = "/student-home";
   };
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-[#1a237e] via-[#283593] to-[#1565c0] flex items-center justify-center relative overflow-hidden">
 
-      {/* Background decorative circles */}
       <div className="absolute top-20 right-20 w-96 h-96 bg-red-500/10 rounded-full blur-3xl" />
       <div className="absolute bottom-20 left-20 w-64 h-64 bg-red-500/10 rounded-full blur-3xl" />
 
-      {/* Login Card */}
       <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-10">
 
-        {/* Top accent bar — red */}
         <div className="absolute top-0 left-0 right-0 h-2 bg-red-500 rounded-t-3xl" />
 
-        {/* Logo and Title */}
         <div className="flex flex-col items-center mb-8">
-          {/* Logo border — red */}
           <div className="w-24 h-24 rounded-2xl overflow-hidden mb-4 shadow-lg border-4 border-red-500">
             <Image
               src="/images/findnest-logo.svg"
@@ -38,47 +33,37 @@ export default function StudentLoginPage() {
           </div>
           <h1 className="text-2xl font-black text-red-500">Student Login</h1>
           <p className="text-gray-400 text-sm mt-1">Use your school credentials</p>
-
-          {/* Role Badge */}
-          <div className="mt-3 bg-red-50 border border-red-100 rounded-full px-4 py-1.5">
-            <p className="text-red-500 text-xs font-bold">🎓 Student Access</p>
-          </div>
         </div>
 
-        {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-5">
 
-          {/* Student ID Field */}
           <div>
             <label className="block text-sm font-bold text-gray-600 mb-2">
               Student ID
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">🪪</span>
               <input
                 type="text"
                 value={studentId}
                 onChange={(e) => setStudentId(e.target.value)}
                 placeholder="e.g. 2022-10043"
-                className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none transition text-gray-700"
+                className="w-full pl-5 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none transition text-gray-700"
                 required
               />
             </div>
           </div>
 
-          {/* Password Field */}
           <div>
             <label className="block text-sm font-bold text-gray-600 mb-2">
               Password
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">🔒</span>
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
-                className="w-full pl-11 pr-12 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none transition text-gray-700"
+                className="w-full pl-5 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none transition text-gray-700"
                 required
               />
               <button
@@ -100,7 +85,6 @@ export default function StudentLoginPage() {
             </div>
           </div>
 
-          {/* Sign In Button — red */}
           <button
             type="submit"
             className="w-full bg-red-500 hover:bg-red-600 text-white font-black py-4 rounded-xl transition shadow-lg hover:shadow-xl hover:-translate-y-0.5 transform text-lg mt-2"
@@ -108,25 +92,22 @@ export default function StudentLoginPage() {
             Sign In
           </button>
 
-          {/* Forgot Password */}
           <div className="text-center">
             <a href="#" className="text-gray-400 hover:text-red-500 text-sm transition font-medium">
               Forgot Password?
             </a>
           </div>
 
-          {/* Back to Home */}
           <div className="text-center mt-4">
             <a
               href="/"
-              className="text-gray-400 hover:text-[#1a237e] text-sm transition font-medium"
+              className="text-gray-400 hover:text-red-500 text-sm transition font-medium"
             >
               ← Back to Home
             </a>
           </div>
         </form>
 
-        {/* Footer note */}
         <div className="mt-8 pt-6 border-t border-gray-100 text-center">
           <p className="text-xs text-gray-400">
             Use your official school-issued credentials to sign in.

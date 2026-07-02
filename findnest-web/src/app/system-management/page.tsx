@@ -15,9 +15,9 @@ export default function SystemManagement() {
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-6">
           <div>
-            <span className="text-white font-black text-lg block">
+            <a href="/user-management" className="text-white font-black text-lg block">
               FIND<span className="text-[#ffd700]">NEST</span>
-            </span>
+            </a>
             <span className="text-blue-300 text-xs">Super Admin Panel</span>
           </div>
         </div>

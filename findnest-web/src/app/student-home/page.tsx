@@ -19,9 +19,9 @@ export default function StudentHome() {
       {/* Navbar */}
       <nav className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <span className="text-lg font-black text-[#1a237e]">
+          <a href="/student-home" className="text-lg font-black text-[#1a237e] hover:opacity-80 transition">
             FIND<span className="text-[#ffd700]">NEST</span>
-          </span>
+          </a>
         </div>
 
         <div className="flex items-center gap-8">

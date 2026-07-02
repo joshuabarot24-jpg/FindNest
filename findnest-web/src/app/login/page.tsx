@@ -9,23 +9,19 @@ export default function LoginPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Logging in...");
+    window.location.href = "/user-management";
   };
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-[#1a237e] via-[#283593] to-[#1565c0] flex items-center justify-center relative overflow-hidden">
 
-      {/* Background decorative circles */}
       <div className="absolute top-20 right-20 w-96 h-96 bg-[#ffd700]/10 rounded-full blur-3xl"></div>
       <div className="absolute bottom-20 left-20 w-64 h-64 bg-red-500/10 rounded-full blur-3xl"></div>
 
-      {/* Login Card */}
       <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-10">
 
-        {/* Top accent bar */}
         <div className="absolute top-0 left-0 right-0 h-2 bg-[#1A237E] rounded-t-3xl"></div>
 
-        {/* Logo and Title */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-24 h-24 rounded-2xl overflow-hidden mb-4 shadow-lg border-4 border-[#1a237e]">
             <Image
@@ -39,40 +35,34 @@ export default function LoginPage() {
           <p className="text-gray-400 text-sm mt-1">Secure Access for System Administrators</p>
         </div>
 
-        {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-5">
-
-          {/* Username Field */}
           <div>
             <label className="block text-sm font-bold text-gray-600 mb-2">
               ID Username
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">👤</span>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter your username"
-                className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#1a237e] focus:outline-none transition text-gray-700"
+                className="w-full pl-5 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#1a237e] focus:outline-none transition text-gray-700"
                 required
               />
             </div>
           </div>
 
-          {/* Password Field */}
           <div>
             <label className="block text-sm font-bold text-gray-600 mb-2">
               Password
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">🔒</span>
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
-                className="w-full pl-11 pr-12 py-3 border-2 border-gray-200 rounded-xl focus:border-[#1a237e] focus:outline-none transition text-gray-700"
+                className="w-full pl-5 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#1a237e] focus:outline-none transition text-gray-700"
                 required
               />
               <button
@@ -94,22 +84,19 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Login Button */}
           <button
             type="submit"
             className="w-full bg-[#1a237e] hover:bg-[#283593] text-white font-black py-4 rounded-xl transition shadow-lg hover:shadow-xl hover:-translate-y-0.5 transform text-lg mt-2"
           >
-            Login to Dashboard
+            Sign In
           </button>
 
-          {/* Forgot Password */}
           <div className="text-center">
             <a href="#" className="text-gray-400 hover:text-[#1a237e] text-sm transition font-medium">
               Forgot Password?
             </a>
           </div>
 
-          {/* Back to Home */}
           <div className="text-center mt-4">
             <a
               href="/"
@@ -120,7 +107,7 @@ export default function LoginPage() {
           </div>
         </form>
 
-        {/* Footer note */}
+    
         <div className="mt-8 pt-6 border-t border-gray-100 text-center">
           <p className="text-xs text-gray-400">
             This portal is restricted to authorized personnel only.
