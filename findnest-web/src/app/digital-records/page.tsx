@@ -198,9 +198,6 @@ export default function DigitalRecords() {
           {/* Table Header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-xl">
-                🗂️
-              </div>
               <div>
                 <h2 className="font-black text-gray-700">Audit Log</h2>
                 <p className="text-gray-400 text-xs">All entries are permanent and cannot be modified</p>
