@@ -1,5 +1,4 @@
 "use client";
-import Image from "next/image";
 import { useState } from "react";
 
 const notifications = [
@@ -83,8 +82,6 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-screen bg-[#f8f9fc]">
-
-      {/* Navbar */}
       <nav className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <a href="/student-home" className="text-lg font-black text-[#1a237e] hover:opacity-80 transition">
@@ -114,10 +111,7 @@ export default function NotificationsPage() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <main className="px-8 py-10 max-w-3xl mx-auto">
-
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-black text-[#1a237e]">Notifications</h1>
@@ -135,7 +129,6 @@ export default function NotificationsPage() {
           )}
         </div>
 
-        {/* Filter Tabs */}
         <div className="flex items-center gap-2 bg-white rounded-2xl p-1.5 shadow-sm border border-gray-100 mb-6 w-fit">
           {[
             { key: "all", label: "All" },
@@ -157,7 +150,6 @@ export default function NotificationsPage() {
           ))}
         </div>
 
-        {/* Notification List */}
         <div className="space-y-3">
           {filtered.map((notif) => {
             const colors = typeColor[notif.type];

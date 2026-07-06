@@ -1,5 +1,4 @@
 "use client";
-import Image from "next/image";
 import { useState } from "react";
 
 export default function SupportPage() {
@@ -14,8 +13,6 @@ export default function SupportPage() {
 
   return (
     <div className="min-h-screen bg-[#f8f9fc]">
-
-      {/* Navbar */}
       <nav className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <a href="/student-home" className="text-lg font-black text-[#1a237e] hover:opacity-80 transition">
@@ -41,12 +38,8 @@ export default function SupportPage() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <main className="px-8 py-12 max-w-3xl mx-auto">
-
         <div className="grid grid-cols-3 gap-6">
-
-          {/* Left - Form */}
           <div className="col-span-2 bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
             <div className="flex items-center gap-3 mb-6">
               <div>
@@ -71,8 +64,6 @@ export default function SupportPage() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
-
-                {/* Inquiry Type */}
                 <div>
                   <label className="block text-sm font-bold text-gray-600 mb-2">
                     Inquiry Type
@@ -91,7 +82,6 @@ export default function SupportPage() {
                   </select>
                 </div>
 
-                {/* Message */}
                 <div>
                   <label className="block text-sm font-bold text-gray-600 mb-2">
                     Message
@@ -106,7 +96,6 @@ export default function SupportPage() {
                   />
                 </div>
 
-                {/* Submit Button */}
                 <button
                   type="submit"
                   className="w-full bg-[#1a237e] hover:bg-[#283593] text-white font-black py-4 rounded-xl transition shadow-lg hover:shadow-xl hover:-translate-y-0.5 transform"
@@ -117,7 +106,6 @@ export default function SupportPage() {
             )}
           </div>
 
-          {/* Right - Contact Info */}
           <div className="col-span-1 space-y-5">
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
               <p className="font-black text-gray-700 text-sm mb-4">Contact Information</p>

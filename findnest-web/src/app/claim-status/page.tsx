@@ -1,5 +1,4 @@
 "use client";
-import Image from "next/image";
 import { useState } from "react";
 
 const steps = [
@@ -49,8 +48,6 @@ export default function ClaimStatusPage() {
 
   return (
     <div className="min-h-screen bg-[#f8f9fc]">
-
-      {/* Navbar */}
       <nav className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <a href="/student-home" className="text-lg font-black text-[#1a237e] hover:opacity-80 transition">
@@ -66,22 +63,18 @@ export default function ClaimStatusPage() {
         <div className="flex items-center gap-4">
           <a href="/notifications" className="relative w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-xl flex items-center justify-center transition">
             <span className="text-lg">🔔</span>
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center">2</span>
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center">1</span>
           </a>
           <a href="/profile" className="w-10 h-10 bg-[#1a237e] rounded-full flex items-center justify-center text-white font-bold">R</a>
         </div>
       </nav>
 
-      {/* Main Content */}
       <main className="px-8 py-10 max-w-7xl mx-auto">
-
-        {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-black text-[#1a237e]">Claim Status</h1>
           <p className="text-gray-400 text-sm mt-1">Track the live progress of your submitted reports</p>
         </div>
 
-        {/* Summary Stats */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           <button
             onClick={() => setStatusFilter(statusFilter === "Searching" ? "all" : "Searching")}
@@ -115,7 +108,6 @@ export default function ClaimStatusPage() {
 
         <div className="grid grid-cols-5 gap-6">
 
-          {/* Left: List */}
           <div className="col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
             <div className="px-5 py-4 border-b border-gray-100">
               <input
@@ -174,10 +166,7 @@ export default function ClaimStatusPage() {
             </div>
           </div>
 
-          {/* Right: Detail Panel */}
           <div className="col-span-3 bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden h-fit">
-
-            {/* Top Summary Bar */}
             <div className="bg-gradient-to-r from-[#1a237e] to-[#1565c0] px-8 py-6 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-white/15 rounded-2xl flex items-center justify-center text-3xl">
@@ -194,7 +183,6 @@ export default function ClaimStatusPage() {
               </div>
             </div>
 
-            {/* Progress Tracker */}
             <div className="px-8 py-10">
               <div className="relative flex justify-between">
                 <div className="absolute top-5 left-0 right-0 h-1 bg-gray-100 rounded-full" style={{ marginLeft: "20px", marginRight: "20px" }} />
@@ -223,7 +211,6 @@ export default function ClaimStatusPage() {
               </div>
             </div>
 
-            {/* Current Step Detail */}
             <div className="px-8 pb-8">
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-6 flex items-center gap-5">
                 <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-3xl shadow-sm flex-shrink-0">

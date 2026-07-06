@@ -1,5 +1,4 @@
 "use client";
-import Image from "next/image";
 import { useState } from "react";
 
 const recentFoundItems = [
@@ -15,8 +14,6 @@ export default function StudentHome() {
 
   return (
     <div className="min-h-screen bg-[#f8f9fc]">
-
-      {/* Navbar */}
       <nav className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <a href="/student-home" className="text-lg font-black text-[#1a237e] hover:opacity-80 transition">
@@ -42,10 +39,7 @@ export default function StudentHome() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <main className="px-8 py-8 max-w-6xl mx-auto">
-
-        {/* AI Match Notification */}
         {showNotification && (
           <div className="bg-green-50 border border-green-200 rounded-2xl px-6 py-4 mb-8 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -73,7 +67,6 @@ export default function StudentHome() {
           </div>
         )}
 
-        {/* Quick Actions */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           <a
             href="/report-lost"
@@ -101,7 +94,6 @@ export default function StudentHome() {
             </div>
           </a>
 
-          {/* Active Reports */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <p className="font-black text-gray-700 text-sm mb-3">Active Lost Item Reports</p>
             <div className="flex items-center gap-3">
@@ -116,9 +108,6 @@ export default function StudentHome() {
           </div>
         </div>
 
-        {/* Recently Found Items — limited public details only.
-            Shows item name + general area, no identifying marks,
-            so a random student can't fabricate a convincing claim. */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center justify-between mb-5">
             <div>
@@ -130,7 +119,6 @@ export default function StudentHome() {
             </a>
           </div>
 
-          {/* Scrollable Items */}
           <div className="flex gap-4 overflow-x-auto pb-2">
             {recentFoundItems.map((item, index) => (
               <div

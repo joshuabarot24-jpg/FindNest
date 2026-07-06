@@ -1,5 +1,4 @@
 "use client";
-import Image from "next/image";
 import { useState } from "react";
 
 const foundItems = [
@@ -49,8 +48,6 @@ export default function ViewFoundItems() {
 
   return (
     <div className="min-h-screen bg-[#f8f9fc]">
-
-      {/* Navbar */}
       <nav className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <a href="/student-home" className="text-lg font-black text-[#1a237e] hover:opacity-80 transition">
@@ -76,10 +73,7 @@ export default function ViewFoundItems() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <main className="px-8 py-10 max-w-6xl mx-auto">
-
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-black text-[#1a237e]">Browse Found Items</h1>
@@ -91,7 +85,6 @@ export default function ViewFoundItems() {
           </div>
         </div>
 
-        {/* Search Bar */}
         <div className="relative mb-5">
           <input
             type="text"
@@ -102,7 +95,6 @@ export default function ViewFoundItems() {
           />
         </div>
 
-        {/* Category Filter */}
         <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
           {categories.map((cat) => (
             <button
@@ -119,7 +111,6 @@ export default function ViewFoundItems() {
           ))}
         </div>
 
-        {/* Items Grid */}
         <div className="grid grid-cols-5 gap-5">
           {filtered.map((item) => {
             const colors = colorMap[item.color];
@@ -127,8 +118,7 @@ export default function ViewFoundItems() {
               <div
                 key={item.id}
                 className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group cursor-pointer hover:-translate-y-1"
-              >
-                {/* Icon Area */}
+                >
                 <div className={`${colors.bg} h-28 flex items-center justify-center relative`}>
                   <span className="text-5xl group-hover:scale-110 transition-transform duration-300">
                     {item.icon}
@@ -138,7 +128,6 @@ export default function ViewFoundItems() {
                   </span>
                 </div>
 
-                {/* Info */}
                 <div className="p-4">
                   <p className="font-bold text-gray-700 text-sm leading-tight mb-2">{item.name}</p>
                   <div className="flex items-center gap-1.5 text-gray-400 text-xs mb-1">
@@ -150,9 +139,9 @@ export default function ViewFoundItems() {
                     <span>{item.date}</span>
                   </div>
 
-                  <button className="w-full mt-3 bg-gray-50 group-hover:bg-[#1a237e] text-gray-500 group-hover:text-white text-xs font-bold py-2.5 rounded-xl transition">
+                  <a href="/report-lost" className="block w-full mt-3 bg-gray-50 group-hover:bg-[#1a237e] text-gray-500 group-hover:text-white text-xs font-bold py-2.5 rounded-xl transition text-center">
                     Is this yours?
-                  </button>
+                  </a>
                 </div>
               </div>
             );
