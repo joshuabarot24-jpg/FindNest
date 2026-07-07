@@ -8,6 +8,7 @@ import {
   Image,
   ScrollView,
   Modal,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -32,10 +33,13 @@ export default function SupportScreen({ navigation }: any) {
     setSubmitted(true);
   };
 
+  const handleEmailPress = () => {
+    Linking.openURL("mailto:findnest@sjdmcci.edu.ph");
+  };
+
   return (
     <SafeAreaView style={styles.container}>
 
-      {/* Top Bar */}
       <View style={styles.topBar}>
         <View style={styles.topBarLeft}>
           <Image source={require("../assets/icon.png")} style={styles.logoSmall} />
@@ -70,7 +74,6 @@ export default function SupportScreen({ navigation }: any) {
               Contact an admin for account help or feedback.
             </Text>
 
-            {/* Subject Picker */}
             <Text style={styles.label}>Subject</Text>
             <TouchableOpacity
               style={styles.selectBox}
@@ -80,7 +83,6 @@ export default function SupportScreen({ navigation }: any) {
               <Text style={styles.selectArrow}>⌄</Text>
             </TouchableOpacity>
 
-            {/* Message */}
             <Text style={styles.label}>Message</Text>
             <TextInput
               style={styles.textArea}
@@ -93,7 +95,6 @@ export default function SupportScreen({ navigation }: any) {
               textAlignVertical="top"
             />
 
-            {/* Submit Button */}
             <TouchableOpacity
               style={[styles.submitButton, !message && styles.submitButtonDisabled]}
               onPress={handleSubmit}
@@ -102,7 +103,6 @@ export default function SupportScreen({ navigation }: any) {
               <Text style={styles.submitButtonText}>Submit Ticket</Text>
             </TouchableOpacity>
 
-            {/* Contact Info Card */}
             <View style={styles.contactCard}>
               <Text style={styles.contactTitle}>Contact Information</Text>
 
@@ -114,13 +114,13 @@ export default function SupportScreen({ navigation }: any) {
                 </View>
               </View>
 
-              <View style={styles.contactRow}>
+              <TouchableOpacity style={styles.contactRow} onPress={handleEmailPress}>
                 <Text style={styles.contactIcon}>📧</Text>
                 <View>
                   <Text style={styles.contactLabel}>Email</Text>
-                  <Text style={styles.contactValue}>findnest@sjdmcci.edu.ph</Text>
+                  <Text style={styles.contactValueLink}>findnest@sjdmcci.edu.ph</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
 
               <View style={styles.contactRow}>
                 <Text style={styles.contactIcon}>🕐</Text>
@@ -134,7 +134,6 @@ export default function SupportScreen({ navigation }: any) {
         )}
       </ScrollView>
 
-      {/* Subject Picker Modal */}
       <Modal
         visible={showSubjectPicker}
         animationType="slide"
@@ -171,7 +170,6 @@ export default function SupportScreen({ navigation }: any) {
         </TouchableOpacity>
       </Modal>
 
-      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
           <Text style={styles.navIcon}>🏠</Text>
@@ -340,6 +338,13 @@ const styles = StyleSheet.create({
     color: "#374151",
     fontWeight: "700",
     marginTop: 2,
+  },
+  contactValueLink: {
+    fontSize: 13,
+    color: NAVY,
+    fontWeight: "800",
+    marginTop: 2,
+    textDecorationLine: "underline",
   },
   successCard: {
     backgroundColor: "white",

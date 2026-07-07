@@ -7,6 +7,7 @@ import {
   Image,
   ScrollView,
   TextInput,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -22,6 +23,7 @@ const reportHistory = [
 export default function BrowseScreen({ navigation }: any) {
   const [activeTab, setActiveTab] = useState<"browse" | "history">("browse");
   const [search, setSearch] = useState("");
+  const [selectedItem, setSelectedItem] = useState<typeof foundItems[0] | null>(null);
 
   const filtered = foundItems.filter((item) =>
     item.name.toLowerCase().includes(search.toLowerCase())
@@ -29,8 +31,6 @@ export default function BrowseScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-
-      {/* Top Bar */}
       <View style={styles.topBar}>
         <View style={styles.topBarLeft}>
           <Image source={require("../assets/icon.png")} style={styles.logoSmall} />
@@ -43,7 +43,6 @@ export default function BrowseScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabRow}>
         <TouchableOpacity
           style={[styles.tabButton, activeTab === "browse" && styles.tabButtonActive]}
@@ -67,7 +66,6 @@ export default function BrowseScreen({ navigation }: any) {
 
         {activeTab === "browse" ? (
           <>
-            {/* Search */}
             <TextInput
               style={styles.searchInput}
               placeholder="Search found items..."
@@ -76,15 +74,21 @@ export default function BrowseScreen({ navigation }: any) {
               onChangeText={setSearch}
             />
 
-            {/* Report Found Item Button */}
-            <TouchableOpacity style={styles.reportFoundButton}>
+            <TouchableOpacity
+              style={styles.reportFoundButton}
+              onPress={() => navigation.navigate("ReportFound")}
+            >
               <Text style={styles.reportFoundIcon}>➕</Text>
               <Text style={styles.reportFoundText}>Report Found Item</Text>
             </TouchableOpacity>
 
-            {/* Found Items List */}
             {filtered.map((item) => (
-              <TouchableOpacity key={item.id} style={styles.itemRow}>
+              <TouchableOpacity
+                key={item.id}
+                style={styles.itemRow}
+                activeOpacity={0.85}
+                onPress={() => setSelectedItem(item)}
+              >
                 <View style={styles.itemIconBox}>
                   <Text style={styles.itemIcon}>{item.icon}</Text>
                 </View>
@@ -105,7 +109,6 @@ export default function BrowseScreen({ navigation }: any) {
           </>
         ) : (
           <>
-            {/* Report History */}
             <Text style={styles.historyHeading}>Report History</Text>
             <Text style={styles.historySubheading}>
               Details of past activities and incident reporting
@@ -117,7 +120,7 @@ export default function BrowseScreen({ navigation }: any) {
                   <Text style={styles.historyItem}>Found: {report.item}</Text>
                   <Text style={styles.historyDate}>Turned in: {report.turnedIn}</Text>
                 </View>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate("Support")}>
                   <Text style={styles.reportIncidentLink}>Report Incident</Text>
                 </TouchableOpacity>
               </View>
@@ -126,13 +129,65 @@ export default function BrowseScreen({ navigation }: any) {
         )}
       </ScrollView>
 
-      {/* Bottom Navigation */}
+      <Modal
+        visible={!!selectedItem}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setSelectedItem(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setSelectedItem(null)}
+        >
+          <View style={styles.modalCard}>
+            <View style={styles.modalHandle} />
+
+            {selectedItem && (
+              <>
+                <View style={styles.modalIconBox}>
+                  <Text style={styles.modalIcon}>{selectedItem.icon}</Text>
+                </View>
+                <Text style={styles.modalItemName}>{selectedItem.name}</Text>
+                <Text style={styles.modalItemLocation}>
+                  Found at: {selectedItem.location}
+                </Text>
+
+                <View style={styles.modalNote}>
+                  <Text style={styles.modalNoteText}>
+                    If this is your item, submit a claim so an administrator can verify ownership.
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.claimButton}
+                  onPress={() => {
+                    const itemToClaim = selectedItem;
+                    setSelectedItem(null);
+                    navigation.navigate("ReportLost", {
+                      claimItemName: itemToClaim.name,
+                      claimItemLocation: itemToClaim.location,
+                    });
+                  }}
+                >
+                  <Text style={styles.claimButtonText}>Submit Claim</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setSelectedItem(null)}>
+                  <Text style={styles.modalCloseText}>Close</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
           <Text style={styles.navIcon}>🏠</Text>
           <Text style={styles.navLabel}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Browse")}>
           <Text style={styles.navIconActive}>🔍</Text>
           <Text style={styles.navLabelActive}>Browse</Text>
         </TouchableOpacity>
@@ -342,6 +397,80 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: "#ef4444",
     fontWeight: "700",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(13,19,63,0.6)",
+    justifyContent: "flex-end",
+  },
+  modalCard: {
+    backgroundColor: "white",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    paddingBottom: 36,
+    alignItems: "center",
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#e5e7eb",
+    marginBottom: 20,
+  },
+  modalIconBox: {
+    width: 70,
+    height: 70,
+    borderRadius: 18,
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  modalIcon: {
+    fontSize: 32,
+  },
+  modalItemName: {
+    fontSize: 17,
+    fontWeight: "900",
+    color: NAVY,
+    marginBottom: 4,
+  },
+  modalItemLocation: {
+    fontSize: 13,
+    color: "#9ca3af",
+    marginBottom: 18,
+  },
+  modalNote: {
+    backgroundColor: "#eff6ff",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+    width: "100%",
+  },
+  modalNoteText: {
+    fontSize: 12,
+    color: "#1e40af",
+    lineHeight: 17,
+    textAlign: "center",
+  },
+  claimButton: {
+    backgroundColor: NAVY,
+    borderRadius: 16,
+    paddingVertical: 16,
+    width: "100%",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  claimButtonText: {
+    color: "white",
+    fontWeight: "900",
+    fontSize: 14,
+  },
+  modalCloseText: {
+    color: "#9ca3af",
+    fontWeight: "700",
+    fontSize: 13,
   },
   bottomNav: {
     flexDirection: "row",

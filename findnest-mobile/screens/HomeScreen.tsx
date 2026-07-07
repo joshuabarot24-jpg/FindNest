@@ -19,8 +19,6 @@ const recentFoundItems = [
 export default function HomeScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.container}>
-
-      {/* Top Bar */}
       <View style={styles.topBar}>
         <View style={styles.topBarLeft}>
           <Image source={require("../assets/icon.png")} style={styles.logoSmall} />
@@ -41,8 +39,11 @@ export default function HomeScreen({ navigation }: any) {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* AI Match Notification */}
-        <View style={styles.notifBanner}>
+        <TouchableOpacity
+          style={styles.notifBanner}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate("ClaimStatus")}
+        >
           <View style={styles.notifIconBox}>
             <Text style={styles.notifIcon}>🤖</Text>
           </View>
@@ -52,9 +53,8 @@ export default function HomeScreen({ navigation }: any) {
               A "Blue Umbrella" matches your report.
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
-        {/* Quick Actions */}
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.lostButton} activeOpacity={0.85} onPress={() => navigation.navigate("ReportLost")}>
             <Text style={styles.actionIcon}>➕</Text>
@@ -66,17 +66,21 @@ export default function HomeScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        {/* Recently Found Items */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recently Found Items</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate("Browse")}>
             <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.itemsScroll}>
           {recentFoundItems.map((item, index) => (
-            <TouchableOpacity key={index} style={styles.itemCard}>
+            <TouchableOpacity
+              key={index}
+              style={styles.itemCard}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate("Browse")}
+            >
               <View style={styles.itemIconBox}>
                 <Text style={styles.itemIcon}>{item.icon}</Text>
               </View>
@@ -86,9 +90,8 @@ export default function HomeScreen({ navigation }: any) {
         </ScrollView>
       </ScrollView>
 
-      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
           <Text style={styles.navIconActive}>🏠</Text>
           <Text style={styles.navLabelActive}>Home</Text>
         </TouchableOpacity>

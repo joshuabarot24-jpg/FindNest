@@ -65,6 +65,17 @@ export default function NotificationsScreen({ navigation }: any) {
     setItems(items.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
+  const markAllAsRead = () => {
+    setItems(items.map((n) => ({ ...n, read: true })));
+  };
+
+  const handleNotifPress = (notif: typeof notifications[0]) => {
+    markAsRead(notif.id);
+    if (notif.type === "match" || notif.type === "status" || notif.type === "reminder") {
+      navigation.navigate("ClaimStatus");
+    }
+  };
+
   const iconColors: Record<string, string> = {
     match: "#ecfdf5",
     status: "#eff6ff",
@@ -75,7 +86,6 @@ export default function NotificationsScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.container}>
 
-      {/* Top Bar */}
       <View style={styles.topBar}>
         <View style={styles.topBarLeft}>
           <Image source={require("../assets/icon.png")} style={styles.logoSmall} />
@@ -99,11 +109,17 @@ export default function NotificationsScreen({ navigation }: any) {
           )}
         </View>
 
+        {unreadCount > 0 && (
+          <TouchableOpacity onPress={markAllAsRead} style={styles.markAllButton}>
+            <Text style={styles.markAllText}>Mark all as read</Text>
+          </TouchableOpacity>
+        )}
+
         {items.map((notif) => (
           <TouchableOpacity
             key={notif.id}
             style={[styles.notifCard, !notif.read && styles.notifCardUnread]}
-            onPress={() => markAsRead(notif.id)}
+            onPress={() => handleNotifPress(notif)}
             activeOpacity={0.7}
           >
             <View style={[styles.notifIconBox, { backgroundColor: iconColors[notif.type] }]}>
@@ -128,7 +144,6 @@ export default function NotificationsScreen({ navigation }: any) {
         )}
       </ScrollView>
 
-      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
           <Text style={styles.navIcon}>🏠</Text>
@@ -205,7 +220,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: 10,
   },
   pageTitle: {
     fontSize: 20,
@@ -222,6 +237,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "800",
     color: "#2563eb",
+  },
+  markAllButton: {
+    alignSelf: "flex-end",
+    marginBottom: 14,
+  },
+  markAllText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: NAVY,
   },
   notifCard: {
     flexDirection: "row",

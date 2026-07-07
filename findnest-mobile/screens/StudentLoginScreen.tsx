@@ -12,8 +12,14 @@ import {
 export default function StudentLoginScreen({ navigation }: any) {
   const [studentId, setStudentId] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   const handleLogin = () => {
+    if (!studentId.trim() || !password.trim()) {
+      setError("Please enter your Student ID and Password!");
+      return;
+    }
+    setError("");
     navigation.navigate("Home");
   };
 
@@ -21,7 +27,6 @@ export default function StudentLoginScreen({ navigation }: any) {
     <SafeAreaView style={styles.container}>
       <View style={styles.card}>
 
-        {/* Logo */}
         <View style={styles.logoBox}>
           <Image
             source={require("../assets/icon.png")}
@@ -32,31 +37,41 @@ export default function StudentLoginScreen({ navigation }: any) {
         <Text style={styles.title}>Student Login</Text>
         <Text style={styles.subtitle}>Use your school credentials</Text>
 
-        {/* Student ID Input */}
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            error && !studentId.trim() && styles.inputError,
+          ]}
           placeholder="Student ID"
           placeholderTextColor="#9ca3af"
           value={studentId}
-          onChangeText={setStudentId}
+          onChangeText={(text) => {
+            setStudentId(text);
+            if (error) setError("");
+          }}
         />
 
-        {/* Password Input */}
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            error && !password.trim() && styles.inputError,
+          ]}
           placeholder="Password"
           placeholderTextColor="#9ca3af"
           secureTextEntry
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            if (error) setError("");
+          }}
         />
 
-        {/* Sign In Button */}
+        {error && <Text style={styles.errorText}>{error}</Text>}
+
         <TouchableOpacity style={styles.button} onPress={handleLogin}>
           <Text style={styles.buttonText}>Sign In</Text>
         </TouchableOpacity>
 
-        {/* Forgot Password */}
         <TouchableOpacity>
           <Text style={styles.forgotText}>Forgot Password?</Text>
         </TouchableOpacity>
@@ -120,6 +135,18 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     fontSize: 14,
     color: "#374151",
+  },
+  inputError: {
+    borderColor: "#ef4444",
+    backgroundColor: "#fef2f2",
+  },
+  errorText: {
+    width: "100%",
+    color: "#ef4444",
+    fontSize: 12.5,
+    fontWeight: "700",
+    marginBottom: 10,
+    marginTop: -4,
   },
   button: {
     width: "100%",

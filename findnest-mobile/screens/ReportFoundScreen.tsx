@@ -22,6 +22,7 @@ export default function ReportFoundScreen({ navigation }: any) {
   const [photo, setPhoto] = useState<string | null>(null);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -30,18 +31,22 @@ export default function ReportFoundScreen({ navigation }: any) {
     });
     if (!result.canceled) {
       setPhoto(result.assets[0].uri);
+      setPhotoError(false);
     }
   };
 
   const handleSubmit = () => {
-    if (!itemName || !photo) return;
+    if (!itemName) return;
+    if (!photo) {
+      setPhotoError(true);
+      return;
+    }
+    setPhotoError(false);
     setSubmitted(true);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-
-      {/* Top Bar */}
       <View style={styles.topBar}>
         <View style={styles.topBarLeft}>
           <Image source={require("../assets/icon.png")} style={styles.logoSmall} />
@@ -86,21 +91,33 @@ export default function ReportFoundScreen({ navigation }: any) {
               Help reunite this item with its owner
             </Text>
 
-            {/* Upload Photo */}
-            <Text style={styles.label}>Upload Photo</Text>
-            <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
+            <Text style={styles.label}>
+              Upload Photo <Text style={styles.requiredMark}>*</Text>
+            </Text>
+            <TouchableOpacity
+              style={[styles.uploadBox, photoError && styles.uploadBoxError]}
+              onPress={pickImage}
+            >
               {photo ? (
                 <Image source={{ uri: photo }} style={styles.previewImage} />
               ) : (
                 <>
                   <Text style={styles.uploadIcon}>📷</Text>
-                  <Text style={styles.uploadText}>Choose File</Text>
-                  <Text style={styles.uploadSubtext}>No file chosen</Text>
+                  <Text style={[styles.uploadText, photoError && styles.uploadTextError]}>
+                    Choose File
+                  </Text>
+                  <Text style={[styles.uploadSubtext, photoError && styles.uploadSubtextError]}>
+                    No file chosen
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
+            {photoError && (
+              <Text style={styles.errorText}>
+                A photo is required before you can submit this report.
+              </Text>
+            )}
 
-            {/* Item Name */}
             <Text style={styles.label}>Item Name</Text>
             <TextInput
               style={styles.input}
@@ -110,7 +127,6 @@ export default function ReportFoundScreen({ navigation }: any) {
               onChangeText={setItemName}
             />
 
-            {/* Category */}
             <Text style={styles.label}>Category</Text>
             <TouchableOpacity
               style={styles.selectBox}
@@ -120,7 +136,6 @@ export default function ReportFoundScreen({ navigation }: any) {
               <Text style={styles.selectArrow}>⌄</Text>
             </TouchableOpacity>
 
-            {/* Location Found */}
             <Text style={styles.label}>Location Found</Text>
             <TextInput
               style={styles.input}
@@ -130,7 +145,6 @@ export default function ReportFoundScreen({ navigation }: any) {
               onChangeText={setLocation}
             />
 
-            {/* Description */}
             <Text style={styles.label}>Description (Optional)</Text>
             <TextInput
               style={styles.textArea}
@@ -144,17 +158,15 @@ export default function ReportFoundScreen({ navigation }: any) {
             />
 
             <View style={styles.privacyNote}>
-              <Text style={styles.privacyIcon}>🔒</Text>
               <Text style={styles.privacyText}>
-                This report is private and visible only to you and administrators
+                This report is private and visible only to you and administrators!
               </Text>
             </View>
 
-            {/* Submit Button */}
             <TouchableOpacity
-              style={[styles.submitButton, (!itemName || !photo) && styles.submitButtonDisabled]}
+              style={[styles.submitButton, !itemName && styles.submitButtonDisabled]}
               onPress={handleSubmit}
-              disabled={!itemName || !photo}
+              disabled={!itemName}
             >
               <Text style={styles.submitButtonText}>Submit Report</Text>
             </TouchableOpacity>
@@ -162,7 +174,6 @@ export default function ReportFoundScreen({ navigation }: any) {
         )}
       </ScrollView>
 
-      {/* Category Picker Modal */}
       <Modal
         visible={showCategoryPicker}
         animationType="slide"
@@ -199,7 +210,6 @@ export default function ReportFoundScreen({ navigation }: any) {
         </TouchableOpacity>
       </Modal>
 
-      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
           <Text style={styles.navIcon}>🏠</Text>
@@ -289,6 +299,9 @@ const styles = StyleSheet.create({
     color: "#374151",
     marginBottom: 8,
   },
+  requiredMark: {
+    color: "#ef4444",
+  },
   uploadBox: {
     backgroundColor: "white",
     borderWidth: 1.5,
@@ -297,7 +310,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 26,
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 8,
+  },
+  uploadBoxError: {
+    borderColor: "#ef4444",
+    backgroundColor: "#fef2f2",
   },
   uploadIcon: {
     fontSize: 30,
@@ -308,10 +325,22 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#374151",
   },
+  uploadTextError: {
+    color: "#ef4444",
+  },
   uploadSubtext: {
     fontSize: 11,
     color: "#9ca3af",
     marginTop: 3,
+  },
+  uploadSubtextError: {
+    color: "#f87171",
+  },
+  errorText: {
+    fontSize: 11.5,
+    fontWeight: "800",
+    color: "#ef4444",
+    marginBottom: 14,
   },
   previewImage: {
     width: "100%",
@@ -433,9 +462,6 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 20,
     alignItems: "flex-start",
-  },
-  reminderIcon: {
-    fontSize: 16,
   },
   reminderText: {
     flex: 1,

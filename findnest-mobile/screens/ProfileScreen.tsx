@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   Image,
@@ -10,10 +11,21 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ProfileScreen({ navigation }: any) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [name, setName] = useState("Chabas Kevin O. Soriano");
+  const [course, setCourse] = useState("BS Information Technology");
+  const [yearLevel, setYearLevel] = useState("4th Year");
+
+  const handleEditToggle = () => {
+    if (isEditing) {
+      setIsEditing(false);
+    } else {
+      setIsEditing(true);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-
-      {/* Top Bar */}
       <View style={styles.topBar}>
         <View style={styles.topBarLeft}>
           <Image source={require("../assets/icon.png")} style={styles.logoSmall} />
@@ -34,15 +46,13 @@ export default function ProfileScreen({ navigation }: any) {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.avatarBox}>
             <Text style={styles.avatarEmoji}>👤</Text>
           </View>
-          <Text style={styles.studentName}>Chabas Kevin O. Soriano</Text>
+          <Text style={styles.studentName}>{name}</Text>
           <Text style={styles.studentInfo}>BS IT | 2022-10043</Text>
 
-          {/* Trust Score Ring */}
           <View style={styles.trustBox}>
             <View style={styles.trustRing}>
               <Text style={styles.trustScore}>95</Text>
@@ -51,7 +61,6 @@ export default function ProfileScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* Stats Row */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>3</Text>
@@ -67,7 +76,6 @@ export default function ProfileScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* Account Details */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Account Details</Text>
 
@@ -77,16 +85,56 @@ export default function ProfileScreen({ navigation }: any) {
           </View>
           <View style={styles.detailDivider} />
 
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Course</Text>
-            <Text style={styles.detailValue}>BS Information Technology</Text>
-          </View>
-          <View style={styles.detailDivider} />
+          {isEditing ? (
+            <>
+              <View style={styles.editFieldRow}>
+                <Text style={styles.editFieldLabel}>Full Name</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Full Name"
+                  placeholderTextColor="#9ca3af"
+                />
+              </View>
 
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Year Level</Text>
-            <Text style={styles.detailValue}>4th Year</Text>
-          </View>
+              <View style={styles.editFieldRow}>
+                <Text style={styles.editFieldLabel}>Course</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={course}
+                  onChangeText={setCourse}
+                  placeholder="Course"
+                  placeholderTextColor="#9ca3af"
+                />
+              </View>
+
+              <View style={styles.editFieldRow}>
+                <Text style={styles.editFieldLabel}>Year Level</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={yearLevel}
+                  onChangeText={setYearLevel}
+                  placeholder="Year Level"
+                  placeholderTextColor="#9ca3af"
+                />
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Course</Text>
+                <Text style={styles.detailValue}>{course}</Text>
+              </View>
+              <View style={styles.detailDivider} />
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Year Level</Text>
+                <Text style={styles.detailValue}>{yearLevel}</Text>
+              </View>
+            </>
+          )}
+
           <View style={styles.detailDivider} />
 
           <View style={styles.detailRow}>
@@ -95,9 +143,16 @@ export default function ProfileScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* Buttons */}
-        <TouchableOpacity style={styles.editButton}>
-          <Text style={styles.editButtonText}>Edit Profile</Text>
+        {isEditing && (
+          <TouchableOpacity style={styles.cancelButton} onPress={() => setIsEditing(false)}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity style={styles.editButton} onPress={handleEditToggle}>
+          <Text style={styles.editButtonText}>
+            {isEditing ? "Save Changes" : "Edit Profile"}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -108,7 +163,6 @@ export default function ProfileScreen({ navigation }: any) {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
           <Text style={styles.navIcon}>🏠</Text>
@@ -122,7 +176,7 @@ export default function ProfileScreen({ navigation }: any) {
           <Text style={styles.navIcon}>📋</Text>
           <Text style={styles.navLabel}>Status</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Profile")}>
           <Text style={styles.navIconActive}>👤</Text>
           <Text style={styles.navLabelActive}>Profile</Text>
         </TouchableOpacity>
@@ -325,6 +379,27 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "#f3f4f6",
   },
+  editFieldRow: {
+    paddingVertical: 8,
+  },
+  editFieldLabel: {
+    fontSize: 11,
+    color: "#9ca3af",
+    fontWeight: "700",
+    marginBottom: 6,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  editInput: {
+    backgroundColor: "#f8f9fc",
+    borderWidth: 1.5,
+    borderColor: "#e5e7eb",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 13,
+    color: "#374151",
+  },
   editButton: {
     backgroundColor: NAVY,
     borderRadius: 16,
@@ -334,6 +409,20 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     color: "white",
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  cancelButton: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    paddingVertical: 15,
+    alignItems: "center",
+    marginBottom: 10,
+    borderWidth: 1.5,
+    borderColor: "#e5e7eb",
+  },
+  cancelButtonText: {
+    color: "#9ca3af",
     fontWeight: "800",
     fontSize: 14,
   },

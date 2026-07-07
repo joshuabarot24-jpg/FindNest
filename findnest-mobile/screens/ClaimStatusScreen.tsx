@@ -63,8 +63,6 @@ export default function ClaimStatusScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-
-      {/* Top Bar */}
       <View style={styles.topBar}>
         <View style={styles.topBarLeft}>
           <Image source={require("../assets/icon.png")} style={styles.logoSmall} />
@@ -82,7 +80,6 @@ export default function ClaimStatusScreen({ navigation }: any) {
         <Text style={styles.pageTitle}>Claim Status</Text>
         <Text style={styles.pageSubtitle}>Track the progress of your submitted reports</Text>
 
-        {/* Horizontal Carousel of Reports */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -118,7 +115,6 @@ export default function ClaimStatusScreen({ navigation }: any) {
           })}
         </ScrollView>
 
-        {/* Selected Item Banner */}
         <View style={[styles.bannerCard, { backgroundColor: selected.color }]}>
           <View style={styles.bannerIconCircle}>
             <Text style={styles.bannerIcon}>{selected.icon}</Text>
@@ -133,7 +129,6 @@ export default function ClaimStatusScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* Timeline Cards */}
         <View style={styles.timelineWrap}>
           {steps.map((step, index) => {
             const stepNumber = index + 1;
@@ -187,7 +182,6 @@ export default function ClaimStatusScreen({ navigation }: any) {
         )}
       </ScrollView>
 
-      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
           <Text style={styles.navIcon}>🏠</Text>
@@ -197,7 +191,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
           <Text style={styles.navIcon}>🔍</Text>
           <Text style={styles.navLabel}>Browse</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ClaimStatus")}>
           <Text style={styles.navIconActive}>📋</Text>
           <Text style={styles.navLabelActive}>Status</Text>
         </TouchableOpacity>
@@ -271,8 +265,6 @@ const styles = StyleSheet.create({
     color: "#9ca3af",
     marginBottom: 18,
   },
-
-  /* Carousel */
   carousel: {
     marginBottom: 18,
   },
@@ -323,8 +315,6 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
   },
-
-  /* Banner */
   bannerCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -371,8 +361,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 1,
   },
-
-  /* Timeline */
   timelineWrap: {
     gap: 10,
   },
@@ -427,7 +415,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: "900",
   },
-
   actionAlert: {
     flexDirection: "row",
     backgroundColor: "#fefce8",

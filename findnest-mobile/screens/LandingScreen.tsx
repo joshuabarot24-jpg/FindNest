@@ -16,18 +16,12 @@ export default function LandingScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
-        {/* Ambient background accents */}
         <View style={styles.bgGlowTop} />
         <View style={styles.bgGlowBottom} />
-
-        {/* ============ CLAIM TAG HERO ============ */}
         <View style={styles.tagWrapper}>
-          {/* The notch — like a tag torn from a roll */}
           <View style={styles.tagNotch} />
 
           <View style={styles.tagCard}>
-            {/* Perforation line */}
             <View style={styles.perforationRow}>
               {Array.from({ length: 14 }).map((_, i) => (
                 <View key={i} style={styles.perfDot} />
@@ -47,7 +41,6 @@ export default function LandingScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* ============ HEADLINE ============ */}
         <Text style={styles.title}>
           Never Lose{"\n"}
           <Text style={styles.titleAccent}>What Matters</Text>{"\n"}
@@ -58,9 +51,12 @@ export default function LandingScreen({ navigation }: any) {
           AI image recognition matches lost and found items across campus — every report tagged, tracked, and resolved.
         </Text>
 
-        {/* ============ QUICK ACTIONS ============ */}
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.lostButton} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.lostButton}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate("StudentLogin")}
+          >
             <View style={styles.actionIconBox}>
               <Text style={styles.actionIcon}>📋</Text>
             </View>
@@ -68,7 +64,11 @@ export default function LandingScreen({ navigation }: any) {
             <Text style={styles.actionSub}>Something missing?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.foundButton} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.foundButton}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate("StudentLogin")}
+          >
             <View style={[styles.actionIconBox, styles.actionIconBoxAlt]}>
               <Text style={styles.actionIcon}>🔍</Text>
             </View>
@@ -77,7 +77,6 @@ export default function LandingScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        {/* ============ STAMPED MANIFEST / STATS ============ */}
         <View style={styles.manifestCard}>
           <View style={styles.manifestRow}>
             <View style={styles.manifestStat}>
@@ -97,7 +96,6 @@ export default function LandingScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* ============ LOG IN ============ */}
         <TouchableOpacity
           style={styles.loginButton}
           activeOpacity={0.9}
@@ -129,8 +127,6 @@ const styles = StyleSheet.create({
     paddingTop: 36,
     paddingBottom: 48,
   },
-
-  /* Ambient glow accents */
   bgGlowTop: {
     position: "absolute",
     top: -60,
@@ -149,8 +145,6 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     backgroundColor: "rgba(34,197,94,0.05)",
   },
-
-  /* ===== CLAIM TAG HERO ===== */
   tagWrapper: {
     alignItems: "center",
     marginBottom: 28,
@@ -233,8 +227,6 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     marginTop: 4,
   },
-
-  /* ===== HEADLINE ===== */
   title: {
     fontSize: 30,
     fontWeight: "900",
@@ -255,8 +247,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     paddingHorizontal: 8,
   },
-
-  /* ===== QUICK ACTIONS ===== */
   actionRow: {
     flexDirection: "row",
     gap: 12,
@@ -313,8 +303,6 @@ const styles = StyleSheet.create({
     color: "#9fa8da",
     fontSize: 10.5,
   },
-
-  /* ===== MANIFEST / STATS ===== */
   manifestCard: {
     width: "100%",
     backgroundColor: "rgba(255,255,255,0.06)",
@@ -352,8 +340,6 @@ const styles = StyleSheet.create({
     marginTop: 3,
     letterSpacing: 1,
   },
-
-  /* ===== LOGIN BUTTON ===== */
   loginButton: {
     backgroundColor: GOLD,
     paddingVertical: 17,
