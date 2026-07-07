@@ -73,7 +73,7 @@ export default function StudentHome() {
             className="bg-red-500 hover:bg-red-600 rounded-2xl p-6 text-white transition shadow-lg hover:-translate-y-1 transform flex items-center gap-4"
           >
             <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center text-2xl">
-              🔍
+              ❓
             </div>
             <div>
               <p className="font-black text-lg">Report Lost Items</p>
@@ -86,7 +86,7 @@ export default function StudentHome() {
             className="bg-green-500 hover:bg-green-600 rounded-2xl p-6 text-white transition shadow-lg hover:-translate-y-1 transform flex items-center gap-4"
           >
             <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center text-2xl">
-              ❓
+              🔍
             </div>
             <div>
               <p className="font-black text-lg">Report Found Item</p>

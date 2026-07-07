@@ -91,7 +91,7 @@ export default function ReportFoundPage() {
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="bg-gradient-to-r from-green-500 to-green-600 px-8 py-6">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl">❓</div>
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl">🔍</div>
                 <div>
                   <h1 className="text-white font-black text-xl">Report Found Item</h1>
                   <p className="text-green-100 text-sm">Help reunite this item with its owner</p>

@@ -88,7 +88,7 @@ export default function ReportLostPage() {
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="bg-gradient-to-r from-red-500 to-red-600 px-8 py-6">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl">🔍</div>
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl">❓</div>
                 <div>
                   <h1 className="text-white font-black text-xl">Report Lost Item</h1>
                   <p className="text-red-100 text-sm">Help us help you find it faster</p>
