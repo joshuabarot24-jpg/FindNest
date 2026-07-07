@@ -57,7 +57,7 @@ export default function HomeScreen({ navigation }: any) {
 
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.lostButton} activeOpacity={0.85} onPress={() => navigation.navigate("ReportLost")}>
-            <Text style={styles.actionIcon}>➕</Text>
+            <Text style={styles.actionIcon}>❓</Text>
             <Text style={styles.actionText}>Lost Item</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.foundButton} activeOpacity={0.85} onPress={() => navigation.navigate("ReportFound")}>

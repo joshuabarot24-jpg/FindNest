@@ -78,7 +78,7 @@ export default function BrowseScreen({ navigation }: any) {
               style={styles.reportFoundButton}
               onPress={() => navigation.navigate("ReportFound")}
             >
-              <Text style={styles.reportFoundIcon}>➕</Text>
+              <Text style={styles.reportFoundIcon}>🔍</Text>
               <Text style={styles.reportFoundText}>Report Found Item</Text>
             </TouchableOpacity>
 
