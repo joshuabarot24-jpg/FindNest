@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useMemo, useEffect } from "react";
 
 type UserStatus = "ACTIVE" | "INACTIVE";
@@ -197,7 +196,6 @@ export default function UserManagement() {
             href="/user-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/20 text-white font-semibold border border-white/20"
           >
-
           <span>User Management</span>
           </a>
           
@@ -205,7 +203,6 @@ export default function UserManagement() {
             href="/admin-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-
           <span>Admin Management</span>
           </a>
 
@@ -213,14 +210,22 @@ export default function UserManagement() {
             href="/system-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-            <span>System Management</span>
+          <span>System Management</span>
           </a>
 
           <a 
             href="/super-admin-records" 
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
-            <span>Digital Records</span>
+          <span>Digital Records</span>
           </a>
+
+          <a 
+            href="/audit-trail" 
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
+          <span>Audit Trail</span>
+          </a>
+
+
         </nav>
 
         <div className="px-4 py-6">

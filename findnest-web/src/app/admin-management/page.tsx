@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useMemo, useEffect } from "react";
 
 type AdminStatus = "ACTIVE" | "REVOKED";
@@ -156,28 +155,35 @@ export default function AdminManagement() {
             href="/user-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-            <span>User Management</span>
+          <span>User Management</span>
           </a>
 
           <a
             href="/admin-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/20 text-white font-semibold border border-white/20"
           >
-            <span>Admin Management</span>
+          <span>Admin Management</span>
           </a>
 
           <a
             href="/system-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-            <span>System Management</span>
+          <span>System Management</span>
           </a>
 
           <a
             href="/super-admin-records"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-            <span>Digital Records</span>
+          <span>Digital Records</span>
+          </a>
+
+          <a
+            href="/audit-trail"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
+          >
+          <span>Audit Trail</span>
           </a>
         </nav>
 
