@@ -118,6 +118,9 @@ export default function DigitalRecords() {
           <a href="/ai-matching" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
             <span>Assistive AI Matching</span>
           </a>
+          <a href="/admin-audit-trail" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
+            <span>Audit Trail</span>
+          </a>
         </nav>
 
         <div className="px-4 py-6">
