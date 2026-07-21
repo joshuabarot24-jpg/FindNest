@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AiMatchController;
 use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\UploadController;
 
 
 Route::prefix('auth')->group(function () {
@@ -74,6 +75,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [LocationController::class, 'index']);
         Route::get('/hotspots', [LocationController::class, 'hotspots']);
         Route::post('/', [LocationController::class, 'store']);
+    });
+
+    Route::prefix('upload')->group(function () {
+        Route::post('/image', [UploadController::class, 'uploadImage']);
+        Route::delete('/image', [UploadController::class, 'deleteImage']);
     });
 
 });
