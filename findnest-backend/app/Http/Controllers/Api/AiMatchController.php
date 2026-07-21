@@ -1,0 +1,142 @@
+<?php
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\AiMatch;
+use App\Models\LostItemReport;
+use App\Models\FoundItemRecord;
+use App\Models\Notification;
+use App\Models\AuditLog;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
+
+class AiMatchController extends Controller
+{
+    public function index()
+    {
+        $matches = AiMatch::with([
+            'lostReport.user',
+            'foundRecord',
+            'claim'
+        ])
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+        return response()->json(['matches' => $matches]);
+    }
+
+    public function show($id)
+    {
+        $match = AiMatch::with([
+            'lostReport.user',
+            'foundRecord',
+            'claim.student'
+        ])->findOrFail($id);
+
+        return response()->json(['match' => $match]);
+    }
+
+    public function store(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'report_id' => 'required|exists:lost_item_reports,id',
+            'found_id' => 'required|exists:found_item_records,id',
+            'confidence_score' => 'required|numeric|min:0|max:100',
+            'attributes' => 'nullable|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $existing = AiMatch::where('report_id', $request->report_id)
+            ->where('found_id', $request->found_id)
+            ->first();
+
+        if ($existing) {
+            return response()->json(['message' => 'Match already exists', 'match' => $existing], 409);
+        }
+
+        $match = AiMatch::create([
+            'report_id' => $request->report_id,
+            'found_id' => $request->found_id,
+            'confidence_score' => $request->confidence_score,
+            'attributes' => $request->attributes,
+            'match_status' => 'pending',
+            'matched_at' => Carbon::now(),
+        ]);
+
+        $lostReport = LostItemReport::find($request->report_id);
+        $lostReport?->update(['status' => 'matched']);
+
+        $foundRecord = FoundItemRecord::find($request->found_id);
+        $foundRecord?->update(['status' => 'matched']);
+
+        if ($lostReport) {
+            Notification::create([
+                'user_id' => $lostReport->user_id,
+                'match_id' => $match->id,
+                'title' => 'AI Match Found!',
+                'message' => 'A found item matches your "' . $lostReport->item_name . '" report with ' . $request->confidence_score . '% confidence.',
+                'type' => 'match',
+                'is_read' => false,
+                'sent_at' => Carbon::now(),
+            ]);
+        }
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'AI Match Triggered',
+            'target_type' => 'ai_matches',
+            'target_id' => $match->id,
+            'details' => 'AI matched Lost Report #' . $request->report_id . ' with Found Item #' . $request->found_id . ' at ' . $request->confidence_score . '% confidence',
+            'performed_by' => 'System: AI Engine',
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json([
+            'message' => 'AI match created and student notified',
+            'match' => $match
+        ], 201);
+    }
+
+    public function confirm(Request $request, $id)
+    {
+        $match = AiMatch::findOrFail($id);
+        $match->update(['match_status' => 'confirmed']);
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'AI Match Confirmed',
+            'target_type' => 'ai_matches',
+            'target_id' => $match->id,
+            'details' => 'Admin confirmed AI match',
+            'performed_by' => 'Admin: ' . $request->user()->name,
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['message' => 'Match confirmed', 'match' => $match]);
+    }
+
+    public function reject(Request $request, $id)
+    {
+        $match = AiMatch::findOrFail($id);
+        $match->update(['match_status' => 'rejected']);
+
+        LostItemReport::find($match->report_id)?->update(['status' => 'searching']);
+        FoundItemRecord::find($match->found_id)?->update(['status' => 'unclaimed']);
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'AI Match Rejected',
+            'target_type' => 'ai_matches',
+            'target_id' => $match->id,
+            'details' => 'Admin rejected AI match — items returned to searching/unclaimed status',
+            'performed_by' => 'Admin: ' . $request->user()->name,
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['message' => 'Match rejected', 'match' => $match]);
+    }
+}
