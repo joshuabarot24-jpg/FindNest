@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AiMatchController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\UploadController;
+use App\Http\Controllers\Api\FcmController;
 
 
 Route::prefix('auth')->group(function () {
@@ -81,5 +82,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/image', [UploadController::class, 'uploadImage']);
         Route::delete('/image', [UploadController::class, 'deleteImage']);
     });
+
+    Route::post('/fcm/update-token', [FcmController::class, 'updateToken']);
 
 });

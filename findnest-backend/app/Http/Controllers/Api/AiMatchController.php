@@ -7,6 +7,7 @@ use App\Models\LostItemReport;
 use App\Models\FoundItemRecord;
 use App\Models\Notification;
 use App\Models\AuditLog;
+use App\Services\FcmService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
@@ -83,6 +84,17 @@ class AiMatchController extends Controller
                 'is_read' => false,
                 'sent_at' => Carbon::now(),
             ]);
+
+            $student = \App\Models\User::find($lostReport->user_id);
+            if ($student && $student->fcm_token) {
+                $fcm = new FcmService();
+                $fcm->sendToUser(
+                    $student->fcm_token,
+                    'AI Match Found! 🤖',
+                    'A found item matches your "' . $lostReport->item_name . '" report with ' . $request->confidence_score . '% confidence.',
+                    ['type' => 'ai_match', 'match_id' => (string)$match->id]
+                );
+            }
         }
 
         AuditLog::create([

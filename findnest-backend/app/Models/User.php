@@ -22,6 +22,7 @@ class User extends Authenticatable
         'otp_code',
         'otp_expires_at',
         'trust_score',
+        'fcm_token',
     ];
 
     protected $hidden = [

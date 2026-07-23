@@ -11,6 +11,7 @@ use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
+use App\Services\FcmService;
 
 class ClaimController extends Controller
 {
@@ -95,6 +96,17 @@ class ClaimController extends Controller
             FoundItemRecord::find($match->found_id)?->update(['status' => 'claimed']);
         }
 
+        $student = \App\Models\User::find($claim->student_id);
+        if ($student && $student->fcm_token) {
+            $fcm = new FcmService();
+            $fcm->sendToUser(
+            $student->fcm_token,
+            'Claim Approved! ✅',
+            'Your claim has been approved. Visit the Guidance Office to collect your item.',
+            ['type' => 'claim_approved', 'claim_id' => (string)$claim->id]
+        );
+    }
+
         Notification::create([
             'user_id' => $claim->student_id,
             'match_id' => $claim->match_id,
@@ -128,6 +140,17 @@ class ClaimController extends Controller
             'admin_notes' => $request->admin_notes,
         ]);
 
+        $student = \App\Models\User::find($claim->student_id);
+        if ($student && $student->fcm_token) {
+            $fcm = new FcmService();
+            $fcm->sendToUser(
+            $student->fcm_token,
+            'Claim Rejected ❌',
+            'Your claim was rejected. Reason: ' . ($request->admin_notes ?? 'Insufficient proof.'),
+            ['type' => 'claim_rejected', 'claim_id' => (string)$claim->id]
+        );
+    }
+
         Notification::create([
             'user_id' => $claim->student_id,
             'match_id' => $claim->match_id,
@@ -150,4 +173,5 @@ class ClaimController extends Controller
 
         return response()->json(['message' => 'Claim rejected', 'claim' => $claim]);
     }
+
 }
