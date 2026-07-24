@@ -1,5 +1,7 @@
 "use client";
 import { useState } from "react";
+import { useEffect } from "react";
+import api from "@/lib/api";
 
 const foundItems = [
   { id: 1, name: "Reading Glasses", category: "Accessories", location: "Library", date: "Jun 15, 2026", icon: "👓", color: "blue" },

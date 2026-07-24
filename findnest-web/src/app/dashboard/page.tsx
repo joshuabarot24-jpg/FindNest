@@ -1,5 +1,6 @@
 "use client";
-import { useState, useRef, ChangeEvent } from "react";
+import { useState, useRef, useEffect, ChangeEvent } from "react";
+import api from "@/lib/api";
 
 interface ActivityItem {
   item: string;
@@ -8,30 +9,63 @@ interface ActivityItem {
   type: "found" | "lost";
 }
 
-const recentActivity: ActivityItem[] = [
-  { item: "Blue water bottle", status: "Found at Gym", time: "10 mins ago", type: "found" },
-  { item: "iPhone 13 Case", status: "Reported Lost", time: "1 hr ago", type: "lost" },
-  { item: "Wallet with Cash", status: "Found in Bathroom", time: "35 mins ago", type: "found" },
-  { item: "Vape black", status: "Reported Lost", time: "6 hr ago", type: "lost" },
-  { item: "Tumbler", status: "Reported Lost", time: "6 hr ago", type: "lost" },
-  { item: "Towel red color", status: "Found at Parking Lot", time: "12 hr ago", type: "found" },
-  { item: "Ballpen", status: "Reported Lost", time: "21 mins ago", type: "lost" },
-  { item: "Paper", status: "Reported Lost", time: "3 hr ago", type: "lost" },
-  { item: "Paper", status: "Found at Canteen", time: "32 hr ago", type: "found" },
-  { item: "Wallet", status: "Reported Lost", time: "2 mins ago", type: "lost" },
-  { item: "iPhone 15 pro max white color", status: "Found inside the classroom", time: "204 days ago", type: "found" },
-];
-
 function placeholderUrlFor(itemName: string, size: number) {
-  return `https  ://picsum.photos/seed/${itemName.replace(/\s/g, "")}/${size}/${size}`;
+  return `https://picsum.photos/seed/${itemName.replace(/\s/g, "")}/${size}/${size}`;
 }
 
 export default function Dashboard() {
+  const [stats, setStats] = useState({ found_today: 0, pending_claims: 0, ai_success: 92 });
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
-
   const [uploadedPhotos, setUploadedPhotos] = useState<Record<number, string>>({});
-
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [lostRes, foundRes, claimsRes] = await Promise.all([
+          api.get("/lost-items"),
+          api.get("/found-items"),
+          api.get("/claims"),
+        ]);
+
+        const foundItems = foundRes.data.records || [];
+        const claims = claimsRes.data.claims || [];
+        const lostItems = lostRes.data.reports || [];
+
+        const today = new Date().toISOString().split("T")[0];
+        const foundToday = foundItems.filter((i: any) => i.created_at?.startsWith(today)).length;
+        const pendingClaims = claims.filter((c: any) => c.claim_status === "pending").length;
+
+        setStats({ found_today: foundToday, pending_claims: pendingClaims, ai_success: 92 });
+
+        const activity = [
+          ...foundItems.slice(0, 6).map((i: any) => ({
+            item: i.item_name,
+            status: "Found at " + i.location_found,
+            time: new Date(i.created_at).toLocaleString(),
+            type: "found" as const,
+          })),
+          ...lostItems.slice(0, 5).map((i: any) => ({
+            item: i.item_name,
+            status: "Reported Lost",
+            time: new Date(i.created_at).toLocaleString(),
+            type: "lost" as const,
+          })),
+        ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+        setRecentActivity(activity);
+      } catch (err) {
+        console.error("Dashboard fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   function getPhotoFor(index: number, item: string, size: number) {
     return uploadedPhotos[index] ?? placeholderUrlFor(item, size);
@@ -102,9 +136,13 @@ export default function Dashboard() {
             <p className="text-white text-sm font-semibold">Guidance Counselor</p>
             <p className="text-blue-300 text-xs mt-1">Administrator</p>
           </div>
-          <a href="/" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
+
+          <button
+            onClick={() => { localStorage.removeItem("findnest_token"); localStorage.removeItem("findnest_user"); window.location.href = "/"; }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium w-full text-left"
+          >
             <span>Logout</span>
-          </a>
+          </button>
         </div>
       </aside>
 
@@ -128,7 +166,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">Today</span>
             </div>
-            <p className="text-4xl font-black text-[#1a237e]">6</p>
+            <p className="text-4xl font-black text-[#1a237e]">{stats.found_today}</p>
             <p className="text-gray-400 text-sm mt-1">Items Found Today</p>
           </div>
 
@@ -136,7 +174,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-bold text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full">Pending</span>
             </div>
-            <p className="text-4xl font-black text-[#ffd700]">6</p>
+            <p className="text-4xl font-black text-[#ffd700]">{stats.pending_claims}</p>
             <p className="text-gray-400 text-sm mt-1">Pending Claims</p>
           </div>
 
@@ -144,7 +182,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">AI Matching</span>
             </div>
-            <p className="text-4xl font-black text-green-600">92%</p>
+            <p className="text-4xl font-black text-green-600">{stats.ai_success}%</p>
             <p className="text-gray-400 text-sm mt-1">AI Match Success</p>
           </div>
         </div>
@@ -163,71 +201,76 @@ export default function Dashboard() {
             </button>
           </div>
 
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Item</th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Time</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {recentActivity.map((activity, index) => (
-                <tr key={index} className="hover:bg-gray-50 transition">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <input
-                        ref={(el) => { fileInputRefs.current[index] = el; }}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => handleFileSelected(index, e)}
-                      />
-
-                      <div className="relative group/thumb flex-shrink-0">
-                        <button
-                          onClick={() => setPreviewIndex(index)}
-                          className="w-9 h-9 rounded-xl overflow-hidden bg-gray-100 block hover:ring-2 hover:ring-[#1a237e] transition cursor-zoom-in"
-                          title="Click to enlarge"
-                        >
-                          <img
-                            src={getPhotoFor(index, activity.item, 36)}
-                            alt={activity.item}
-                            className="w-full h-full object-cover"
-                          />
-                        </button>
-                        <button
-                          onClick={() => triggerUpload(index)}
-                          className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#1a237e] rounded-full flex items-center justify-center text-white text-[9px] opacity-0 group-hover/thumb:opacity-100 transition shadow"
-                          title="Attach photo"
-                        >
-                          📷
-                        </button>
-                      </div>
-
-                      <p className="font-semibold text-gray-700 text-sm">{activity.item}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
-                      activity.type === "found"
-                        ? "bg-green-50 text-green-700"
-                        : "bg-red-50 text-red-600"
-                    }`}>
-                      {activity.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-gray-400 text-sm">{activity.time}</p>
-                  </td>
+          {loading ? (
+            <div className="px-6 py-16 text-center text-gray-400 text-sm">Loading recent activity...</div>
+          ) : recentActivity.length === 0 ? (
+            <div className="px-6 py-16 text-center text-gray-400 text-sm">No recent activity yet.</div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Item</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Time</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {recentActivity.map((activity, index) => (
+                  <tr key={index} className="hover:bg-gray-50 transition">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <input
+                          ref={(el) => { fileInputRefs.current[index] = el; }}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleFileSelected(index, e)}
+                        />
+
+                        <div className="relative group/thumb flex-shrink-0">
+                          <button
+                            onClick={() => setPreviewIndex(index)}
+                            className="w-9 h-9 rounded-xl overflow-hidden bg-gray-100 block hover:ring-2 hover:ring-[#1a237e] transition cursor-zoom-in"
+                            title="Click to enlarge"
+                          >
+                            <img
+                              src={getPhotoFor(index, activity.item, 36)}
+                              alt={activity.item}
+                              className="w-full h-full object-cover"
+                            />
+                          </button>
+                          <button
+                            onClick={() => triggerUpload(index)}
+                            className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#1a237e] rounded-full flex items-center justify-center text-white text-[9px] opacity-0 group-hover/thumb:opacity-100 transition shadow"
+                            title="Attach photo"
+                          >
+                            📷
+                          </button>
+                        </div>
+
+                        <p className="font-semibold text-gray-700 text-sm">{activity.item}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
+                        activity.type === "found"
+                          ? "bg-green-50 text-green-700"
+                          : "bg-red-50 text-red-600"
+                      }`}>
+                        {activity.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-gray-400 text-sm">{activity.time}</p>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </main>
 
-      {/* IMAGE PREVIEW LIGHTBOX */}
       {previewItem && previewIndex !== null && (
         <div
           onClick={() => setPreviewIndex(null)}

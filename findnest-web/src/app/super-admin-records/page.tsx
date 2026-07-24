@@ -97,12 +97,12 @@ export default function SuperAdminRecords() {
             <p className="text-blue-300 text-xs mt-1">System Administrator</p>
           </div>
           
-          <a
-            href="/"
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
+          <button
+            onClick={() => { localStorage.removeItem("findnest_token"); localStorage.removeItem("findnest_user"); window.location.href = "/"; }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium w-full text-left"
           >
             <span>Logout</span>
-          </a>
+          </button>
         </div>
       </aside>
 

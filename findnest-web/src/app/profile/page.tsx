@@ -117,9 +117,12 @@ export default function ProfilePage() {
                 >
                   {isEditing ? "Cancel Edit" : "Edit Profile"}
                 </button>
-                <a href="/" className="block w-full mt-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl transition text-sm text-center">
+                <button
+                  onClick={() => { localStorage.removeItem("findnest_token"); localStorage.removeItem("findnest_user"); window.location.href = "/"; }}
+                  className="block w-full mt-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl transition text-sm text-center"
+                >
                   Logout
-                </a>
+                </button>
               </div>
             </div>
 

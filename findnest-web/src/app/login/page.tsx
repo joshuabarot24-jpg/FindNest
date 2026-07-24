@@ -1,16 +1,33 @@
 "use client";
 import Image from "next/image";
 import { useState } from "react";
+import api from "@/lib/api";
+import { setAuth } from "@/lib/auth";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    window.location.href = "/user-management";
-  };
+  const handleLogin = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setError("");
+      setLoading(true);
+      try {
+        const response = await api.post("/auth/super-admin/login", {
+          email: username,
+          password: password,
+        });
+        setAuth(response.data.token, response.data.user);
+        window.location.href = "/user-management";
+      } catch (err: any) {
+        setError(err.response?.data?.message || "Invalid credentials");
+      } finally {
+        setLoading(false);
+      }
+    };
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-[#1a237e] via-[#283593] to-[#1565c0] flex items-center justify-center relative overflow-hidden">
@@ -84,11 +101,17 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-600 text-sm text-center">
+              {error}
+            </div>
+          )}
           <button
             type="submit"
-            className="w-full bg-[#1a237e] hover:bg-[#283593] text-white font-black py-4 rounded-xl transition shadow-lg hover:shadow-xl hover:-translate-y-0.5 transform text-lg mt-2"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-[#1a237e] to-[#1565c0] hover:from-[#283593] hover:to-[#1976d2] text-white font-black py-4 rounded-xl transition shadow-lg hover:shadow-xl hover:-translate-y-0.5 transform text-lg mt-2 disabled:opacity-50"
           >
-            Sign In
+            {loading ? "Logging in..." : "Sign In"}
           </button>
 
           <div className="text-center">

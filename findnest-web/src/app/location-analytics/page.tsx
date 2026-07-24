@@ -112,9 +112,13 @@ export default function LocationAnalytics() {
             <p className="text-white text-sm font-semibold">Guidance Counselor</p>
             <p className="text-blue-300 text-xs mt-1">Administrator</p>
           </div>
-          <a href="/" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
+          
+          <button
+            onClick={() => { localStorage.removeItem("findnest_token"); localStorage.removeItem("findnest_user"); window.location.href = "/"; }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium w-full text-left"
+          >
             <span>Logout</span>
-          </a>
+          </button>
         </div>
       </aside>
 
@@ -182,8 +186,6 @@ export default function LocationAnalytics() {
         </div>
 
         <div className="grid grid-cols-2 gap-6 mb-6">
-
-          {/* Left - Campus Overview Map */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
               <div className="flex items-center gap-3">
@@ -249,7 +251,6 @@ export default function LocationAnalytics() {
             </div>
           </div>
 
-          {/* Right - Selected Location Detail Map */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
               <div className="flex items-center gap-3">
@@ -295,7 +296,6 @@ export default function LocationAnalytics() {
           </div>
         </div>
 
-        {/* Top Locations List */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-6 py-5 border-b border-gray-100">
             <h2 className="font-black text-gray-700">Top Locations</h2>

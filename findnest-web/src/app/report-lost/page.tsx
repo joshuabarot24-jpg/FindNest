@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import Image from "next/image";
+import api from "@/lib/api";
 
 const categories = ["Electronics", "Personal Belongings", "ID/Cards", "Keys", "School Supplies", "Accessories", "Others"];
 
@@ -22,18 +22,22 @@ export default function ReportLostPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!photoPreview) {
-      setPhotoError(true);
-      const uploadSection = document.getElementById("photo-upload-section");
-      uploadSection?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
+    try {
+      await api.post("/lost-items", {
+        item_name: itemName,
+        category: category,
+        description: description,
+        location_lost: location,
+        date_lost: date,
+        photo_url: photoPreview,
+      });
+      setSubmitted(true);
+    } catch (err: any) {
+      console.error("Error submitting report:", err);
+      alert(err.response?.data?.message || "Failed to submit report. Please try again.");
     }
-
-    setPhotoError(false);
-    setSubmitted(true);
   };
 
   return (

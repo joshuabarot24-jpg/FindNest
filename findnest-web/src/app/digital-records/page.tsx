@@ -128,16 +128,17 @@ export default function DigitalRecords() {
             <p className="text-white text-sm font-semibold">Guidance Counselor</p>
             <p className="text-blue-300 text-xs mt-1">Administrator</p>
           </div>
-          <a href="/" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
+
+          <button
+            onClick={() => { localStorage.removeItem("findnest_token"); localStorage.removeItem("findnest_user"); window.location.href = "/"; }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium w-full text-left"
+          >
             <span>Logout</span>
-          </a>
+          </button>
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 ml-72 p-8">
-
-        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-black text-[#1a237e]">Digital Records</h1>
@@ -150,7 +151,6 @@ export default function DigitalRecords() {
           </div>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
@@ -195,10 +195,7 @@ export default function DigitalRecords() {
           </div>
         </div>
 
-        {/* Table Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-
-          {/* Table Header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <div className="flex items-center gap-3">
               <div>
@@ -215,7 +212,6 @@ export default function DigitalRecords() {
             />
           </div>
 
-          {/* Table */}
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
@@ -271,7 +267,6 @@ export default function DigitalRecords() {
             </div>
           )}
 
-          {/* Table Footer */}
           <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
             <p className="text-gray-400 text-sm">Showing {filtered.length} of {records.length} records</p>
             <div className="flex items-center gap-2">
