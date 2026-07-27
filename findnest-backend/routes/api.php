@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\AiMatchController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\UploadController;
 use App\Http\Controllers\Api\FcmController;
+use App\Http\Controllers\Api\UserManagementController;
 
 
 Route::prefix('auth')->group(function () {
@@ -81,6 +82,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('upload')->group(function () {
         Route::post('/image', [UploadController::class, 'uploadImage']);
         Route::delete('/image', [UploadController::class, 'deleteImage']);
+    });
+
+    Route::prefix('users')->group(function () {
+        Route::get('/', [UserManagementController::class, 'index']);
+        Route::post('/', [UserManagementController::class, 'store']);
+        Route::put('/{id}', [UserManagementController::class, 'update']);
+        Route::post('/{id}/revoke', [UserManagementController::class, 'revoke']);
+        Route::post('/{id}/restore', [UserManagementController::class, 'restore']);
     });
 
     Route::post('/fcm/update-token', [FcmController::class, 'updateToken']);
