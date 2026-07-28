@@ -1,50 +1,19 @@
 "use client";
 import { useState, useMemo, useEffect } from "react";
-
-type UserStatus = "ACTIVE" | "INACTIVE";
+import api from "@/lib/api";
 
 interface SystemUser {
   id: number;
   name: string;
-  role: string;
   email: string;
-  lastLogin: string;
-  status: UserStatus;
+  role: string;
+  school_id: string | null;
+  course: string | null;
+  year_level: string | null;
+  is_active: boolean;
 }
 
-const initialUsers: SystemUser[] = [
-  {
-    id: 1,
-    name: "Ma'am Reyna D. Villi",
-    role: "Developer / Super Admin",
-    email: "reyna.villi@sjdmcci.edu.ph",
-    lastLogin: "Today, 09:15 AM",
-    status: "ACTIVE",
-  },
-  {
-    id: 2,
-    name: "School Security Office",
-    role: "Admin Module",
-    email: "security@sjdmcci.edu.ph",
-    lastLogin: "Yesterday, 04:20 PM",
-    status: "ACTIVE",
-  },
-  {
-    id: 3,
-    name: "IT Laboratory Staff",
-    role: "Staff Assistant",
-    email: "itlab@sjdmcci.edu.ph",
-    lastLogin: "June 10, 2026",
-    status: "INACTIVE",
-  },
-];
-
-const ROLE_OPTIONS = [
-  "Developer / Super Admin",
-  "Admin Module",
-  "Staff Assistant",
-  "Guidance Counselor",
-];
+const ROLE_OPTIONS = ["admin", "student", "super_admin"];
 
 const PAGE_SIZE = 5;
 
@@ -52,17 +21,32 @@ function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || "?";
 }
 
+function formatRole(role: string) {
+  return role.replace("_", " ");
+}
+
 export default function UserManagement() {
-  const [users, setUsers] = useState<SystemUser[]>(initialUsers);
+  const [users, setUsers] = useState<SystemUser[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingUser, setEditingUser] = useState<SystemUser | null>(null);
   const [revokingUser, setRevokingUser] = useState<SystemUser | null>(null);
-  const [formName, setFormName] = useState("");
-  const [formRole, setFormRole] = useState(ROLE_OPTIONS[2]);
-  const [formEmail, setFormEmail] = useState("");
+
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "admin",
+    school_id: "",
+    course: "",
+    year_level: "",
+  });
   const [formError, setFormError] = useState("");
+  const [formLoading, setFormLoading] = useState(false);
+
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -70,6 +54,21 @@ export default function UserManagement() {
     const t = setTimeout(() => setToast(null), 2500);
     return () => clearTimeout(t);
   }, [toast]);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get("/users");
+      setUsers(response.data.users || []);
+    } catch (err) {
+      console.error("Error fetching users:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -89,13 +88,19 @@ export default function UserManagement() {
 
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const activeCount = users.filter((u) => u.status === "ACTIVE").length;
-  const inactiveCount = users.filter((u) => u.status === "INACTIVE").length;
+  const activeCount = users.filter((u) => u.is_active).length;
+  const inactiveCount = users.filter((u) => !u.is_active).length;
 
   function resetForm() {
-    setFormName("");
-    setFormRole(ROLE_OPTIONS[2]);
-    setFormEmail("");
+    setFormData({
+      name: "",
+      email: "",
+      password: "",
+      role: "admin",
+      school_id: "",
+      course: "",
+      year_level: "",
+    });
     setFormError("");
   }
 
@@ -105,66 +110,77 @@ export default function UserManagement() {
   }
 
   function openEditModal(user: SystemUser) {
-    setFormName(user.name);
-    setFormRole(user.role);
-    setFormEmail(user.email);
+    setFormData({
+      name: user.name,
+      email: user.email,
+      password: "",
+      role: user.role,
+      school_id: user.school_id || "",
+      course: user.course || "",
+      year_level: user.year_level || "",
+    });
     setFormError("");
     setEditingUser(user);
   }
 
-  function handleCreateSubmit() {
-    if (!formName.trim() || !formEmail.trim()) {
-      setFormError("Name and email are required.");
-      return;
+  async function handleCreateSubmit() {
+    setFormError("");
+    setFormLoading(true);
+    try {
+      await api.post("/users", formData);
+      setShowCreateModal(false);
+      setPage(1);
+      setToast(`${formData.name} was added successfully.`);
+      resetForm();
+      fetchUsers();
+    } catch (err: any) {
+      setFormError(
+        err.response?.data?.message ||
+          Object.values(err.response?.data?.errors || {}).flat().join(", ") ||
+          "Failed to create user"
+      );
+    } finally {
+      setFormLoading(false);
     }
-    const newUser: SystemUser = {
-      id: Math.max(0, ...users.map((u) => u.id)) + 1,
-      name: formName.trim(),
-      role: formRole,
-      email: formEmail.trim(),
-      lastLogin: "Never logged in",
-      status: "ACTIVE",
-    };
-    setUsers((prev) => [newUser, ...prev]);
-    setShowCreateModal(false);
-    setPage(1);
-    setToast(`${newUser.name} was added successfully.`);
-    resetForm();
   }
 
-  function handleEditSubmit() {
+  async function handleEditSubmit() {
     if (!editingUser) return;
-    if (!formName.trim() || !formEmail.trim()) {
-      setFormError("Name and email are required.");
-      return;
+    setFormError("");
+    setFormLoading(true);
+    try {
+      await api.put(`/users/${editingUser.id}`, formData);
+      setToast(`${formData.name}'s account was updated.`);
+      setEditingUser(null);
+      resetForm();
+      fetchUsers();
+    } catch (err: any) {
+      setFormError(
+        err.response?.data?.message ||
+          Object.values(err.response?.data?.errors || {}).flat().join(", ") ||
+          "Failed to update user"
+      );
+    } finally {
+      setFormLoading(false);
     }
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === editingUser.id
-          ? { ...u, name: formName.trim(), role: formRole, email: formEmail.trim() }
-          : u
-      )
-    );
-    setToast(`${formName.trim()}'s account was updated.`);
-    setEditingUser(null);
-    resetForm();
   }
 
-  function handleRevokeConfirm() {
+  async function handleRevokeConfirm() {
     if (!revokingUser) return;
-    const nextStatus: UserStatus =
-      revokingUser.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === revokingUser.id ? { ...u, status: nextStatus } : u
-      )
-    );
-    setToast(
-      nextStatus === "INACTIVE"
-        ? `${revokingUser.name}'s access was revoked.`
-        : `${revokingUser.name}'s access was restored.`
-    );
-    setRevokingUser(null);
+    try {
+      if (revokingUser.is_active) {
+        await api.post(`/users/${revokingUser.id}/revoke`);
+        setToast(`${revokingUser.name}'s access was revoked.`);
+      } else {
+        await api.post(`/users/${revokingUser.id}/restore`);
+        setToast(`${revokingUser.name}'s access was restored.`);
+      }
+      setRevokingUser(null);
+      fetchUsers();
+    } catch (err) {
+      console.error("Error updating user status:", err);
+      setRevokingUser(null);
+    }
   }
 
   return (
@@ -196,36 +212,36 @@ export default function UserManagement() {
             href="/user-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/20 text-white font-semibold border border-white/20"
           >
-          <span>User Management</span>
+            <span>User Management</span>
           </a>
-          
+
           <a
             href="/admin-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-          <span>Admin Management</span>
+            <span>Admin Management</span>
           </a>
 
           <a
             href="/system-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-          <span>System Management</span>
+            <span>System Management</span>
           </a>
 
-          <a 
-            href="/super-admin-records" 
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
-          <span>Digital Records</span>
+          <a
+            href="/super-admin-records"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
+          >
+            <span>Digital Records</span>
           </a>
 
-          <a 
-            href="/audit-trail" 
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
-          <span>Audit Trail</span>
+          <a
+            href="/audit-trail"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
+          >
+            <span>Audit Trail</span>
           </a>
-
-
         </nav>
 
         <div className="px-4 py-6">
@@ -233,9 +249,13 @@ export default function UserManagement() {
             <p className="text-white text-sm font-semibold">Super Admin</p>
             <p className="text-blue-300 text-xs mt-1">System Administrator</p>
           </div>
-          
+
           <button
-            onClick={() => { localStorage.removeItem("findnest_token"); localStorage.removeItem("findnest_user"); window.location.href = "/"; }}
+            onClick={() => {
+              localStorage.removeItem("findnest_token");
+              localStorage.removeItem("findnest_user");
+              window.location.href = "/";
+            }}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium w-full text-left"
           >
             <span>Logout</span>
@@ -291,94 +311,100 @@ export default function UserManagement() {
             />
           </div>
 
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  User
-                </th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Last Login
-                </th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {paginated.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50 transition group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-11 h-11 bg-gradient-to-br from-[#1a237e] to-[#1565c0] rounded-xl flex items-center justify-center text-white font-black text-lg shadow-sm shrink-0">
-                        {getInitial(user.name)}
-                      </div>
-                      <div>
-                        <p className="font-bold text-gray-700">{user.name}</p>
-                        <p className="text-gray-400 text-xs mt-0.5">
-                          {user.email} &middot; ID: USR-00{user.id}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="bg-blue-50 text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg">
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-gray-500 text-sm">{user.lastLogin}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${
-                          user.status === "ACTIVE" ? "bg-green-500" : "bg-red-500"
-                        }`}
-                      ></div>
-                      <span
-                        className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
-                          user.status === "ACTIVE"
-                            ? "bg-green-50 text-green-700"
-                            : "bg-red-50 text-red-600"
-                        }`}
-                      >
-                        {user.status}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => openEditModal(user)}
-                        className="bg-blue-50 hover:bg-[#1a237e] hover:text-white text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg transition"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => setRevokingUser(user)}
-                        className={
-                          user.status === "ACTIVE"
-                            ? "bg-red-50 hover:bg-red-500 hover:text-white text-red-500 text-xs font-bold px-3 py-1.5 rounded-lg transition"
-                            : "bg-green-50 hover:bg-green-600 hover:text-white text-green-600 text-xs font-bold px-3 py-1.5 rounded-lg transition"
-                        }
-                      >
-                        {user.status === "ACTIVE" ? "Revoke" : "Restore"}
-                      </button>
-                    </div>
-                  </td>
+          {loading ? (
+            <div className="text-center py-16 text-gray-400">
+              <p className="font-bold">Loading users...</p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    User
+                  </th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {paginated.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50 transition group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-11 h-11 bg-gradient-to-br from-[#1a237e] to-[#1565c0] rounded-xl flex items-center justify-center text-white font-black text-lg shadow-sm shrink-0">
+                          {getInitial(user.name)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-700">{user.name}</p>
+                          <p className="text-gray-400 text-xs mt-0.5">
+                            ID: USR-{String(user.id).padStart(3, "0")}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="bg-blue-50 text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg capitalize">
+                        {formatRole(user.role)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-gray-500 text-sm">{user.email}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            user.is_active ? "bg-green-500" : "bg-red-500"
+                          }`}
+                        ></div>
+                        <span
+                          className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
+                            user.is_active
+                              ? "bg-green-50 text-green-700"
+                              : "bg-red-50 text-red-600"
+                          }`}
+                        >
+                          {user.is_active ? "ACTIVE" : "INACTIVE"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openEditModal(user)}
+                          className="bg-blue-50 hover:bg-[#1a237e] hover:text-white text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setRevokingUser(user)}
+                          className={
+                            user.is_active
+                              ? "bg-red-50 hover:bg-red-500 hover:text-white text-red-500 text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                              : "bg-green-50 hover:bg-green-600 hover:text-white text-green-600 text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                          }
+                        >
+                          {user.is_active ? "Revoke" : "Restore"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
 
-          {filtered.length === 0 && (
+          {!loading && filtered.length === 0 && (
             <div className="text-center py-16 text-gray-400">
               <p className="font-bold text-lg">No users found</p>
               <p className="text-sm mt-1">Try searching with a different keyword</p>
@@ -447,8 +473,8 @@ export default function UserManagement() {
                 </label>
                 <input
                   type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g. Juan Dela Cruz"
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 />
@@ -460,9 +486,22 @@ export default function UserManagement() {
                 </label>
                 <input
                   type="email"
-                  value={formEmail}
-                  onChange={(e) => setFormEmail(e.target.value)}
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="e.g. juan.delacruz@sjdmcci.edu.ph"
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Minimum 8 characters"
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 />
               </div>
@@ -472,17 +511,56 @@ export default function UserManagement() {
                   Role
                 </label>
                 <select
-                  value={formRole}
-                  onChange={(e) => setFormRole(e.target.value)}
-                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm capitalize"
                 >
                   {ROLE_OPTIONS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
+                    <option key={r} value={r} className="capitalize">
+                      {formatRole(r)}
                     </option>
                   ))}
                 </select>
               </div>
+
+              {formData.role === "student" && (
+                <>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                      School ID
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.school_id}
+                      onChange={(e) => setFormData({ ...formData, school_id: e.target.value })}
+                      placeholder="e.g. 2022-10043"
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                      Course
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.course}
+                      onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                      Year Level
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.year_level}
+                      onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    />
+                  </div>
+                </>
+              )}
 
               {formError && (
                 <p className="text-red-500 text-xs font-semibold">{formError}</p>
@@ -498,9 +576,10 @@ export default function UserManagement() {
               </button>
               <button
                 onClick={handleCreateSubmit}
-                className="flex-1 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition"
+                disabled={formLoading}
+                className="flex-1 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition disabled:opacity-50"
               >
-                Create Admin
+                {formLoading ? "Creating..." : "Create Admin"}
               </button>
             </div>
           </div>
@@ -529,8 +608,8 @@ export default function UserManagement() {
                 </label>
                 <input
                   type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 />
               </div>
@@ -541,8 +620,20 @@ export default function UserManagement() {
                 </label>
                 <input
                   type="email"
-                  value={formEmail}
-                  onChange={(e) => setFormEmail(e.target.value)}
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  New Password (leave blank to keep current)
+                </label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 />
               </div>
@@ -552,17 +643,55 @@ export default function UserManagement() {
                   Role
                 </label>
                 <select
-                  value={formRole}
-                  onChange={(e) => setFormRole(e.target.value)}
-                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm capitalize"
                 >
                   {ROLE_OPTIONS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
+                    <option key={r} value={r} className="capitalize">
+                      {formatRole(r)}
                     </option>
                   ))}
                 </select>
               </div>
+
+              {formData.role === "student" && (
+                <>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                      School ID
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.school_id}
+                      onChange={(e) => setFormData({ ...formData, school_id: e.target.value })}
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                      Course
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.course}
+                      onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                      Year Level
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.year_level}
+                      onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    />
+                  </div>
+                </>
+              )}
 
               {formError && (
                 <p className="text-red-500 text-xs font-semibold">{formError}</p>
@@ -578,9 +707,10 @@ export default function UserManagement() {
               </button>
               <button
                 onClick={handleEditSubmit}
-                className="flex-1 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition"
+                disabled={formLoading}
+                className="flex-1 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition disabled:opacity-50"
               >
-                Save Changes
+                {formLoading ? "Saving..." : "Save Changes"}
               </button>
             </div>
           </div>
@@ -590,19 +720,11 @@ export default function UserManagement() {
       {revokingUser && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
           <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 p-8 text-center">
-            <div
-              className={`w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl ${
-                revokingUser.status === "ACTIVE" ? "bg-red-50" : "bg-green-50"
-              }`}
-            >
-              {revokingUser.status === "ACTIVE" ? "⚠️" : "✅"}
-            </div>
-
             <h2 className="text-xl font-black text-[#1a237e] mb-2">
-              {revokingUser.status === "ACTIVE" ? "Revoke Access?" : "Restore Access?"}
+              {revokingUser.is_active ? "Revoke Access?" : "Restore Access?"}
             </h2>
             <p className="text-gray-400 text-sm mb-8">
-              {revokingUser.status === "ACTIVE"
+              {revokingUser.is_active
                 ? `${revokingUser.name} will lose access to the system immediately.`
                 : `${revokingUser.name} will regain access to the system.`}
             </p>
@@ -617,12 +739,12 @@ export default function UserManagement() {
               <button
                 onClick={handleRevokeConfirm}
                 className={`flex-1 text-white font-bold py-3 rounded-2xl transition ${
-                  revokingUser.status === "ACTIVE"
+                  revokingUser.is_active
                     ? "bg-red-500 hover:bg-red-600"
                     : "bg-green-600 hover:bg-green-700"
                 }`}
               >
-                {revokingUser.status === "ACTIVE" ? "Revoke" : "Restore"}
+                {revokingUser.is_active ? "Revoke" : "Restore"}
               </button>
             </div>
           </div>
