@@ -1,59 +1,44 @@
 "use client";
 import { useState, useMemo, useEffect } from "react";
+import api from "@/lib/api";
 
-type AdminStatus = "ACTIVE" | "REVOKED";
-
-interface Admin {
+interface AdminUser {
   id: number;
   name: string;
+  email: string;
   role: string;
-  moduleAccess: string;
-  status: AdminStatus;
+  is_active: boolean;
 }
 
-const initialAdmins: Admin[] = [
-  {
-    id: 1,
-    name: "Matt D. Roger",
-    role: "System Architect",
-    moduleAccess: "Full Panel",
-    status: "ACTIVE",
-  },
-  {
-    id: 2,
-    name: "Security Office Main",
-    role: "Office Admin",
-    moduleAccess: "Admin Module",
-    status: "ACTIVE",
-  },
-  {
-    id: 3,
-    name: "IT Laboratory Staff",
-    role: "Staff Assistant",
-    moduleAccess: "Reports Only",
-    status: "REVOKED",
-  },
-];
-
-const ROLE_OPTIONS = ["System Architect", "Office Admin", "Staff Assistant", "Guidance Counselor"];
-const MODULE_OPTIONS = ["Full Panel", "Admin Module", "Reports Only"];
-
+const ROLE_OPTIONS = ["admin", "super_admin"];
 const PAGE_SIZE = 5;
 
 function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || "?";
 }
 
+function formatRole(role: string) {
+  return role.replace("_", " ");
+}
+
 export default function AdminManagement() {
-  const [admins, setAdmins] = useState<Admin[]>(initialAdmins);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [revokingAdmin, setRevokingAdmin] = useState<Admin | null>(null);
-  const [formName, setFormName] = useState("");
-  const [formRole, setFormRole] = useState(ROLE_OPTIONS[2]);
-  const [formModule, setFormModule] = useState(MODULE_OPTIONS[2]);
+  const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
+  const [revokingAdmin, setRevokingAdmin] = useState<AdminUser | null>(null);
+
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "admin",
+  });
   const [formError, setFormError] = useState("");
+  const [formLoading, setFormLoading] = useState(false);
 
   const [toast, setToast] = useState<string | null>(null);
 
@@ -63,15 +48,31 @@ export default function AdminManagement() {
     return () => clearTimeout(t);
   }, [toast]);
 
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get("/users");
+      const allUsers: AdminUser[] = response.data.users || [];
+      setUsers(allUsers.filter((u) => u.role === "admin" || u.role === "super_admin"));
+    } catch (err) {
+      console.error("Error fetching admins:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return admins.filter(
+    return users.filter(
       (a) =>
         a.name.toLowerCase().includes(q) ||
-        a.role.toLowerCase().includes(q) ||
-        a.moduleAccess.toLowerCase().includes(q)
+        a.email.toLowerCase().includes(q) ||
+        a.role.toLowerCase().includes(q)
     );
-  }, [admins, search]);
+  }, [users, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 
@@ -81,13 +82,11 @@ export default function AdminManagement() {
 
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const activeCount = admins.filter((a) => a.status === "ACTIVE").length;
-  const revokedCount = admins.filter((a) => a.status === "REVOKED").length;
+  const activeCount = users.filter((a) => a.is_active).length;
+  const revokedCount = users.filter((a) => !a.is_active).length;
 
   function resetForm() {
-    setFormName("");
-    setFormRole(ROLE_OPTIONS[2]);
-    setFormModule(MODULE_OPTIONS[2]);
+    setFormData({ name: "", email: "", password: "", role: "admin" });
     setFormError("");
   }
 
@@ -96,37 +95,74 @@ export default function AdminManagement() {
     setShowAssignModal(true);
   }
 
-  function handleAssignSubmit() {
-    if (!formName.trim()) {
-      setFormError("Personnel name is required.");
-      return;
-    }
-    const newAdmin: Admin = {
-      id: Math.max(0, ...admins.map((a) => a.id)) + 1,
-      name: formName.trim(),
-      role: formRole,
-      moduleAccess: formModule,
-      status: "ACTIVE",
-    };
-    setAdmins((prev) => [newAdmin, ...prev]);
-    setShowAssignModal(false);
-    setPage(1);
-    setToast(`${newAdmin.name} was assigned as ${newAdmin.role}.`);
-    resetForm();
+  function openEditModal(admin: AdminUser) {
+    setFormData({ name: admin.name, email: admin.email, password: "", role: admin.role });
+    setFormError("");
+    setEditingAdmin(admin);
   }
 
-  function handleRevokeConfirm() {
+  async function handleAssignSubmit() {
+    if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim()) {
+      setFormError("Name, email, and password are required.");
+      return;
+    }
+    setFormError("");
+    setFormLoading(true);
+    try {
+      await api.post("/users", formData);
+      setShowAssignModal(false);
+      setPage(1);
+      setToast(`${formData.name} was assigned as ${formatRole(formData.role)}.`);
+      resetForm();
+      fetchUsers();
+    } catch (err: any) {
+      setFormError(
+        err.response?.data?.message ||
+          Object.values(err.response?.data?.errors || {}).flat().join(", ") ||
+          "Failed to assign admin"
+      );
+    } finally {
+      setFormLoading(false);
+    }
+  }
+
+  async function handleEditSubmit() {
+    if (!editingAdmin) return;
+    setFormError("");
+    setFormLoading(true);
+    try {
+      await api.put(`/users/${editingAdmin.id}`, formData);
+      setToast(`${formData.name}'s account was updated.`);
+      setEditingAdmin(null);
+      resetForm();
+      fetchUsers();
+    } catch (err: any) {
+      setFormError(
+        err.response?.data?.message ||
+          Object.values(err.response?.data?.errors || {}).flat().join(", ") ||
+          "Failed to update admin"
+      );
+    } finally {
+      setFormLoading(false);
+    }
+  }
+
+  async function handleRevokeConfirm() {
     if (!revokingAdmin) return;
-    const nextStatus: AdminStatus = revokingAdmin.status === "ACTIVE" ? "REVOKED" : "ACTIVE";
-    setAdmins((prev) =>
-      prev.map((a) => (a.id === revokingAdmin.id ? { ...a, status: nextStatus } : a))
-    );
-    setToast(
-      nextStatus === "REVOKED"
-        ? `${revokingAdmin.name}'s admin access was revoked.`
-        : `${revokingAdmin.name}'s admin access was restored.`
-    );
-    setRevokingAdmin(null);
+    try {
+      if (revokingAdmin.is_active) {
+        await api.post(`/users/${revokingAdmin.id}/revoke`);
+        setToast(`${revokingAdmin.name}'s admin access was revoked.`);
+      } else {
+        await api.post(`/users/${revokingAdmin.id}/restore`);
+        setToast(`${revokingAdmin.name}'s admin access was restored.`);
+      }
+      setRevokingAdmin(null);
+      fetchUsers();
+    } catch (err) {
+      console.error("Error updating admin status:", err);
+      setRevokingAdmin(null);
+    }
   }
 
   return (
@@ -155,35 +191,35 @@ export default function AdminManagement() {
             href="/user-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-          <span>User Management</span>
+            <span>User Management</span>
           </a>
 
           <a
             href="/admin-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/20 text-white font-semibold border border-white/20"
           >
-          <span>Admin Management</span>
+            <span>Admin Management</span>
           </a>
 
           <a
             href="/system-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-          <span>System Management</span>
+            <span>System Management</span>
           </a>
 
           <a
             href="/super-admin-records"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-          <span>Digital Records</span>
+            <span>Digital Records</span>
           </a>
 
           <a
             href="/audit-trail"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-          <span>Audit Trail</span>
+            <span>Audit Trail</span>
           </a>
         </nav>
 
@@ -192,9 +228,13 @@ export default function AdminManagement() {
             <p className="text-white text-sm font-semibold">Super Admin</p>
             <p className="text-blue-300 text-xs mt-1">System Administrator</p>
           </div>
-          
+
           <button
-            onClick={() => { localStorage.removeItem("findnest_token"); localStorage.removeItem("findnest_user"); window.location.href = "/"; }}
+            onClick={() => {
+              localStorage.removeItem("findnest_token");
+              localStorage.removeItem("findnest_user");
+              window.location.href = "/";
+            }}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium w-full text-left"
           >
             <span>Logout</span>
@@ -221,7 +261,7 @@ export default function AdminManagement() {
         <div className="grid grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <p className="text-gray-400 text-sm font-medium">Total Admins</p>
-            <p className="text-4xl font-black text-[#1a237e] mt-1">{admins.length}</p>
+            <p className="text-4xl font-black text-[#1a237e] mt-1">{users.length}</p>
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
@@ -240,7 +280,7 @@ export default function AdminManagement() {
             <h2 className="font-black text-gray-700 text-lg">All Administrators</h2>
             <input
               type="text"
-              placeholder="Search by name, role, or module..."
+              placeholder="Search by name, email, or role..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -250,95 +290,101 @@ export default function AdminManagement() {
             />
           </div>
 
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Personnel
-                </th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Assigned Role
-                </th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Module Access
-                </th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {paginated.map((admin) => (
-                <tr key={admin.id} className="hover:bg-gray-50 transition group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-11 h-11 bg-gradient-to-br from-[#1a237e] to-[#1565c0] rounded-xl flex items-center justify-center text-white font-black text-lg shadow-sm shrink-0">
-                        {getInitial(admin.name)}
-                      </div>
-                      <div>
-                        <p className="font-bold text-gray-700">{admin.name}</p>
-                        <p className="text-gray-400 text-xs mt-0.5">ID: ADM-00{admin.id}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="bg-blue-50 text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg">
-                      {admin.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="bg-purple-50 text-purple-700 text-xs font-bold px-3 py-1.5 rounded-lg">
-                      {admin.moduleAccess}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${
-                          admin.status === "ACTIVE" ? "bg-green-500" : "bg-red-500"
-                        }`}
-                      ></div>
-                      <span
-                        className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
-                          admin.status === "ACTIVE"
-                            ? "bg-green-50 text-green-700"
-                            : "bg-red-50 text-red-600"
-                        }`}
-                      >
-                        {admin.status}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      {admin.status === "ACTIVE" ? (
-                        <button
-                          onClick={() => setRevokingAdmin(admin)}
-                          className="bg-red-50 hover:bg-red-500 hover:text-white text-red-500 text-xs font-bold px-3 py-1.5 rounded-lg transition"
-                        >
-                          Revoke
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => setRevokingAdmin(admin)}
-                          className="bg-green-50 hover:bg-green-500 hover:text-white text-green-600 text-xs font-bold px-3 py-1.5 rounded-lg transition"
-                        >
-                          Restore
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {filtered.length === 0 && (
+          {loading ? (
             <div className="text-center py-16 text-gray-400">
-              <p className="text-5xl mb-4">🛡️</p>
+              <p className="font-bold">Loading admins...</p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Personnel
+                  </th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {paginated.map((admin) => (
+                  <tr key={admin.id} className="hover:bg-gray-50 transition group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-11 h-11 bg-gradient-to-br from-[#1a237e] to-[#1565c0] rounded-xl flex items-center justify-center text-white font-black text-lg shadow-sm shrink-0">
+                          {getInitial(admin.name)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-700">{admin.name}</p>
+                          <p className="text-gray-400 text-xs mt-0.5">
+                            ID: ADM-{String(admin.id).padStart(3, "0")}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="bg-blue-50 text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg capitalize">
+                        {formatRole(admin.role)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-gray-500 text-sm">{admin.email}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            admin.is_active ? "bg-green-500" : "bg-red-500"
+                          }`}
+                        ></div>
+                        <span
+                          className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
+                            admin.is_active
+                              ? "bg-green-50 text-green-700"
+                              : "bg-red-50 text-red-600"
+                          }`}
+                        >
+                          {admin.is_active ? "ACTIVE" : "REVOKED"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openEditModal(admin)}
+                          className="bg-blue-50 hover:bg-[#1a237e] hover:text-white text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setRevokingAdmin(admin)}
+                          className={
+                            admin.is_active
+                              ? "bg-red-50 hover:bg-red-500 hover:text-white text-red-500 text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                              : "bg-green-50 hover:bg-green-500 hover:text-white text-green-600 text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                          }
+                        >
+                          {admin.is_active ? "Revoke" : "Restore"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {!loading && filtered.length === 0 && (
+            <div className="text-center py-16 text-gray-400">
               <p className="font-bold text-lg">No admins found</p>
               <p className="text-sm mt-1">Try searching with a different keyword</p>
             </div>
@@ -406,8 +452,8 @@ export default function AdminManagement() {
                 </label>
                 <input
                   type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g. Juan Dela Cruz"
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 />
@@ -415,33 +461,42 @@ export default function AdminManagement() {
 
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  Assigned Role
+                  Email
                 </label>
-                <select
-                  value={formRole}
-                  onChange={(e) => setFormRole(e.target.value)}
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="e.g. juan.delacruz@sjdmcci.edu.ph"
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                >
-                  {ROLE_OPTIONS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
 
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  Module Access
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Minimum 8 characters"
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  Role
                 </label>
                 <select
-                  value={formModule}
-                  onChange={(e) => setFormModule(e.target.value)}
-                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm capitalize"
                 >
-                  {MODULE_OPTIONS.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
+                  {ROLE_OPTIONS.map((r) => (
+                    <option key={r} value={r} className="capitalize">
+                      {formatRole(r)}
                     </option>
                   ))}
                 </select>
@@ -461,31 +516,117 @@ export default function AdminManagement() {
               </button>
               <button
                 onClick={handleAssignSubmit}
-                className="flex-1 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition"
+                disabled={formLoading}
+                className="flex-1 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition disabled:opacity-50"
               >
-                Assign Admin
+                {formLoading ? "Assigning..." : "Assign Admin"}
               </button>
             </div>
           </div>
         </div>
       )}
-      
+
+      {editingAdmin && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 p-8">
+            <button
+              onClick={() => setEditingAdmin(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none"
+            >
+              &times;
+            </button>
+
+            <h2 className="text-2xl font-black text-[#1a237e] mb-1">Edit Admin</h2>
+            <p className="text-gray-400 text-sm mb-6">
+              Update {editingAdmin.name}&apos;s account details
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  Personnel Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  New Password (leave blank to keep current)
+                </label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  Role
+                </label>
+                <select
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm capitalize"
+                >
+                  {ROLE_OPTIONS.map((r) => (
+                    <option key={r} value={r} className="capitalize">
+                      {formatRole(r)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {formError && (
+                <p className="text-red-500 text-xs font-semibold">{formError}</p>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-8">
+              <button
+                onClick={() => setEditingAdmin(null)}
+                className="flex-1 border-2 border-gray-200 text-gray-500 font-bold py-3 rounded-2xl hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditSubmit}
+                disabled={formLoading}
+                className="flex-1 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition disabled:opacity-50"
+              >
+                {formLoading ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {revokingAdmin && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
           <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 p-8 text-center">
-            <div
-              className={`w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl ${
-                revokingAdmin.status === "ACTIVE" ? "bg-red-50" : "bg-green-50"
-              }`}
-            >
-              {revokingAdmin.status === "ACTIVE" ? "⚠️" : "✅"}
-            </div>
-
             <h2 className="text-xl font-black text-[#1a237e] mb-2">
-              {revokingAdmin.status === "ACTIVE" ? "Revoke Admin Access?" : "Restore Admin Access?"}
+              {revokingAdmin.is_active ? "Revoke Admin Access?" : "Restore Admin Access?"}
             </h2>
             <p className="text-gray-400 text-sm mb-8">
-              {revokingAdmin.status === "ACTIVE"
+              {revokingAdmin.is_active
                 ? `${revokingAdmin.name} will lose access to the admin panel immediately.`
                 : `${revokingAdmin.name} will regain access to the admin panel.`}
             </p>
@@ -500,12 +641,12 @@ export default function AdminManagement() {
               <button
                 onClick={handleRevokeConfirm}
                 className={`flex-1 text-white font-bold py-3 rounded-2xl transition ${
-                  revokingAdmin.status === "ACTIVE"
+                  revokingAdmin.is_active
                     ? "bg-red-500 hover:bg-red-600"
                     : "bg-green-600 hover:bg-green-700"
                 }`}
               >
-                {revokingAdmin.status === "ACTIVE" ? "Revoke" : "Restore"}
+                {revokingAdmin.is_active ? "Revoke" : "Restore"}
               </button>
             </div>
           </div>
