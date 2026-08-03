@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\UploadController;
 use App\Http\Controllers\Api\FcmController;
 use App\Http\Controllers\Api\UserManagementController;
+use App\Http\Controllers\Api\SystemStatsController;
 
 
 Route::prefix('auth')->group(function () {
@@ -93,5 +94,6 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::post('/fcm/update-token', [FcmController::class, 'updateToken']);
+    Route::get('/system-stats', [SystemStatsController::class, 'index']);
 
 });
