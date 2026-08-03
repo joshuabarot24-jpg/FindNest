@@ -1,23 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
+import api from "@/lib/api";
 
 interface LogEntry {
   action: string;
-  user: string;
-  time: string;
-  type: "info" | "success" | "warning";
-}
-
-const initialLogs: LogEntry[] = [
-  { action: "User Login", user: "Super Admin", time: "Today, 09:15 AM", type: "info" },
-  { action: "Backup Completed", user: "System", time: "Today, 08:00 AM", type: "success" },
-  { action: "Admin Role Revoked", user: "Super Admin", time: "Yesterday, 04:20 PM", type: "warning" },
-  { action: "New Admin Assigned", user: "Super Admin", time: "Yesterday, 02:10 PM", type: "success" },
-  { action: "System Update", user: "System", time: "June 10, 2026", type: "info" },
-];
-
-function dotColor(type: LogEntry["type"]) {
-  return type === "success" ? "bg-green-500" : type === "warning" ? "bg-yellow-500" : "bg-blue-500";
+  performed_by: string;
+  created_at: string;
+  details: string;
 }
 
 export default function SystemManagement() {
@@ -26,10 +15,15 @@ export default function SystemManagement() {
   const [showMaintenanceConfirm, setShowMaintenanceConfirm] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [lastBackup, setLastBackup] = useState("Today");
-  const [dbSizeGb, setDbSizeGb] = useState(2.4);
-  const [totalRecords, setTotalRecords] = useState(1240);
-  const [logs, setLogs] = useState<LogEntry[]>(initialLogs);
+
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [dbSizeGb, setDbSizeGb] = useState(0);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logsLoading, setLogsLoading] = useState(true);
   const [showAllLogs, setShowAllLogs] = useState(false);
+
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,18 +32,40 @@ export default function SystemManagement() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  function addLog(entry: Omit<LogEntry, "time">) {
-    setLogs((prev) => [{ ...entry, time: "Just now" }, ...prev]);
-  }
+  const fetchStats = async () => {
+    try {
+      const response = await api.get("/system-stats");
+      setTotalRecords(response.data.total_records || 0);
+      setDbSizeGb(response.data.db_size_gb || 0);
+    } catch (err) {
+      console.error("Error fetching system stats:", err);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  const fetchLogs = async () => {
+    try {
+      const response = await api.get("/audit-logs");
+      setLogs(response.data.logs?.data || []);
+    } catch (err) {
+      console.error("Error fetching logs:", err);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+    fetchLogs();
+  }, []);
 
   function handleBackupNow() {
     if (isBackingUp) return;
     setIsBackingUp(true);
     setTimeout(() => {
       setLastBackup("Today");
-      setDbSizeGb((prev) => Number((prev + 0.1).toFixed(1)));
       setIsBackingUp(false);
-      addLog({ action: "Backup Completed", user: "Super Admin", type: "success" });
       setToast("Backup completed successfully.");
     }, 1500);
   }
@@ -62,16 +78,15 @@ export default function SystemManagement() {
     const next = !maintenanceMode;
     setMaintenanceMode(next);
     setShowMaintenanceConfirm(false);
-    addLog({
-      action: next ? "Maintenance Mode Enabled" : "Maintenance Mode Disabled",
-      user: "Super Admin",
-      type: next ? "warning" : "success",
-    });
     setToast(
       next
         ? "Maintenance mode enabled. Students and admins are locked out."
         : "Maintenance mode disabled. System is back online."
     );
+  }
+
+  function formatTime(dateStr: string) {
+    return new Date(dateStr).toLocaleString();
   }
 
   return (
@@ -101,35 +116,35 @@ export default function SystemManagement() {
             href="/user-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-          <span>User Management</span>
+            <span>User Management</span>
           </a>
-          
+
           <a
             href="/admin-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-          <span>Admin Management</span>
+            <span>Admin Management</span>
           </a>
-          
+
           <a
             href="/system-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/20 text-white font-semibold border border-white/20"
           >
-          <span>System Management</span>
+            <span>System Management</span>
           </a>
-          
+
           <a
             href="/super-admin-records"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-          <span>Digital Records</span>
+            <span>Digital Records</span>
           </a>
-          
+
           <a
             href="/audit-trail"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-          <span>Audit Trail</span>
+            <span>Audit Trail</span>
           </a>
         </nav>
 
@@ -138,9 +153,13 @@ export default function SystemManagement() {
             <p className="text-white text-sm font-semibold">Super Admin</p>
             <p className="text-blue-300 text-xs mt-1">System Administrator</p>
           </div>
-          
+
           <button
-            onClick={() => { localStorage.removeItem("findnest_token"); localStorage.removeItem("findnest_user"); window.location.href = "/"; }}
+            onClick={() => {
+              localStorage.removeItem("findnest_token");
+              localStorage.removeItem("findnest_user");
+              window.location.href = "/";
+            }}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium w-full text-left"
           >
             <span>Logout</span>
@@ -157,8 +176,8 @@ export default function SystemManagement() {
         </div>
 
         {maintenanceMode && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm font-semibold px-5 py-3 rounded-xl flex items-center gap-2">
-             Maintenance mode is currently active! Students and admins cannot access the system.
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm font-semibold px-5 py-3 rounded-xl">
+            Maintenance mode is currently active. Students and admins cannot access the system.
           </div>
         )}
 
@@ -183,11 +202,9 @@ export default function SystemManagement() {
 
         <div className="grid grid-cols-2 gap-6 mb-6">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div>
-                <h2 className="font-black text-gray-700 text-lg">AI Matching Sensitivity</h2>
-                <p className="text-gray-400 text-sm">Control the threshold of image recognition similarity</p>
-              </div>
+            <div className="mb-6">
+              <h2 className="font-black text-gray-700 text-lg">AI Matching Sensitivity</h2>
+              <p className="text-gray-400 text-sm">Control the threshold of image recognition similarity</p>
             </div>
 
             <div className="mb-4">
@@ -216,19 +233,17 @@ export default function SystemManagement() {
               }`}
             >
               {sensitivity >= 80
-                ? "✅ High accuracy — fewer false matches"
+                ? "High accuracy — fewer false matches"
                 : sensitivity >= 65
-                ? "⚠️ Moderate — balanced matching"
-                : "❌ Low — may produce false matches"}
+                ? "Moderate — balanced matching"
+                : "Low — may produce false matches"}
             </div>
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div>
-                <h2 className="font-black text-gray-700 text-lg">Database Maintenance</h2>
-                <p className="text-gray-400 text-sm">Manage database backups and records</p>
-              </div>
+            <div className="mb-6">
+              <h2 className="font-black text-gray-700 text-lg">Database Maintenance</h2>
+              <p className="text-gray-400 text-sm">Manage database backups and records</p>
             </div>
 
             <div className="space-y-4">
@@ -238,7 +253,7 @@ export default function SystemManagement() {
                   <p className="text-gray-400 text-xs mt-0.5">All system data</p>
                 </div>
                 <span className="text-2xl font-black text-[#1a237e]">
-                  {totalRecords.toLocaleString()}
+                  {statsLoading ? "..." : totalRecords.toLocaleString()}
                 </span>
               </div>
 
@@ -247,22 +262,17 @@ export default function SystemManagement() {
                   <p className="font-bold text-gray-700 text-sm">Database Size</p>
                   <p className="text-gray-400 text-xs mt-0.5">Current usage</p>
                 </div>
-                <span className="text-2xl font-black text-[#1a237e]">{dbSizeGb} GB</span>
+                <span className="text-2xl font-black text-[#1a237e]">
+                  {statsLoading ? "..." : `${dbSizeGb} GB`}
+                </span>
               </div>
 
               <button
                 onClick={handleBackupNow}
                 disabled={isBackingUp}
-                className="w-full bg-[#ffd700] hover:bg-yellow-400 text-[#1a237e] font-black py-3 rounded-xl transition shadow-sm hover:-translate-y-0.5 transform disabled:opacity-60 disabled:hover:translate-y-0 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full bg-[#ffd700] hover:bg-yellow-400 text-[#1a237e] font-black py-3 rounded-xl transition shadow-sm hover:-translate-y-0.5 transform disabled:opacity-60 disabled:hover:translate-y-0 disabled:cursor-not-allowed"
               >
-                {isBackingUp ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-[#1a237e] border-t-transparent rounded-full animate-spin"></span>
-                    Backing Up...
-                  </>
-                ) : (
-                  "Backup Records Now"
-                )}
+                {isBackingUp ? "Backing Up..." : "Backup Records Now"}
               </button>
 
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
@@ -301,34 +311,30 @@ export default function SystemManagement() {
             </button>
           </div>
 
-          <div className="divide-y divide-gray-50">
-            {logs.slice(0, 5).map((log, index) => (
-              <div key={index} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition">
-                <div className="flex items-center gap-4">
-                  <div className={`w-2 h-2 rounded-full ${dotColor(log.type)}`}></div>
+          {logsLoading ? (
+            <div className="px-6 py-16 text-center text-gray-400 text-sm">Loading logs...</div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {logs.slice(0, 5).map((log, index) => (
+                <div key={index} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition">
                   <div>
                     <p className="font-semibold text-gray-700 text-sm">{log.action}</p>
-                    <p className="text-gray-400 text-xs mt-0.5">By: {log.user}</p>
+                    <p className="text-gray-400 text-xs mt-0.5">By: {log.performed_by}</p>
                   </div>
+                  <span className="text-gray-400 text-xs">{formatTime(log.created_at)}</span>
                 </div>
-                <span className="text-gray-400 text-xs">{log.time}</span>
-              </div>
-            ))}
-          </div>
+              ))}
+              {logs.length === 0 && (
+                <div className="px-6 py-16 text-center text-gray-400 text-sm">No logs yet.</div>
+              )}
+            </div>
+          )}
         </div>
       </main>
 
       {showMaintenanceConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
           <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 p-8 text-center">
-            <div
-              className={`w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl ${
-                maintenanceMode ? "bg-green-50" : "bg-red-50"
-              }`}
-            >
-              {maintenanceMode ? "✅" : "🚫"}
-            </div>
-
             <h2 className="text-xl font-black text-[#1a237e] mb-2">
               {maintenanceMode ? "Disable Maintenance Mode?" : "Enable Maintenance Mode?"}
             </h2>
@@ -376,14 +382,11 @@ export default function SystemManagement() {
             <div className="overflow-y-auto divide-y divide-gray-50 border border-gray-100 rounded-2xl">
               {logs.map((log, index) => (
                 <div key={index} className="flex items-center justify-between px-5 py-4">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-2 h-2 rounded-full ${dotColor(log.type)}`}></div>
-                    <div>
-                      <p className="font-semibold text-gray-700 text-sm">{log.action}</p>
-                      <p className="text-gray-400 text-xs mt-0.5">By: {log.user}</p>
-                    </div>
+                  <div>
+                    <p className="font-semibold text-gray-700 text-sm">{log.action}</p>
+                    <p className="text-gray-400 text-xs mt-0.5">By: {log.performed_by}</p>
                   </div>
-                  <span className="text-gray-400 text-xs shrink-0">{log.time}</span>
+                  <span className="text-gray-400 text-xs shrink-0">{formatTime(log.created_at)}</span>
                 </div>
               ))}
             </div>
