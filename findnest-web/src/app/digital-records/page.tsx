@@ -1,91 +1,92 @@
 "use client";
-import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
 
-const records = [
-  {
-    id: "#REC-992",
-    action: "Item Claimed",
-    item: "Towel red color",
-    staff: "Admin_01",
-    timestamp: "2025-03-03",
-    type: "claimed",
-  },
-  {
-    id: "#REC-991",
-    action: "New Found Report",
-    item: "Glasses",
-    staff: "Admin_03",
-    timestamp: "2026-04-11",
-    type: "found",
-  },
-  {
-    id: "#REC-992",
-    action: "Item Claimed",
-    item: "Keyset",
-    staff: "Admin_01",
-    timestamp: "2026-04-20",
-    type: "claimed",
-  },
-  {
-    id: "#REC-992",
-    action: "Item Claimed",
-    item: "Paper",
-    staff: "Admin_01",
-    timestamp: "2026-11-30",
-    type: "claimed",
-  },
-  {
-    id: "#REC-992",
-    action: "Item Claimed",
-    item: "iPhone 15 pro max white color",
-    staff: "Admin_01",
-    timestamp: "2026-03-12",
-    type: "claimed",
-  },
-  {
-    id: "#REC-993",
-    action: "Item Disposed",
-    item: "Blue Water Bottle",
-    staff: "Admin_02",
-    timestamp: "2026-05-01",
-    type: "disposed",
-  },
-  {
-    id: "#REC-994",
-    action: "Claim Rejected",
-    item: "Black Wallet",
-    staff: "Admin_01",
-    timestamp: "2026-05-10",
-    type: "rejected",
-  },
-  {
-    id: "#REC-995",
-    action: "New Lost Report",
-    item: "Student ID",
-    staff: "System",
-    timestamp: "2026-06-01",
-    type: "lost",
-  },
-];
+interface AuditRecord {
+  id: number;
+  action: string;
+  target_type: string;
+  target_id: number;
+  details: string;
+  performed_by: string;
+  created_at: string;
+}
+
+function actionBadgeClass(action: string) {
+  const a = action.toLowerCase();
+  if (a.includes("approved") || a.includes("claimed") || a.includes("restored")) {
+    return "bg-green-50 text-green-700";
+  }
+  if (a.includes("found")) {
+    return "bg-blue-50 text-blue-700";
+  }
+  if (a.includes("disposed") || a.includes("revoked") || a.includes("rejected") || a.includes("deleted")) {
+    return "bg-red-50 text-red-600";
+  }
+  if (a.includes("login")) {
+    return "bg-purple-50 text-purple-700";
+  }
+  return "bg-gray-50 text-gray-600";
+}
+
+function formatTime(dateStr: string) {
+  return new Date(dateStr).toLocaleString();
+}
 
 export default function DigitalRecords() {
+  const [records, setRecords] = useState<AuditRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
-  const filtered = records.filter(
+  const fetchRecords = async (pageNum: number, searchTerm: string) => {
+    setLoading(true);
+    try {
+      const response = await api.get("/audit-logs", {
+        params: {
+          page: pageNum,
+          action: searchTerm || undefined,
+        },
+      });
+      const data = response.data.logs;
+      setRecords(data.data || []);
+      setLastPage(data.last_page || 1);
+      setTotal(data.total || 0);
+    } catch (err) {
+      console.error("Error fetching audit logs:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecords(page, search);
+  }, [page]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setPage(1);
+      fetchRecords(1, search);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const loginCount = records.filter((r) => r.action.toLowerCase().includes("login")).length;
+  const claimCount = records.filter((r) => r.action.toLowerCase().includes("claim")).length;
+  const itemCount = records.filter(
     (r) =>
-      r.item.toLowerCase().includes(search.toLowerCase()) ||
-      r.action.toLowerCase().includes(search.toLowerCase()) ||
-      r.id.toLowerCase().includes(search.toLowerCase())
-  );
+      r.action.toLowerCase().includes("found") ||
+      r.action.toLowerCase().includes("lost") ||
+      r.action.toLowerCase().includes("disposed")
+  ).length;
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] flex">
 
-      {/* Sidebar */}
       <aside className="w-72 bg-[#1a237e] min-h-screen flex flex-col fixed left-0 top-0 bottom-0">
 
-        {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-6">
           <div>
             <a href="/dashboard" className="text-white font-black text-lg block">
@@ -153,130 +154,109 @@ export default function DigitalRecords() {
 
         <div className="grid grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm font-medium">Total Logs</p>
-                <p className="text-3xl font-black text-[#1a237e] mt-1">{records.length}</p>
-              </div>
-            </div>
+            <p className="text-gray-400 text-sm font-medium">Total Logs</p>
+            <p className="text-3xl font-black text-[#1a237e] mt-1">{total}</p>
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm font-medium">Claimed</p>
-                <p className="text-3xl font-black text-green-600 mt-1">
-                  {records.filter((r) => r.type === "claimed").length}
-                </p>
-              </div>
-            </div>
+            <p className="text-gray-400 text-sm font-medium">Logins (this page)</p>
+            <p className="text-3xl font-black text-purple-600 mt-1">{loginCount}</p>
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm font-medium">Disposed</p>
-                <p className="text-3xl font-black text-red-500 mt-1">
-                  {records.filter((r) => r.type === "disposed").length}
-                </p>
-              </div>
-            </div>
+            <p className="text-gray-400 text-sm font-medium">Claim Actions (this page)</p>
+            <p className="text-3xl font-black text-green-600 mt-1">{claimCount}</p>
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm font-medium">Rejected</p>
-                <p className="text-3xl font-black text-yellow-500 mt-1">
-                  {records.filter((r) => r.type === "rejected").length}
-                </p>
-              </div>
-            </div>
+            <p className="text-gray-400 text-sm font-medium">Item Actions (this page)</p>
+            <p className="text-3xl font-black text-blue-600 mt-1">{itemCount}</p>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <div>
-                <h2 className="font-black text-gray-700">Audit Log</h2>
-                <p className="text-gray-400 text-xs">All entries are permanent and cannot be modified</p>
-              </div>
+            <div>
+              <h2 className="font-black text-gray-700">Audit Log</h2>
+              <p className="text-gray-400 text-xs">All entries are permanent and cannot be modified</p>
             </div>
             <input
               type="text"
-              placeholder="Search logs by keyword, date, or student ID..."
+              placeholder="Search logs by action keyword..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm w-80"
             />
           </div>
 
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Log ID</th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Action Type</th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Item</th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Staff</th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Timestamp</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filtered.map((record, index) => (
-                <tr key={index} className="hover:bg-gray-50 transition">
-                  <td className="px-6 py-4">
-                    <span className="font-black text-[#1a237e] text-sm">{record.id}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
-                      record.type === "claimed"
-                        ? "bg-green-50 text-green-700"
-                        : record.type === "found"
-                        ? "bg-blue-50 text-blue-700"
-                        : record.type === "disposed"
-                        ? "bg-red-50 text-red-600"
-                        : record.type === "rejected"
-                        ? "bg-yellow-50 text-yellow-700"
-                        : "bg-gray-50 text-gray-600"
-                    }`}>
-                      {record.action}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="font-semibold text-gray-700 text-sm">{record.item}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="bg-purple-50 text-purple-700 text-xs font-bold px-3 py-1.5 rounded-lg">
-                      {record.staff}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-gray-400 text-sm">{record.timestamp}</p>
-                  </td>
+          {loading ? (
+            <div className="text-center py-16 text-gray-400 text-sm">Loading records...</div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Log ID</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Action</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Details</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Performed By</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Timestamp</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {records.map((record) => (
+                  <tr key={record.id} className="hover:bg-gray-50 transition">
+                    <td className="px-6 py-4">
+                      <span className="font-black text-[#1a237e] text-sm">#REC-{String(record.id).padStart(3, "0")}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${actionBadgeClass(record.action)}`}>
+                        {record.action}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="font-semibold text-gray-700 text-sm">{record.details}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="bg-purple-50 text-purple-700 text-xs font-bold px-3 py-1.5 rounded-lg">
+                        {record.performed_by}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-gray-400 text-sm">{formatTime(record.created_at)}</p>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
 
-          {filtered.length === 0 && (
+          {!loading && records.length === 0 && (
             <div className="text-center py-16 text-gray-400">
-              <p className="text-5xl mb-4">🗂️</p>
               <p className="font-bold text-lg">No records found</p>
               <p className="text-sm mt-1">Try searching with a different keyword</p>
             </div>
           )}
 
           <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-gray-400 text-sm">Showing {filtered.length} of {records.length} records</p>
+            <p className="text-gray-400 text-sm">
+              Showing page {page} of {lastPage} &middot; {total} total records
+            </p>
             <div className="flex items-center gap-2">
-              <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-gray-400 text-sm hover:border-[#1a237e] hover:text-[#1a237e] transition">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-gray-400 text-sm hover:border-[#1a237e] hover:text-[#1a237e] transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
                 Previous
               </button>
-              <button className="px-3 py-1.5 bg-[#1a237e] rounded-lg text-white text-sm font-bold">
-                1
-              </button>
-              <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-gray-400 text-sm hover:border-[#1a237e] hover:text-[#1a237e] transition">
+              <span className="px-3 py-1.5 bg-[#1a237e] rounded-lg text-white text-sm font-bold">
+                {page}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
+                disabled={page === lastPage}
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-gray-400 text-sm hover:border-[#1a237e] hover:text-[#1a237e] transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
                 Next
               </button>
             </div>
