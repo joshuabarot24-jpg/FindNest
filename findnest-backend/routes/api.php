@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\UploadController;
 use App\Http\Controllers\Api\FcmController;
 use App\Http\Controllers\Api\UserManagementController;
 use App\Http\Controllers\Api\SystemStatsController;
+use App\Http\Controllers\Api\CaseTrailController;
 
 
 Route::prefix('auth')->group(function () {
@@ -91,6 +92,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{id}', [UserManagementController::class, 'update']);
         Route::post('/{id}/revoke', [UserManagementController::class, 'revoke']);
         Route::post('/{id}/restore', [UserManagementController::class, 'restore']);
+    });
+
+    Route::prefix('case-trail')->group(function () {
+        Route::get('/', [CaseTrailController::class, 'index']);
+        Route::get('/{id}', [CaseTrailController::class, 'show']);
     });
 
     Route::post('/fcm/update-token', [FcmController::class, 'updateToken']);
