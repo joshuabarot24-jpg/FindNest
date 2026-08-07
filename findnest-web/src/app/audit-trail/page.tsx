@@ -1,213 +1,117 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
 
-const cases = [
-  {
-    caseId: "#CASE-001",
-    itemName: "Blue Umbrella",
-    category: "Personal Belongings",
-    icon: "☂️",
-    status: "Returned",
-    statusColor: "bg-green-50 text-green-700",
-    trail: [
-      {
-        step: 1,
-        action: "Lost Item Reported",
-        who: "Student — Raymart D. Chabas (2022-10043)",
-        what: "Student submitted a lost item report for a Blue Umbrella with photo uploaded",
-        when: "2026-07-01 08:12:34",
-        where: "Main Entrance",
-        why: "Student lost the item and used FindNest to report it",
-        outcome: "Report saved — Status set to Searching",
-        type: "lost",
-      },
-      {
-        step: 2,
-        action: "AI Matching Triggered",
-        who: "System — AI Engine (MobileNetV2)",
-        what: "AI automatically compared lost report photo against all recorded found items in the database",
-        when: "2026-07-01 08:12:40",
-        where: "FindNest AI Server",
-        why: "New lost report triggers automatic AI scan",
-        outcome: "89% match found with Found Item #F-042 (Black Umbrella at Canteen)",
-        type: "ai",
-      },
-      {
-        step: 3,
-        action: "Match Notification Sent",
-        who: "System — Firebase Cloud Messaging",
-        what: "Push notification sent to student's registered device informing of potential match",
-        when: "2026-07-01 08:12:45",
-        where: "Student Mobile App",
-        why: "AI confidence score exceeded threshold (85%)",
-        outcome: "Notification delivered — Student acknowledged match",
-        type: "notification",
-      },
-      {
-        step: 4,
-        action: "Claim Submitted by Student",
-        who: "Student — Raymart D. Chabas (2022-10043)",
-        what: "Student submitted ownership claim with detailed description and secondary photo as proof",
-        when: "2026-07-01 09:10:15",
-        where: "FindNest Web Portal",
-        why: "Student confirmed the found item matches their lost item",
-        outcome: "Claim logged — Status set to Pending Verification",
-        type: "claim",
-      },
-      {
-        step: 5,
-        action: "Claim Reviewed by Admin",
-        who: "Admin — Admin_01 (Guidance Counselor)",
-        what: "Admin reviewed student's ownership proof, compared AI similarity score and student-provided description",
-        when: "2026-07-01 10:00:00",
-        where: "FindNest Admin Panel — Claim Verification",
-        why: "All claims require manual admin verification before release",
-        outcome: "Ownership verified — Claim approved",
-        type: "approved",
-      },
-      {
-        step: 6,
-        action: "Item Physically Released",
-        who: "Admin — Admin_01 (Guidance Counselor)",
-        what: "Student visited Guidance Office and physically collected the Blue Umbrella",
-        when: "2026-07-01 10:30:00",
-        where: "Guidance Office — SJDM CCI",
-        why: "Claim approved — Student entitled to collect item",
-        outcome: "Item returned — Status set to Returned",
-        type: "returned",
-      },
-      {
-        step: 7,
-        action: "Case Archived to Digital Records",
-        who: "System — Auto-Archive",
-        what: "Complete case record saved permanently to digital records for future reference and accountability",
-        when: "2026-07-01 10:30:05",
-        where: "FindNest Digital Records",
-        why: "All completed cases are automatically archived",
-        outcome: "Case closed — Archived successfully",
-        type: "system",
-      },
-    ],
-  },
-  {
-    caseId: "#CASE-002",
-    itemName: "Black Wallet",
-    category: "Personal Belongings",
-    icon: "👛",
-    status: "Claim Rejected",
-    statusColor: "bg-red-50 text-red-700",
-    trail: [
-      {
-        step: 1,
-        action: "Found Item Recorded",
-        who: "Admin — Admin_01 (Guidance Counselor)",
-        what: "Admin recorded a found Black Wallet turned in by a student at the Canteen",
-        when: "2026-07-02 14:00:00",
-        where: "Canteen — SJDM CCI",
-        why: "Student turned in item to admin as per FindNest protocol",
-        outcome: "Found item logged — Available for claiming",
-        type: "found",
-      },
-      {
-        step: 2,
-        action: "AI Matching Triggered",
-        who: "System — AI Engine (MobileNetV2)",
-        what: "AI scanned existing lost reports to find potential owner of the Black Wallet",
-        when: "2026-07-02 14:00:10",
-        where: "FindNest AI Server",
-        why: "New found item triggers automatic AI scan against all active lost reports",
-        outcome: "76% match found with Lost Report #L-033 (Maria Santos)",
-        type: "ai",
-      },
-      {
-        step: 3,
-        action: "Match Notification Sent",
-        who: "System — Firebase Cloud Messaging",
-        what: "Push notification sent to Maria Santos informing of potential match for her lost wallet",
-        when: "2026-07-02 14:00:15",
-        where: "Student Mobile App",
-        why: "AI match score reached notification threshold",
-        outcome: "Notification delivered",
-        type: "notification",
-      },
-      {
-        step: 4,
-        action: "Claim Submitted by Student",
-        who: "Student — Maria Santos (2023-20021)",
-        what: "Student submitted ownership claim with only a verbal description and no supporting photo evidence",
-        when: "2026-07-02 15:05:00",
-        where: "FindNest Web Portal",
-        why: "Student believed the found wallet is hers based on AI match notification",
-        outcome: "Claim logged — Status set to Pending Verification",
-        type: "claim",
-      },
-      {
-        step: 5,
-        action: "Claim Rejected by Admin",
-        who: "Admin — Admin_01 (Guidance Counselor)",
-        what: "Admin reviewed claim and determined insufficient proof — no photo, no serial number, description too vague",
-        when: "2026-07-02 15:45:00",
-        where: "FindNest Admin Panel — Claim Verification",
-        why: "Ownership could not be verified with provided evidence",
-        outcome: "Claim rejected — Student notified to provide stronger proof",
-        type: "rejected",
-      },
-    ],
-  },
-  {
-    caseId: "#CASE-003",
-    itemName: "iPhone 15 Pro Max",
-    category: "Electronics",
-    icon: "📱",
-    status: "Searching",
-    statusColor: "bg-yellow-50 text-yellow-700",
-    trail: [
-      {
-        step: 1,
-        action: "Lost Item Reported",
-        who: "Student — Juan Dela Cruz (2024-30015)",
-        what: "Student submitted lost item report for iPhone 15 Pro Max White with cracked screen top-left",
-        when: "2026-07-09 13:22:10",
-        where: "Classroom 201 — SJDM CCI",
-        why: "Student lost phone during class and reported immediately",
-        outcome: "Report saved — Status set to Searching",
-        type: "lost",
-      },
-      {
-        step: 2,
-        action: "AI Matching Triggered",
-        who: "System — AI Engine (MobileNetV2)",
-        what: "AI scanned all recorded found items against lost report photo — no match found above threshold",
-        when: "2026-07-09 13:22:20",
-        where: "FindNest AI Server",
-        why: "New lost report triggers automatic AI scan",
-        outcome: "No match found — System continues monitoring for new found items",
-        type: "ai",
-      },
-    ],
-  },
-];
+interface CaseSummary {
+  case_id: string;
+  report_id: number;
+  item_name: string;
+  category: string;
+  photo_url: string | null;
+  status: string;
+  reported_by: string | null;
+  created_at: string;
+}
 
-const typeConfig: Record<string, { bg: string; text: string; dot: string; icon: string }> = {
-  lost: { bg: "bg-red-50", text: "text-red-600", dot: "bg-red-500", icon: "📋" },
-  found: { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500", icon: "📦" },
-  ai: { bg: "bg-purple-50", text: "text-purple-700", dot: "bg-purple-500", icon: "🤖" },
-  notification: { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500", icon: "🔔" },
-  claim: { bg: "bg-yellow-50", text: "text-yellow-700", dot: "bg-yellow-500", icon: "📨" },
-  approved: { bg: "bg-teal-50", text: "text-teal-700", dot: "bg-teal-500", icon: "✅" },
-  returned: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500", icon: "🎉" },
-  rejected: { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-600", icon: "❌" },
-  system: { bg: "bg-gray-100", text: "text-gray-600", dot: "bg-gray-400", icon: "⚙️" },
-};
+interface LogEntry {
+  id: number;
+  action: string;
+  target_type: string;
+  target_id: number;
+  details: string;
+  performed_by: string;
+  created_at: string;
+}
+
+function statusBadge(status: string) {
+  switch (status) {
+    case "Returned":
+      return "bg-green-50 text-green-700";
+    case "Claim Rejected":
+      return "bg-red-50 text-red-700";
+    case "Pending Verification":
+      return "bg-yellow-50 text-yellow-700";
+    case "Match Found":
+      return "bg-purple-50 text-purple-700";
+    default:
+      return "bg-blue-50 text-blue-700";
+  }
+}
+
+function actionDot(action: string) {
+  const a = action.toLowerCase();
+  if (a.includes("approved") || a.includes("returned")) return "bg-green-500";
+  if (a.includes("rejected")) return "bg-red-500";
+  if (a.includes("match")) return "bg-purple-500";
+  if (a.includes("claim")) return "bg-yellow-500";
+  if (a.includes("found")) return "bg-teal-500";
+  if (a.includes("lost")) return "bg-blue-500";
+  return "bg-gray-400";
+}
+
+function formatTime(dateStr: string) {
+  return new Date(dateStr).toLocaleString();
+}
 
 export default function AuditTrail() {
-  const [selectedCase, setSelectedCase] = useState(cases[0]);
+  const [cases, setCases] = useState<CaseSummary[]>([]);
+  const [casesLoading, setCasesLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const filteredCases = cases.filter((c) =>
-    c.itemName.toLowerCase().includes(search.toLowerCase()) ||
-    c.caseId.toLowerCase().includes(search.toLowerCase())
-  );
+  const [selectedCase, setSelectedCase] = useState<CaseSummary | null>(null);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+
+  const fetchCases = async (searchTerm: string) => {
+    setCasesLoading(true);
+    try {
+      const response = await api.get("/case-trail", {
+        params: { search: searchTerm || undefined },
+      });
+      const result: CaseSummary[] = response.data.cases || [];
+      setCases(result);
+      if (result.length > 0) {
+        setSelectedCase(result[0]);
+      } else {
+        setSelectedCase(null);
+      }
+    } catch (err) {
+      console.error("Error fetching cases:", err);
+    } finally {
+      setCasesLoading(false);
+    }
+  };
+
+  const fetchCaseDetail = async (reportId: number) => {
+    setLogsLoading(true);
+    try {
+      const response = await api.get(`/case-trail/${reportId}`);
+      setLogs(response.data.logs || []);
+    } catch (err) {
+      console.error("Error fetching case detail:", err);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCases(search);
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      fetchCases(search);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
+    if (selectedCase) {
+      fetchCaseDetail(selectedCase.report_id);
+    } else {
+      setLogs([]);
+    }
+  }, [selectedCase]);
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] flex">
@@ -220,36 +124,44 @@ export default function AuditTrail() {
             <span className="text-blue-300 text-xs">Super Admin Panel</span>
           </div>
         </div>
-      <div className="mx-6 h-px bg-white/10 mb-4" />
+        <div className="mx-6 h-px bg-white/10 mb-4" />
 
         <nav className="flex flex-col gap-1 px-4 flex-1">
           <p className="text-blue-400 text-xs font-bold uppercase tracking-wider px-4 mb-2">Management</p>
 
-          <a 
-            href="/user-management" 
+          <a
+            href="/user-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-          <span>User Management</span>
+            <span>User Management</span>
           </a>
 
-          <a 
-            href="/admin-management" 
+          <a
+            href="/admin-management"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
-          <span>Admin Management</span>
+            <span>Admin Management</span>
           </a>
 
-          <a href="/system-management" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
-            <span>System Management</span>
-          </a>
-
-          <a href="/super-admin-records" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
-            <span>Digital Records</span>
-          </a>
           <a 
-            href="/audit-trail" 
-            className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/20 text-white font-semibold border border-white/20">
-          <span>Audit Trail</span>
+            href="/system-management" 
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
+            >
+              <span>System Management</span>
+          </a>
+
+          <a 
+            href="/super-admin-records" 
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
+            >
+              <span>Digital Records</span>
+          </a>
+          
+          <a
+            href="/audit-trail"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/20 text-white font-semibold border border-white/20"
+          >
+            <span>Audit Trail</span>
           </a>
         </nav>
 
@@ -273,7 +185,7 @@ export default function AuditTrail() {
           <div>
             <h1 className="text-3xl font-black text-[#1a237e]">Audit Trail</h1>
             <p className="text-gray-400 text-sm mt-1">
-              Chronological record of every action — who, what, when, where, and why
+              Chronological record of every action across the full lost-to-found lifecycle
             </p>
           </div>
           <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-2xl px-4 py-3">
@@ -288,116 +200,135 @@ export default function AuditTrail() {
                 <h2 className="font-black text-gray-700 text-sm mb-3">Case List</h2>
                 <input
                   type="text"
-                  placeholder="Search cases..."
+                  placeholder="Search cases by item name..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 />
               </div>
-              <div className="divide-y divide-gray-50">
-                {filteredCases.map((c) => (
-                  <button
-                    key={c.caseId}
-                    onClick={() => setSelectedCase(c)}
-                    className={`w-full text-left px-5 py-4 transition ${selectedCase.caseId === c.caseId ? "bg-blue-50" : "hover:bg-gray-50"}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-xl">
-                        {c.icon}
+
+              {casesLoading ? (
+                <div className="px-5 py-16 text-center text-gray-400 text-sm">Loading cases...</div>
+              ) : cases.length === 0 ? (
+                <div className="px-5 py-16 text-center text-gray-400 text-sm">
+                  No lost item reports yet.
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-50 max-h-[600px] overflow-y-auto">
+                  {cases.map((c) => (
+                    <button
+                      key={c.report_id}
+                      onClick={() => setSelectedCase(c)}
+                      className={`w-full text-left px-5 py-4 transition ${
+                        selectedCase?.report_id === c.report_id ? "bg-blue-50" : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
+                          {c.photo_url ? (
+                            <img src={c.photo_url} alt={c.item_name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs font-bold">
+                              No Photo
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-700 text-sm truncate">{c.item_name}</p>
+                          <p className="text-gray-400 text-xs mt-0.5">{c.case_id}</p>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 inline-block ${statusBadge(c.status)}`}>
+                            {c.status}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-gray-700 text-sm truncate">{c.itemName}</p>
-                        <p className="text-gray-400 text-xs mt-0.5">{c.caseId}</p>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 inline-block ${c.statusColor}`}>
-                          {c.status}
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
           <div className="col-span-2">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-
-              {/* Case Header */}
-              <div className="bg-gradient-to-r from-[#1a237e] to-[#1565c0] px-6 py-5 flex items-center gap-4">
-                <div className="w-14 h-14 bg-white/15 rounded-2xl flex items-center justify-center text-3xl">
-                  {selectedCase.icon}
-                </div>
-                <div className="flex-1">
-                  <p className="text-white font-black text-xl">{selectedCase.itemName}</p>
-                  <p className="text-blue-200 text-sm">{selectedCase.category} · {selectedCase.caseId}</p>
-                </div>
-                <span className={`text-xs font-bold px-4 py-2 rounded-full ${selectedCase.statusColor}`}>
-                  {selectedCase.status}
-                </span>
-              </div>
-
-              <div className="p-6">
-                <p className="font-black text-gray-700 text-sm mb-6">
-                  Chronological Audit Trail — {selectedCase.trail.length} recorded actions
-                </p>
-
-                <div className="relative">
-                  {selectedCase.trail.map((entry, index) => {
-                    const config = typeConfig[entry.type];
-                    const isLast = index === selectedCase.trail.length - 1;
-
-                    return (
-                      <div key={index} className="flex gap-4 relative">
-                        {!isLast && (
-                          <div className="absolute left-[18px] top-10 w-0.5 h-full bg-gray-200" />
-                        )}
-
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm flex-shrink-0 z-10 ${config.bg}`}>
-                          <span>{config.icon}</span>
+              {selectedCase ? (
+                <>
+                  <div className="bg-gradient-to-r from-[#1a237e] to-[#1565c0] px-6 py-5 flex items-center gap-4">
+                    <div className="w-14 h-14 bg-white/15 rounded-2xl overflow-hidden flex-shrink-0">
+                      {selectedCase.photo_url ? (
+                        <img
+                          src={selectedCase.photo_url}
+                          alt={selectedCase.item_name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-white/60 text-[10px] font-bold text-center px-1">
+                          No Photo
                         </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-white font-black text-xl">{selectedCase.item_name}</p>
+                      <p className="text-blue-200 text-sm">
+                        {selectedCase.category} &middot; {selectedCase.case_id}
+                      </p>
+                      {selectedCase.reported_by && (
+                        <p className="text-blue-200 text-xs mt-0.5">Reported by {selectedCase.reported_by}</p>
+                      )}
+                    </div>
+                    <span className={`text-xs font-bold px-4 py-2 rounded-full ${statusBadge(selectedCase.status)}`}>
+                      {selectedCase.status}
+                    </span>
+                  </div>
 
-                        <div className={`flex-1 pb-8 ${isLast ? "pb-2" : ""}`}>
-                          <div className={`rounded-2xl border p-4 ${selectedCase.caseId === "#CASE-001" && index === selectedCase.trail.length - 1 ? "border-emerald-200 bg-emerald-50" : "border-gray-100 bg-gray-50"}`}>
+                  <div className="p-6">
+                    <p className="font-black text-gray-700 text-sm mb-6">
+                      Chronological Audit Trail &mdash; {logs.length} recorded actions
+                    </p>
 
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-black text-gray-400">STEP {entry.step}</span>
-                                <span className={`text-xs font-bold px-2 py-1 rounded-lg ${config.bg} ${config.text}`}>
-                                  {entry.action}
-                                </span>
-                              </div>
-                              <span className="text-xs font-mono text-gray-400">{entry.when}</span>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3 text-xs">
-                              <div>
-                                <p className="font-bold text-gray-400 uppercase tracking-wide mb-1">Who</p>
-                                <p className="text-gray-700 font-semibold">{entry.who}</p>
-                              </div>
-                              <div>
-                                <p className="font-bold text-gray-400 uppercase tracking-wide mb-1">Where</p>
-                                <p className="text-gray-700 font-semibold">{entry.where}</p>
-                              </div>
-                              <div className="col-span-2">
-                                <p className="font-bold text-gray-400 uppercase tracking-wide mb-1">What</p>
-                                <p className="text-gray-700">{entry.what}</p>
-                              </div>
-                              <div className="col-span-2">
-                                <p className="font-bold text-gray-400 uppercase tracking-wide mb-1">Why</p>
-                                <p className="text-gray-700">{entry.why}</p>
-                              </div>
-                              <div className="col-span-2 bg-white rounded-xl p-3 border border-gray-200">
-                                <p className="font-bold text-gray-400 uppercase tracking-wide mb-1">Outcome</p>
-                                <p className="text-gray-700 font-semibold">{entry.outcome}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                    {logsLoading ? (
+                      <div className="text-center py-16 text-gray-400 text-sm">Loading trail...</div>
+                    ) : logs.length === 0 ? (
+                      <div className="text-center py-16 text-gray-400 text-sm">
+                        No recorded actions yet for this case.
                       </div>
-                    );
-                  })}
+                    ) : (
+                      <div className="relative">
+                        {logs.map((entry, index) => {
+                          const isLast = index === logs.length - 1;
+                          return (
+                            <div key={entry.id} className="flex gap-4 relative">
+                              {!isLast && (
+                                <div className="absolute left-[7px] top-6 w-0.5 h-full bg-gray-200" />
+                              )}
+
+                              <div className={`w-4 h-4 rounded-full flex-shrink-0 z-10 mt-1.5 ${actionDot(entry.action)}`} />
+
+                              <div className={`flex-1 ${isLast ? "pb-2" : "pb-8"}`}>
+                                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs font-bold px-2 py-1 rounded-lg bg-white text-gray-700 border border-gray-200">
+                                      {entry.action}
+                                    </span>
+                                    <span className="text-xs font-mono text-gray-400">
+                                      {formatTime(entry.created_at)}
+                                    </span>
+                                  </div>
+                                  <p className="text-gray-700 text-sm">{entry.details}</p>
+                                  <p className="text-gray-400 text-xs mt-2">By: {entry.performed_by}</p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-24 text-gray-400 text-sm">
+                  Select a case from the list to view its full trail.
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
