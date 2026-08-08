@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, ChangeEvent } from "react";
+import { useState, useEffect } from "react";
 import api from "@/lib/api";
 
 interface ActivityItem {
@@ -7,20 +7,14 @@ interface ActivityItem {
   status: string;
   time: string;
   type: "found" | "lost";
-}
-
-function placeholderUrlFor(itemName: string, size: number) {
-  return `https://picsum.photos/seed/${itemName.replace(/\s/g, "")}/${size}/${size}`;
+  photo_url: string | null;
 }
 
 export default function Dashboard() {
   const [stats, setStats] = useState({ found_today: 0, pending_claims: 0, ai_success: 92 });
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
-  const [uploadedPhotos, setUploadedPhotos] = useState<Record<number, string>>({});
-  const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const [previewItem, setPreviewItem] = useState<ActivityItem | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -47,12 +41,14 @@ export default function Dashboard() {
             status: "Found at " + i.location_found,
             time: new Date(i.created_at).toLocaleString(),
             type: "found" as const,
+            photo_url: i.photo_url || null,
           })),
           ...lostItems.slice(0, 5).map((i: any) => ({
             item: i.item_name,
             status: "Reported Lost",
             time: new Date(i.created_at).toLocaleString(),
             type: "lost" as const,
+            photo_url: i.photo_url || null,
           })),
         ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
 
@@ -67,33 +63,10 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
-  function getPhotoFor(index: number, item: string, size: number) {
-    return uploadedPhotos[index] ?? placeholderUrlFor(item, size);
-  }
-
-  function triggerUpload(index: number) {
-    fileInputRefs.current[index]?.click();
-  }
-
-  function handleFileSelected(index: number, e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadedPhotos((prev) => {
-      if (prev[index]) URL.revokeObjectURL(prev[index]);
-      return { ...prev, [index]: URL.createObjectURL(file) };
-    });
-
-    e.target.value = "";
-  }
-
-  const previewItem = previewIndex !== null ? recentActivity[previewIndex] : null;
-
   return (
     <div className="min-h-screen bg-[#f0f2f5] flex">
 
       <aside className="w-72 bg-[#1a237e] min-h-screen flex flex-col fixed left-0 top-0 bottom-0">
-
         <div className="flex items-center gap-3 px-6 py-6">
           <div>
             <a href="/dashboard" className="text-white font-black text-lg block">
@@ -107,7 +80,6 @@ export default function Dashboard() {
 
         <nav className="flex flex-col gap-1 px-4 flex-1">
           <p className="text-blue-400 text-xs font-bold uppercase tracking-wider px-4 mb-2">Main Menu</p>
-
           <a href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/20 text-white font-semibold border border-white/20">
             <span>Dashboard</span>
           </a>
@@ -136,7 +108,6 @@ export default function Dashboard() {
             <p className="text-white text-sm font-semibold">Guidance Counselor</p>
             <p className="text-blue-300 text-xs mt-1">Administrator</p>
           </div>
-
           <button
             onClick={() => { localStorage.removeItem("findnest_token"); localStorage.removeItem("findnest_user"); window.location.href = "/"; }}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium w-full text-left"
@@ -147,13 +118,10 @@ export default function Dashboard() {
       </aside>
 
       <main className="flex-1 ml-72 p-8">
-
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-black text-[#1a237e]">Admin Dashboard</h1>
-            <p className="text-gray-400 text-sm mt-1">
-              Welcome back! Here is what is happening on campus today.
-            </p>
+            <p className="text-gray-400 text-sm mt-1">Welcome back! Here is what is happening on campus today.</p>
           </div>
           <div className="flex items-center gap-3 bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
@@ -188,17 +156,12 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <div>
-                <h2 className="font-black text-gray-700">Recent Activity</h2>
-                <p className="text-gray-400 text-xs">Latest lost and found reports</p>
-              </div>
+            <div>
+              <h2 className="font-black text-gray-700">Recent Activity</h2>
+              <p className="text-gray-400 text-xs">Latest lost and found reports</p>
             </div>
-            <button className="text-sm font-bold text-[#1a237e] hover:underline">
-              View All
-            </button>
+            <button className="text-sm font-bold text-[#1a237e] hover:underline">View All</button>
           </div>
 
           {loading ? (
@@ -219,43 +182,22 @@ export default function Dashboard() {
                   <tr key={index} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <input
-                          ref={(el) => { fileInputRefs.current[index] = el; }}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => handleFileSelected(index, e)}
-                        />
-
-                        <div className="relative group/thumb flex-shrink-0">
-                          <button
-                            onClick={() => setPreviewIndex(index)}
-                            className="w-9 h-9 rounded-xl overflow-hidden bg-gray-100 block hover:ring-2 hover:ring-[#1a237e] transition cursor-zoom-in"
-                            title="Click to enlarge"
-                          >
-                            <img
-                              src={getPhotoFor(index, activity.item, 36)}
-                              alt={activity.item}
-                              className="w-full h-full object-cover"
-                            />
-                          </button>
-                          <button
-                            onClick={() => triggerUpload(index)}
-                            className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#1a237e] rounded-full flex items-center justify-center text-white text-[9px] opacity-0 group-hover/thumb:opacity-100 transition shadow"
-                            title="Attach photo"
-                          >
-                            📷
-                          </button>
-                        </div>
-
+                        <button
+                          onClick={() => setPreviewItem(activity)}
+                          className="w-9 h-9 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 hover:ring-2 hover:ring-[#1a237e] transition cursor-zoom-in"
+                        >
+                          {activity.photo_url ? (
+                            <img src={activity.photo_url} alt={activity.item} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs">N/A</div>
+                          )}
+                        </button>
                         <p className="font-semibold text-gray-700 text-sm">{activity.item}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
-                        activity.type === "found"
-                          ? "bg-green-50 text-green-700"
-                          : "bg-red-50 text-red-600"
+                        activity.type === "found" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
                       }`}>
                         {activity.status}
                       </span>
@@ -271,9 +213,9 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {previewItem && previewIndex !== null && (
+      {previewItem && (
         <div
-          onClick={() => setPreviewIndex(null)}
+          onClick={() => setPreviewItem(null)}
           className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/80 backdrop-blur-sm cursor-zoom-out"
         >
           <div
@@ -281,36 +223,27 @@ export default function Dashboard() {
             className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 p-6 cursor-default"
           >
             <button
-              onClick={() => setPreviewIndex(null)}
+              onClick={() => setPreviewItem(null)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none"
             >
               &times;
             </button>
 
             <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-4">
-              <img
-                src={getPhotoFor(previewIndex, previewItem.item, 480)}
-                alt={previewItem.item}
-                className="w-full h-full object-cover"
-              />
+              {previewItem.photo_url ? (
+                <img src={previewItem.photo_url} alt={previewItem.item} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No Photo Available</div>
+              )}
             </div>
 
             <h3 className="font-black text-[#1a237e] text-lg">{previewItem.item}</h3>
             <span className={`inline-block mt-2 text-xs font-bold px-3 py-1.5 rounded-lg ${
-              previewItem.type === "found"
-                ? "bg-green-50 text-green-700"
-                : "bg-red-50 text-red-600"
+              previewItem.type === "found" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
             }`}>
               {previewItem.status}
             </span>
             <p className="text-gray-400 text-sm mt-2">{previewItem.time}</p>
-
-            <button
-              onClick={() => triggerUpload(previewIndex)}
-              className="mt-4 w-full bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-xl transition"
-            >
-              {uploadedPhotos[previewIndex] ? "Replace Photo" : "Attach Photo"}
-            </button>
           </div>
         </div>
       )}

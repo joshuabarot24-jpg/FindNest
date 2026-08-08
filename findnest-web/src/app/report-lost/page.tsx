@@ -11,19 +11,50 @@ export default function ReportLostPage() {
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setPhotoPreview(URL.createObjectURL(file));
-      setPhotoError(false);
+    if (!file) return;
+
+    setPhotoPreview(URL.createObjectURL(file));
+    setPhotoError(false);
+    setUploading(true);
+    setPhotoUrl(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      formData.append("folder", "lost-items");
+
+      const res = await api.post("/upload/image", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      setPhotoUrl(res.data.url);
+    } catch (err) {
+      console.error("Photo upload failed:", err);
+      setPhotoPreview(null);
+      setPhotoError(true);
+      alert("Photo upload failed. Please try again.");
+    } finally {
+      setUploading(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!photoUrl) {
+      setPhotoError(true);
+      return;
+    }
+
+    setSubmitLoading(true);
     try {
       await api.post("/lost-items", {
         item_name: itemName,
@@ -31,12 +62,14 @@ export default function ReportLostPage() {
         description: description,
         location_lost: location,
         date_lost: date,
-        photo_url: photoPreview,
+        photo_url: photoUrl,
       });
       setSubmitted(true);
     } catch (err: any) {
       console.error("Error submitting report:", err);
       alert(err.response?.data?.message || "Failed to submit report. Please try again.");
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
@@ -54,7 +87,11 @@ export default function ReportLostPage() {
         </div>
         <div className="flex items-center gap-4">
           <a href="/notifications" className="relative w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-xl flex items-center justify-center transition">
-            <span className="text-lg">🔔</span>
+            <span className="w-5 h-5 text-gray-500">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            </span>
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center">1</span>
           </a>
           <a href="/profile" className="w-10 h-10 bg-[#1a237e] rounded-full flex items-center justify-center text-white font-bold">R</a>
@@ -64,7 +101,11 @@ export default function ReportLostPage() {
       <main className="px-8 py-10 max-w-2xl mx-auto">
         {submitted ? (
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-12 text-center">
-            <div className="w-20 h-20 bg-green-50 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-5">✅</div>
+            <div className="w-20 h-20 bg-green-50 rounded-3xl flex items-center justify-center mx-auto mb-5">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
             <h1 className="text-2xl font-black text-[#1a237e]">Report Submitted!</h1>
             <p className="text-gray-400 text-sm mt-2">
               Our AI is now comparing your report against found items. You will be notified once a match is identified.
@@ -76,7 +117,7 @@ export default function ReportLostPage() {
               <p className="text-gray-500 text-xs">Date lost: {date || "Not specified"}</p>
               <p className="text-gray-500 text-xs mt-1">Status: <span className="font-bold text-blue-600">Searching for match...</span></p>
             </div>
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mt-4 flex items-center gap-2">
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mt-4">
               <p className="text-blue-700 text-xs">Our AI will notify you as soon as a potential match is found</p>
             </div>
             <div className="flex gap-3 mt-6">
@@ -92,7 +133,11 @@ export default function ReportLostPage() {
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="bg-gradient-to-r from-red-500 to-red-600 px-8 py-6">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl">❓</div>
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
                 <div>
                   <h1 className="text-white font-black text-xl">Report Lost Item</h1>
                   <p className="text-red-100 text-sm">Help us help you find it faster</p>
@@ -102,22 +147,35 @@ export default function ReportLostPage() {
 
             <form onSubmit={handleSubmit} className="p-8 space-y-5">
 
-              <label id="photo-upload-section" className="block">
+              <label className="block">
                 <p className="text-sm font-bold text-gray-600 mb-2">
                   Upload Photo <span className="text-red-500">*</span>
                 </p>
-                <div
-                  className={`border-2 border-dashed rounded-2xl p-8 text-center transition cursor-pointer ${
-                    photoError
-                      ? "border-red-400 bg-red-50"
-                      : "border-gray-200 hover:border-red-300 bg-gray-50"
-                  }`}
-                >
-                  {photoPreview ? (
-                    <img src={photoPreview} alt="Preview" className="max-h-48 mx-auto rounded-xl" />
+                <div className={`border-2 border-dashed rounded-2xl p-8 text-center transition cursor-pointer ${
+                  photoError ? "border-red-400 bg-red-50" : "border-gray-200 hover:border-red-300 bg-gray-50"
+                }`}>
+                  {uploading ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-8 h-8 border-4 border-red-300 border-t-red-500 rounded-full animate-spin" />
+                      <p className="text-sm text-gray-500 font-medium">Uploading to cloud...</p>
+                    </div>
+                  ) : photoPreview ? (
+                    <div className="relative">
+                      <img src={photoPreview} alt="Preview" className="max-h-48 mx-auto rounded-xl" />
+                      {photoUrl && (
+                        <div className="mt-2 inline-flex items-center gap-1 bg-green-50 border border-green-200 rounded-full px-3 py-1">
+                          <span className="text-green-600 text-xs font-bold">Photo uploaded successfully</span>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <>
-                      <p className="text-4xl mb-3">📷</p>
+                      <div className="flex justify-center mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-10 h-10 ${photoError ? "text-red-400" : "text-gray-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </div>
                       <p className={`font-bold text-sm ${photoError ? "text-red-600" : "text-gray-600"}`}>
                         Click to upload a photo
                       </p>
@@ -129,13 +187,13 @@ export default function ReportLostPage() {
                 </div>
                 <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
                 {photoError && (
-                  <p className="text-red-500 text-xs font-bold mt-2 flex items-center gap-1">
+                  <p className="text-red-500 text-xs font-bold mt-2">
                     A photo is required for better evidence before you can submit your report!
                   </p>
                 )}
               </label>
 
-              <div className="bg-blue-50 rounded-xl p-3 flex items-center gap-2">
+              <div className="bg-blue-50 rounded-xl p-3">
                 <p className="text-blue-700 text-xs">Our AI will automatically check image quality and detect item attributes from your photo</p>
               </div>
 
@@ -208,15 +266,16 @@ export default function ReportLostPage() {
                 </div>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-3 flex items-center gap-2">
+              <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-3">
                 <p className="text-yellow-700 text-xs">Only category, general date, and area will be publicly visible to prevent fake claims</p>
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-red-500 hover:bg-red-600 text-white font-black py-4 rounded-xl transition shadow-lg text-lg"
+                disabled={submitLoading || uploading || !photoUrl}
+                className="w-full bg-red-500 hover:bg-red-600 text-white font-black py-4 rounded-xl transition shadow-lg text-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Submit Report
+                {submitLoading ? "Submitting..." : uploading ? "Waiting for photo upload..." : "Submit Report"}
               </button>
             </form>
           </div>
