@@ -60,7 +60,7 @@ class LostItemController extends Controller
             'action' => 'Lost Item Reported',
             'target_type' => 'lost_item_reports',
             'target_id' => $report->id,
-            'details' => 'Student reported lost item: ' . $report->item_name . ' at ' . $report->location_lost,
+            'details' => 'Student reported lost item: ' . $report->item_name . ' and ' . $report->location_lost,
             'performed_by' => 'Student: ' . $request->user()->name,
             'ip_address' => $request->ip(),
         ]);
