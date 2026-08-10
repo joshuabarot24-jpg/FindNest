@@ -14,19 +14,38 @@ interface AuditRecord {
 
 function actionBadgeClass(action: string) {
   const a = action.toLowerCase();
-  if (a.includes("approved") || a.includes("claimed") || a.includes("restored")) {
+  if (a.includes("approved") || a.includes("claimed") || a.includes("restored") || a.includes("created") || a.includes("logged")) {
     return "bg-green-50 text-green-700";
   }
-  if (a.includes("found")) {
+  if (a.includes("found") || a.includes("assigned") || a.includes("updated")) {
     return "bg-blue-50 text-blue-700";
   }
-  if (a.includes("disposed") || a.includes("revoked") || a.includes("rejected") || a.includes("deleted")) {
+  if (a.includes("disposed") || a.includes("rejected") || a.includes("deleted")) {
     return "bg-red-50 text-red-600";
   }
-  if (a.includes("login")) {
-    return "bg-purple-50 text-purple-700";
+  if (a.includes("pending")) {
+    return "bg-yellow-50 text-yellow-700";
   }
   return "bg-gray-50 text-gray-600";
+}
+
+function isAdminRelevant(action: string, targetType: string): boolean {
+  const a = action.toLowerCase();
+  const t = (targetType || "").toLowerCase();
+  if (t.includes("found_item") || t.includes("claim")) return true;
+  if (
+    a.includes("item") ||
+    a.includes("found") ||
+    a.includes("claim") ||
+    a.includes("approved") ||
+    a.includes("rejected") ||
+    a.includes("disposed") ||
+    a.includes("unclaimed") ||
+    a.includes("surrendered") ||
+    a.includes("storage") ||
+    a.includes("logged")
+  ) return true;
+  return false;
 }
 
 function formatTime(dateStr: string) {
@@ -41,19 +60,20 @@ export default function DigitalRecords() {
   const [lastPage, setLastPage] = useState(1);
   const [total, setTotal] = useState(0);
 
-  const fetchRecords = async (pageNum: number, searchTerm: string) => {
+  const fetchRecords = async (pageNum: number) => {
     setLoading(true);
     try {
       const response = await api.get("/audit-logs", {
-        params: {
-          page: pageNum,
-          action: searchTerm || undefined,
-        },
+        params: { page: pageNum },
       });
       const data = response.data.logs;
-      setRecords(data.data || []);
+      const allRecords: AuditRecord[] = data.data || [];
+      const filtered = allRecords.filter((r) =>
+        isAdminRelevant(r.action, r.target_type)
+      );
+      setRecords(filtered);
       setLastPage(data.last_page || 1);
-      setTotal(data.total || 0);
+      setTotal(filtered.length);
     } catch (err) {
       console.error("Error fetching audit logs:", err);
     } finally {
@@ -62,31 +82,27 @@ export default function DigitalRecords() {
   };
 
   useEffect(() => {
-    fetchRecords(page, search);
+    fetchRecords(page);
   }, [page]);
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setPage(1);
-      fetchRecords(1, search);
-    }, 400);
-    return () => clearTimeout(t);
-  }, [search]);
+  const displayed = records.filter((r) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      r.action.toLowerCase().includes(q) ||
+      (r.details || "").toLowerCase().includes(q) ||
+      (r.performed_by || "").toLowerCase().includes(q)
+    );
+  });
 
-  const loginCount = records.filter((r) => r.action.toLowerCase().includes("login")).length;
-  const claimCount = records.filter((r) => r.action.toLowerCase().includes("claim")).length;
-  const itemCount = records.filter(
-    (r) =>
-      r.action.toLowerCase().includes("found") ||
-      r.action.toLowerCase().includes("lost") ||
-      r.action.toLowerCase().includes("disposed")
-  ).length;
+  const approvedCount = records.filter((r) => r.action.toLowerCase().includes("approved") || r.action.toLowerCase().includes("claimed")).length;
+  const itemCount = records.filter((r) => r.action.toLowerCase().includes("item") || r.action.toLowerCase().includes("found") || r.action.toLowerCase().includes("logged")).length;
+  const rejectedCount = records.filter((r) => r.action.toLowerCase().includes("rejected") || r.action.toLowerCase().includes("disposed")).length;
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] flex">
 
       <aside className="w-72 bg-[#1a237e] min-h-screen flex flex-col fixed left-0 top-0 bottom-0">
-
         <div className="flex items-center gap-3 px-6 py-6">
           <div>
             <a href="/dashboard" className="text-white font-black text-lg block">
@@ -100,7 +116,6 @@ export default function DigitalRecords() {
 
         <nav className="flex flex-col gap-1 px-4 flex-1">
           <p className="text-blue-400 text-xs font-bold uppercase tracking-wider px-4 mb-2">Main Menu</p>
-
           <a href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
             <span>Dashboard</span>
           </a>
@@ -129,7 +144,6 @@ export default function DigitalRecords() {
             <p className="text-white text-sm font-semibold">Guidance Counselor</p>
             <p className="text-blue-300 text-xs mt-1">Administrator</p>
           </div>
-
           <button
             onClick={() => { localStorage.removeItem("findnest_token"); localStorage.removeItem("findnest_user"); window.location.href = "/"; }}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium w-full text-left"
@@ -143,48 +157,39 @@ export default function DigitalRecords() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-black text-[#1a237e]">Digital Records</h1>
-            <p className="text-gray-400 text-sm mt-1">
-              All system activity stored in a tamper-evident audit log
-            </p>
+            <p className="text-gray-400 text-sm mt-1">Audit trail for found items and claim actions handled by this admin</p>
           </div>
           <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-2xl px-4 py-3">
-            <span className="text-yellow-700 text-sm font-bold">Read-Only Audit Trail</span>
+            <span className="text-yellow-700 text-sm font-bold">Read-Only Records</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <p className="text-gray-400 text-sm font-medium">Total Logs</p>
-            <p className="text-3xl font-black text-[#1a237e] mt-1">{total}</p>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <p className="text-gray-400 text-sm font-medium">Logins (this page)</p>
-            <p className="text-3xl font-black text-purple-600 mt-1">{loginCount}</p>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <p className="text-gray-400 text-sm font-medium">Claim Actions (this page)</p>
-            <p className="text-3xl font-black text-green-600 mt-1">{claimCount}</p>
-          </div>
-
+        <div className="grid grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <p className="text-gray-400 text-sm font-medium">Item Actions (this page)</p>
-            <p className="text-3xl font-black text-blue-600 mt-1">{itemCount}</p>
+            <p className="text-3xl font-black text-[#1a237e] mt-1">{itemCount}</p>
+          </div>
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <p className="text-gray-400 text-sm font-medium">Claims Approved (this page)</p>
+            <p className="text-3xl font-black text-green-600 mt-1">{approvedCount}</p>
+          </div>
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <p className="text-gray-400 text-sm font-medium">Rejected / Disposed (this page)</p>
+            <p className="text-3xl font-black text-red-500 mt-1">{rejectedCount}</p>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <div>
-              <h2 className="font-black text-gray-700">Audit Log</h2>
-              <p className="text-gray-400 text-xs">All entries are permanent and cannot be modified</p>
+              <h2 className="font-black text-gray-700">Item & Claim Activity Log</h2>
+              <p className="text-gray-400 text-xs">Showing found item and claim-related actions only</p>
             </div>
             <input
               type="text"
-              placeholder="Search logs by action keyword..."
+              placeholder="Search by action, details, or performed by..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); }}
               className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm w-80"
             />
           </div>
@@ -203,7 +208,7 @@ export default function DigitalRecords() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {records.map((record) => (
+                {displayed.map((record) => (
                   <tr key={record.id} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-4">
                       <span className="font-black text-[#1a237e] text-sm">#REC-{String(record.id).padStart(3, "0")}</span>
@@ -217,7 +222,7 @@ export default function DigitalRecords() {
                       <p className="font-semibold text-gray-700 text-sm">{record.details}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="bg-purple-50 text-purple-700 text-xs font-bold px-3 py-1.5 rounded-lg">
+                      <span className="bg-blue-50 text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg">
                         {record.performed_by}
                       </span>
                     </td>
@@ -230,16 +235,16 @@ export default function DigitalRecords() {
             </table>
           )}
 
-          {!loading && records.length === 0 && (
+          {!loading && displayed.length === 0 && (
             <div className="text-center py-16 text-gray-400">
               <p className="font-bold text-lg">No records found</p>
-              <p className="text-sm mt-1">Try searching with a different keyword</p>
+              <p className="text-sm mt-1">Item and claim actions will appear here as they happen</p>
             </div>
           )}
 
           <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
             <p className="text-gray-400 text-sm">
-              Showing page {page} of {lastPage} &middot; {total} total records
+              Showing {displayed.length} relevant records &mdash; page {page} of {lastPage}
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -249,9 +254,7 @@ export default function DigitalRecords() {
               >
                 Previous
               </button>
-              <span className="px-3 py-1.5 bg-[#1a237e] rounded-lg text-white text-sm font-bold">
-                {page}
-              </span>
+              <span className="px-3 py-1.5 bg-[#1a237e] rounded-lg text-white text-sm font-bold">{page}</span>
               <button
                 onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
                 disabled={page === lastPage}
