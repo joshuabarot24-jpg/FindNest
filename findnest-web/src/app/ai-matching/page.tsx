@@ -1,86 +1,62 @@
 "use client";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import api from "@/lib/api";
 
-type MatchStatus = "pending" | "confirmed" | "rejected";
-
-interface Attribute {
-  label: string;
-  lost: string;
-  found: string;
-  match: boolean;
-}
-
-interface MatchRecord {
+interface AiMatch {
   id: number;
-  lostReport: string;
-  foundItem: string;
-  itemName: string;
-  similarity: number;
-  lostPhotoEmoji: string;
-  foundPhotoEmoji: string;
-  lostPhotoUrl?: string;
-  foundPhotoUrl?: string;
-  status: MatchStatus;
-  attributes: Attribute[];
+  report_id: number;
+  found_id: number;
+  confidence_score: number | null;
+  match_status: "pending" | "confirmed" | "rejected" | string;
+  matched_at: string | null;
+  created_at: string;
+  report: {
+    id: number;
+    item_name: string;
+    category: string;
+    location_lost: string;
+    date_lost: string;
+    photo_url: string | null;
+    user?: { name: string; school_id: string | null };
+  } | null;
+  foundItem: {
+    id: number;
+    item_name: string;
+    category: string;
+    location_found: string;
+    storage_location: string | null;
+    photo_url: string | null;
+  } | null;
 }
 
-const initialMatches: MatchRecord[] = [
-  {
-    id: 1,
-    lostReport: "#L0882",
-    foundItem: "#F1042",
-    itemName: "Black Wallet",
-    similarity: 89,
-    lostPhotoEmoji: "👛",
-    foundPhotoEmoji: "❓",
-    status: "pending",
-    attributes: [
-      { label: "Color", lost: "Black", found: "Black", match: true },
-      { label: "Material", lost: "Leather", found: "Leather", match: true },
-      { label: "Brand Logo", lost: "Visible, faded", found: "Visible, faded", match: true },
-      { label: "Scratches", lost: "Small scratch on corner", found: "Small scratch on corner", match: true },
-      { label: "Zipper Condition", lost: "Slightly worn", found: "Good condition", match: false },
-    ],
-  },
-  {
-    id: 2,
-    lostReport: "#L0891",
-    foundItem: "#F1055",
-    itemName: "iPhone 15 Pro Max",
-    similarity: 94,
-    lostPhotoEmoji: "📱",
-    foundPhotoEmoji: "❓",
-    status: "pending",
-    attributes: [
-      { label: "Color", lost: "White", found: "White", match: true },
-      { label: "Case Type", lost: "Clear case", found: "Clear case", match: true },
-      { label: "Screen Condition", lost: "Small crack top-left", found: "Small crack top-left", match: true },
-      { label: "Stickers", lost: "None", found: "None", match: true },
-      { label: "Back Camera Bump", lost: "No visible damage", found: "No visible damage", match: true },
-    ],
-  },
-  {
-    id: 3,
-    lostReport: "#L0903",
-    foundItem: "#F1061",
-    itemName: "Calculus Textbook",
-    similarity: 76,
-    lostPhotoEmoji: "📚",
-    foundPhotoEmoji: "❓",
-    status: "pending",
-    attributes: [
-      { label: "Cover Color", lost: "Blue", found: "Blue", match: true },
-      { label: "Edition", lost: "7th Edition", found: "7th Edition", match: true },
-      { label: "Cover Condition", lost: "Slightly bent corners", found: "Torn spine", match: false },
-      { label: "Markings", lost: "Name written inside", found: "Not visible", match: false },
-      { label: "Stickers/Tags", lost: "Library tag visible", found: "Library tag visible", match: true },
-    ],
-  },
-];
+const PAGE_SIZE = 5;
+
+function statusStyles(status: string) {
+  switch (status) {
+    case "confirmed":
+      return { dot: "bg-green-500", badge: "bg-green-50 text-green-700", label: "Confirmed" };
+    case "rejected":
+      return { dot: "bg-red-500", badge: "bg-red-50 text-red-600", label: "Rejected" };
+    default:
+      return { dot: "bg-yellow-400", badge: "bg-yellow-50 text-yellow-700", label: "Pending" };
+  }
+}
+
+function scoreColor(score: number | null) {
+  if (score == null) return "bg-gray-100 text-gray-500";
+  if (score >= 80) return "bg-green-50 text-green-700";
+  if (score >= 60) return "bg-yellow-50 text-yellow-700";
+  return "bg-red-50 text-red-600";
+}
 
 export default function AiMatching() {
-  const [matches, setMatches] = useState<MatchRecord[]>(initialMatches);
-  const [activeId, setActiveId] = useState<number>(initialMatches[0].id);
+  const [matches, setMatches] = useState<AiMatch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [viewingMatch, setViewingMatch] = useState<AiMatch | null>(null);
+  const [rejectingMatch, setRejectingMatch] = useState<AiMatch | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -89,29 +65,68 @@ export default function AiMatching() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const pendingMatches = useMemo(() => matches.filter((m) => m.status === "pending"), [matches]);
-  const activeMatch = useMemo(
-    () => matches.find((m) => m.id === activeId) ?? pendingMatches[0] ?? matches[0],
-    [matches, activeId, pendingMatches]
-  );
-
-  const matchingCount = activeMatch ? activeMatch.attributes.filter((a) => a.match).length : 0;
-
-  function resolveMatch(id: number, status: "confirmed" | "rejected") {
-    setMatches((prev) => prev.map((m) => (m.id === id ? { ...m, status } : m)));
-
-    const remainingPending = matches.filter((m) => m.status === "pending" && m.id !== id);
-    if (remainingPending.length > 0) {
-      setActiveId(remainingPending[0].id);
+  const fetchMatches = async () => {
+    try {
+      const res = await api.get("/ai-matches");
+      setMatches(res.data.matches || []);
+    } catch (err) {
+      console.error("Error fetching AI matches:", err);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const resolved = matches.find((m) => m.id === id);
-    if (resolved) {
-      setToast(
-        status === "confirmed"
-          ? `Match confirmed for '${resolved.itemName}'. Student will be notified.`
-          : `Match rejected for '${resolved.itemName}'. Continuing to search.`
-      );
+  useEffect(() => { fetchMatches(); }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return matches.filter(
+      (m) =>
+        (m.report?.item_name || "").toLowerCase().includes(q) ||
+        (m.foundItem?.item_name || "").toLowerCase().includes(q) ||
+        m.match_status.toLowerCase().includes(q)
+    );
+  }, [matches, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [totalPages, page]);
+
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const pendingCount = matches.filter((m) => m.match_status === "pending").length;
+  const confirmedCount = matches.filter((m) => m.match_status === "confirmed").length;
+  const rejectedCount = matches.filter((m) => m.match_status === "rejected").length;
+
+  async function handleConfirm(match: AiMatch) {
+    setActionLoading(true);
+    try {
+      await api.post(`/ai-matches/${match.id}/confirm`);
+      setToast(`Match for ${match.report?.item_name || "item"} was confirmed.`);
+      setViewingMatch(null);
+      fetchMatches();
+    } catch (err) {
+      console.error("Confirm error:", err);
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleRejectConfirm() {
+    if (!rejectingMatch) return;
+    setActionLoading(true);
+    try {
+      await api.post(`/ai-matches/${rejectingMatch.id}/reject`);
+      setToast(`Match for ${rejectingMatch.report?.item_name || "item"} was rejected.`);
+      setRejectingMatch(null);
+      setViewingMatch(null);
+      fetchMatches();
+    } catch (err) {
+      console.error("Reject error:", err);
+    } finally {
+      setActionLoading(false);
     }
   }
 
@@ -137,7 +152,6 @@ export default function AiMatching() {
 
         <nav className="flex flex-col gap-1 px-4 flex-1">
           <p className="text-blue-400 text-xs font-bold uppercase tracking-wider px-4 mb-2">Main Menu</p>
-
           <a href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
             <span>Dashboard</span>
           </a>
@@ -166,7 +180,6 @@ export default function AiMatching() {
             <p className="text-white text-sm font-semibold">Guidance Counselor</p>
             <p className="text-blue-300 text-xs mt-1">Administrator</p>
           </div>
-          
           <button
             onClick={() => { localStorage.removeItem("findnest_token"); localStorage.removeItem("findnest_user"); window.location.href = "/"; }}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium w-full text-left"
@@ -180,208 +193,243 @@ export default function AiMatching() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-black text-[#1a237e]">Assistive AI Matching</h1>
-            <p className="text-gray-400 text-sm mt-1">
-              System automatically comparing lost reports with found items
-            </p>
+            <p className="text-gray-400 text-sm mt-1">Review AI-generated matches between lost and found item reports</p>
           </div>
-          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-2xl px-4 py-3">
+          <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-green-700 text-sm font-bold">AI Engine Active</span>
+            <span className="text-blue-700 text-sm font-bold">AI Engine — Active</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-6">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-fit">
-            <div className="px-6 py-5 border-b border-gray-100">
-              <h2 className="font-black text-gray-700">Pending Matches</h2>
-              <p className="text-gray-400 text-xs mt-1">{pendingMatches.length} matches awaiting confirmation</p>
-            </div>
+        <div className="grid grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <p className="text-gray-400 text-sm font-medium">Pending Review</p>
+            <p className="text-4xl font-black text-yellow-500 mt-1">{pendingCount}</p>
+          </div>
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <p className="text-gray-400 text-sm font-medium">Confirmed Matches</p>
+            <p className="text-4xl font-black text-green-600 mt-1">{confirmedCount}</p>
+          </div>
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <p className="text-gray-400 text-sm font-medium">Rejected Matches</p>
+            <p className="text-4xl font-black text-red-500 mt-1">{rejectedCount}</p>
+          </div>
+        </div>
 
-            <div className="divide-y divide-gray-50">
-              {matches.map((match) => (
-                <button
-                  key={match.id}
-                  onClick={() => setActiveId(match.id)}
-                  disabled={match.status !== "pending"}
-                  className={`w-full text-left px-6 py-4 transition ${
-                    activeMatch?.id === match.id ? "bg-blue-50" : "hover:bg-gray-50"
-                  } ${match.status !== "pending" ? "opacity-40 cursor-not-allowed" : ""}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-xl overflow-hidden">
-                      {match.lostPhotoUrl ? (
-                        <img src={match.lostPhotoUrl} alt={match.itemName} className="w-full h-full object-cover" />
-                      ) : (
-                        match.lostPhotoEmoji
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-bold text-gray-700 text-sm">{match.itemName}</p>
-                      <p className="text-gray-400 text-xs mt-0.5">{match.lostReport} ↔ {match.foundItem}</p>
-                    </div>
-                    <span className={`text-xs font-black px-2 py-1 rounded-lg ${
-                      match.similarity >= 85 ? "bg-green-100 text-green-700" :
-                      match.similarity >= 70 ? "bg-yellow-100 text-yellow-700" :
-                      "bg-red-100 text-red-600"
-                    }`}>
-                      {match.similarity}%
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+            <h2 className="font-black text-gray-700 text-lg">All AI Matches</h2>
+            <input
+              type="text"
+              placeholder="Search by item name or status..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm w-72"
+            />
           </div>
 
-          <div className="col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            {activeMatch ? (
-              <>
-                <div className="px-6 py-5 border-b border-gray-100">
-                  <p className="text-gray-400 text-sm">
-                    System automatically comparing Lost Report {activeMatch.lostReport} with Found Item {activeMatch.foundItem}...
-                  </p>
-                </div>
+          {loading ? (
+            <div className="text-center py-16 text-gray-400 text-sm">Loading matches...</div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Lost Item</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Found Item</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">AI Score</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Date</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {paginated.map((match) => {
+                  const styles = statusStyles(match.match_status);
+                  return (
+                    <tr key={match.id} className="hover:bg-gray-50 transition">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
+                            {match.report?.photo_url ? (
+                              <img src={match.report.photo_url} alt={match.report.item_name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs">N/A</div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-700 text-sm">{match.report?.item_name || "—"}</p>
+                            <p className="text-gray-400 text-xs">{match.report?.user?.name || ""}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
+                            {match.foundItem?.photo_url ? (
+                              <img src={match.foundItem.photo_url} alt={match.foundItem.item_name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs">N/A</div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-700 text-sm">{match.foundItem?.item_name || "—"}</p>
+                            <p className="text-gray-400 text-xs">{match.foundItem?.location_found || ""}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${scoreColor(match.confidence_score)}`}>
+                          {match.confidence_score != null ? `${match.confidence_score}%` : "Pending AI"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${styles.dot}`} />
+                          <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${styles.badge}`}>{styles.label}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-gray-400 text-sm">{new Date(match.created_at).toLocaleDateString()}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => setViewingMatch(match)}
+                          className="bg-blue-50 hover:bg-[#1a237e] hover:text-white text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                        >
+                          Review
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
 
-                <div className="p-10">
-                  <div className="text-center mb-10">
-                    <div className="inline-flex items-center justify-center w-32 h-32 rounded-full mb-4 relative">
-                      <svg className="w-32 h-32 transform -rotate-90">
-                        <circle cx="64" cy="64" r="56" stroke="#e5e7eb" strokeWidth="12" fill="none" />
-                        <circle
-                          cx="64" cy="64" r="56"
-                          stroke={activeMatch.similarity >= 85 ? "#22c55e" : activeMatch.similarity >= 70 ? "#eab308" : "#ef4444"}
-                          strokeWidth="12"
-                          fill="none"
-                          strokeDasharray={`${(activeMatch.similarity / 100) * 351.86} 351.86`}
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      <span className="absolute text-3xl font-black text-[#1a237e]">{activeMatch.similarity}%</span>
-                    </div>
-                    <p className="font-black text-gray-700 text-lg">Match Confidence</p>
-                    <p className="text-gray-400 text-sm mt-1">
-                      {activeMatch.similarity >= 85 ? "High confidence match" : activeMatch.similarity >= 70 ? "Moderate confidence match" : "Low confidence match"}
-                    </p>
-                  </div>
+          {!loading && filtered.length === 0 && (
+            <div className="text-center py-16 text-gray-400">
+              <p className="font-bold text-lg">No matches found</p>
+              <p className="text-sm mt-1">AI matches will appear here once the matching engine runs</p>
+            </div>
+          )}
 
-                  <div className="flex items-center justify-center gap-8 mb-10">
-                    <div className="text-center">
-                      <div className="w-32 h-32 bg-red-50 rounded-2xl flex items-center justify-center text-5xl mb-3 border-2 border-red-100 overflow-hidden">
-                        {activeMatch.lostPhotoUrl ? (
-                          <img src={activeMatch.lostPhotoUrl} alt="Lost item" className="w-full h-full object-cover" />
-                        ) : (
-                          activeMatch.lostPhotoEmoji
-                        )}
-                      </div>
-                      <p className="font-bold text-gray-700 text-sm">Lost Report Photo</p>
-                      <p className="text-gray-400 text-xs mt-0.5">{activeMatch.lostReport}</p>
-                    </div>
-
-                    <div className="w-16 h-16 bg-[#1a237e] rounded-full flex items-center justify-center text-white text-2xl">
-                      ↔
-                    </div>
-
-                    <div className="text-center">
-                      <div className="w-32 h-32 bg-green-50 rounded-2xl flex items-center justify-center text-5xl mb-3 border-2 border-green-100 overflow-hidden">
-                        {activeMatch.foundPhotoUrl ? (
-                          <img src={activeMatch.foundPhotoUrl} alt="Found item" className="w-full h-full object-cover" />
-                        ) : (
-                          activeMatch.foundPhotoEmoji
-                        )}
-                      </div>
-                      <p className="font-bold text-gray-700 text-sm">Found Item Photo</p>
-                      <p className="text-gray-400 text-xs mt-0.5">{activeMatch.foundItem}</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-2xl p-6 mb-10">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="font-black text-gray-700 text-sm">AI Fine Detail Analysis</p>
-                        <p className="text-gray-400 text-xs mt-0.5">Attribute-by-attribute comparison</p>
-                      </div>
-                      <span className="bg-blue-50 text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg">
-                        {matchingCount}/{activeMatch.attributes.length} attributes matched
-                      </span>
-                    </div>
-
-                    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="bg-gray-50 border-b border-gray-100">
-                            <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Attribute</th>
-                            <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Lost Report</th>
-                            <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Found Item</th>
-                            <th className="text-center px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Match</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                          {activeMatch.attributes.map((attr, index) => (
-                            <tr key={index}>
-                              <td className="px-4 py-3">
-                                <p className="font-semibold text-gray-700 text-sm">{attr.label}</p>
-                              </td>
-                              <td className="px-4 py-3">
-                                <p className="text-gray-500 text-sm">{attr.lost}</p>
-                              </td>
-                              <td className="px-4 py-3">
-                                <p className="text-gray-500 text-sm">{attr.found}</p>
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                {attr.match ? (
-                                  <span className="inline-flex items-center justify-center w-6 h-6 bg-green-100 text-green-600 rounded-full text-xs font-bold">
-                                    ✓
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center justify-center w-6 h-6 bg-red-100 text-red-500 rounded-full text-xs font-bold">
-                                    ✕
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {activeMatch.status === "pending" ? (
-                    <div className="flex items-center justify-center gap-4">
-                      <button
-                        onClick={() => resolveMatch(activeMatch.id, "confirmed")}
-                        className="bg-green-500 hover:bg-green-600 text-white font-black px-10 py-4 rounded-2xl transition shadow-lg hover:-translate-y-0.5 transform"
-                      >
-                        ✓ Confirm Match
-                      </button>
-                      <button
-                        onClick={() => resolveMatch(activeMatch.id, "rejected")}
-                        className="bg-red-50 hover:bg-red-500 hover:text-white text-red-500 font-black px-10 py-4 rounded-2xl transition"
-                      >
-                        ✕ Not a Match
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="text-center">
-                      <span className={`inline-block text-sm font-black px-6 py-3 rounded-2xl ${
-                        activeMatch.status === "confirmed"
-                          ? "bg-green-50 text-green-700"
-                          : "bg-red-50 text-red-600"
-                      }`}>
-                        {activeMatch.status === "confirmed" ? "✓ Match Confirmed" : "✕ Marked as Not a Match"}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="p-16 text-center text-gray-400">
-                <p className="text-5xl mb-4">🎉</p>
-                <p className="font-bold text-lg">All matches reviewed</p>
-                <p className="text-sm mt-1">There are no pending matches left to confirm.</p>
-              </div>
-            )}
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+            <p className="text-gray-400 text-sm">
+              Showing {filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}&ndash;{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} matches
+            </p>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 border border-gray-200 rounded-lg text-gray-400 text-sm hover:border-[#1a237e] hover:text-[#1a237e] transition disabled:opacity-40 disabled:cursor-not-allowed">Previous</button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button key={p} onClick={() => setPage(p)} className={p === page ? "px-3 py-1.5 bg-[#1a237e] rounded-lg text-white text-sm font-bold" : "px-3 py-1.5 border border-gray-200 rounded-lg text-gray-400 text-sm hover:border-[#1a237e] hover:text-[#1a237e] transition"}>
+                  {p}
+                </button>
+              ))}
+              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-1.5 border border-gray-200 rounded-lg text-gray-400 text-sm hover:border-[#1a237e] hover:text-[#1a237e] transition disabled:opacity-40 disabled:cursor-not-allowed">Next</button>
+            </div>
           </div>
         </div>
       </main>
+
+      {viewingMatch && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-4 p-8 max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setViewingMatch(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none">&times;</button>
+
+            <h2 className="text-2xl font-black text-[#1a237e] mb-1">Match Review</h2>
+            <p className="text-gray-400 text-sm mb-6">Match #{String(viewingMatch.id).padStart(4, "0")} &mdash; {new Date(viewingMatch.created_at).toLocaleString()}</p>
+
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bg-gray-50 rounded-2xl p-4">
+                <p className="text-xs font-bold text-gray-400 uppercase mb-3">Lost Item Report</p>
+                <div className="w-full h-36 bg-gray-200 rounded-xl overflow-hidden mb-3">
+                  {viewingMatch.report?.photo_url ? (
+                    <img src={viewingMatch.report.photo_url} alt="Lost" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No Photo</div>
+                  )}
+                </div>
+                <p className="font-black text-gray-700">{viewingMatch.report?.item_name || "—"}</p>
+                <p className="text-gray-400 text-xs mt-1">Lost at: {viewingMatch.report?.location_lost}</p>
+                <p className="text-gray-400 text-xs">Date: {viewingMatch.report?.date_lost}</p>
+                <p className="text-gray-400 text-xs">Student: {viewingMatch.report?.user?.name || "—"}</p>
+              </div>
+
+              <div className="bg-gray-50 rounded-2xl p-4">
+                <p className="text-xs font-bold text-gray-400 uppercase mb-3">Found Item</p>
+                <div className="w-full h-36 bg-gray-200 rounded-xl overflow-hidden mb-3">
+                  {viewingMatch.foundItem?.photo_url ? (
+                    <img src={viewingMatch.foundItem.photo_url} alt="Found" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No Photo</div>
+                  )}
+                </div>
+                <p className="font-black text-gray-700">{viewingMatch.foundItem?.item_name || "—"}</p>
+                <p className="text-gray-400 text-xs mt-1">Found at: {viewingMatch.foundItem?.location_found}</p>
+                <p className="text-gray-400 text-xs">Storage: {viewingMatch.foundItem?.storage_location || "—"}</p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-2xl p-4 mb-6">
+              <p className="text-xs font-bold text-gray-400 uppercase mb-3">AI Analysis</p>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-gray-600 font-medium">Confidence Score</span>
+                <span className={`text-sm font-black px-3 py-1 rounded-lg ${scoreColor(viewingMatch.confidence_score)}`}>
+                  {viewingMatch.confidence_score != null ? `${viewingMatch.confidence_score}%` : "Pending AI Integration"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 font-medium">Match Status</span>
+                <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${statusStyles(viewingMatch.match_status).badge}`}>
+                  {statusStyles(viewingMatch.match_status).label}
+                </span>
+              </div>
+              <p className="text-gray-400 text-xs mt-3">
+                Visual similarity scoring via MobileNetV2 will be available once the AI Python module is connected.
+              </p>
+            </div>
+
+            {viewingMatch.match_status === "pending" && (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setRejectingMatch(viewingMatch)}
+                  disabled={actionLoading}
+                  className="flex-1 border-2 border-red-200 text-red-500 hover:bg-red-500 hover:text-white font-bold py-3 rounded-2xl transition disabled:opacity-50"
+                >
+                  Reject Match
+                </button>
+                <button
+                  onClick={() => handleConfirm(viewingMatch)}
+                  disabled={actionLoading}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-2xl transition disabled:opacity-50"
+                >
+                  {actionLoading ? "Processing..." : "Confirm Match"}
+                </button>
+              </div>
+            )}
+
+            {viewingMatch.match_status !== "pending" && (
+              <button onClick={() => setViewingMatch(null)} className="w-full mt-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 rounded-2xl transition">Close</button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {rejectingMatch && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#0d1757]/80 backdrop-blur-sm">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 p-8 text-center">
+            <h2 className="text-xl font-black text-[#1a237e] mb-2">Reject This Match?</h2>
+            <p className="text-gray-400 text-sm mb-8">
+              This will mark the match between {rejectingMatch.report?.item_name || "lost item"} and {rejectingMatch.foundItem?.item_name || "found item"} as rejected.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setRejectingMatch(null)} className="flex-1 border-2 border-gray-200 text-gray-500 font-bold py-3 rounded-2xl hover:bg-gray-50 transition">Cancel</button>
+              <button onClick={handleRejectConfirm} disabled={actionLoading} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-2xl transition disabled:opacity-50">
+                {actionLoading ? "Rejecting..." : "Confirm Reject"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
