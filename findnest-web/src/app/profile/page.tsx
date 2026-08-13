@@ -175,7 +175,7 @@ export default function ProfilePage() {
             </svg>
           </a>
           <a href="/profile" className="w-10 h-10 bg-[#1a237e] rounded-full flex items-center justify-center text-white font-bold text-sm">
-            {user?.name?.charAt(0).toUpperCase() || "S"}
+            {user?.name?.charAt(0).toUpperCase() || "M"}
           </a>
         </div>
       </nav>
@@ -188,7 +188,7 @@ export default function ProfilePage() {
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 mb-6">
               <div className="flex items-center gap-6">
                 <div className="w-20 h-20 bg-gradient-to-br from-[#1a237e] to-[#1565c0] rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-lg flex-shrink-0">
-                  {user?.name?.charAt(0).toUpperCase() || "S"}
+                  {user?.name?.charAt(0).toUpperCase() || "M"}
                 </div>
                 <div className="flex-1">
                   <h1 className="text-2xl font-black text-[#1a237e]">{user?.name}</h1>
