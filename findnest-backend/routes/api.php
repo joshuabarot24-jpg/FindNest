@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\UserManagementController;
 use App\Http\Controllers\Api\SystemStatsController;
 use App\Http\Controllers\Api\CaseTrailController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\SupportController;
 
 
 Route::prefix('auth')->group(function () {
@@ -37,7 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/', [ProfileController::class, 'update']);
         Route::post('/change-password', [ProfileController::class, 'changePassword']);
     });
-    
+
     Route::prefix('lost-items')->group(function () {
         Route::get('/', [LostItemController::class, 'index']);
         Route::get('/my-reports', [LostItemController::class, 'myReports']);
@@ -109,5 +110,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/fcm/update-token', [FcmController::class, 'updateToken']);
     Route::get('/system-stats', [SystemStatsController::class, 'index']);
+    Route::post('/support', [SupportController::class, 'store']);
 
 });
