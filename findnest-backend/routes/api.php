@@ -111,5 +111,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/fcm/update-token', [FcmController::class, 'updateToken']);
     Route::get('/system-stats', [SystemStatsController::class, 'index']);
     Route::post('/support', [SupportController::class, 'store']);
+    Route::get('/support', [SupportController::class, 'index']);
+    Route::post('/support/{id}/read', [SupportController::class, 'markAsRead']);
 
 });
