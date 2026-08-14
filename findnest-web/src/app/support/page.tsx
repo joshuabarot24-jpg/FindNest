@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import api from "@/lib/api";
 
 const faqs = [
@@ -38,9 +38,7 @@ const faqs = [
 ];
 
 export default function SupportPage() {
-  const stored = typeof window !== "undefined" ? localStorage.getItem("findnest_user") : null;
-  const currentUser = stored ? JSON.parse(stored) : null;
-  const userInitial = currentUser?.name?.charAt(0).toUpperCase() || "M";
+  const [userInitial, setUserInitial] = useState("");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -48,7 +46,14 @@ export default function SupportPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
+
+  useEffect(() => {
+    const stored = localStorage.getItem("findnest_user");
+    if (stored) {
+      const currentUser = JSON.parse(stored);
+      setUserInitial(currentUser?.name?.charAt(0).toUpperCase() || "");
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
