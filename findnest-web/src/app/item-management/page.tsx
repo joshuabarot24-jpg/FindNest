@@ -289,6 +289,9 @@ export default function ItemManagement() {
           <a href="/admin-audit-trail" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
             <span>Audit Trail</span>
           </a>
+          <a href="/admin-support" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
+            <span>Support Inbox</span>
+          </a>
         </nav>
 
         <div className="px-4 py-6">
