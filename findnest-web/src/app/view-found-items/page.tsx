@@ -1,49 +1,50 @@
 "use client";
-import { useState } from "react";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import api from "@/lib/api";
 
-const foundItems = [
-  { id: 1, name: "Reading Glasses", category: "Accessories", location: "Library", date: "Jun 15, 2026", icon: "👓", color: "blue" },
-  { id: 2, name: "Black Wallet", category: "Personal Belongings", location: "Canteen", date: "Jun 14, 2026", icon: "👛", color: "amber" },
-  { id: 3, name: "Car Keys", category: "Keys", location: "Gymnasium", date: "Jun 14, 2026", icon: "🔑", color: "gray" },
-  { id: 4, name: "Aqua Flask Bottle", category: "Personal Belongings", location: "Canteen", date: "Jun 13, 2026", icon: "🍶", color: "teal" },
-  { id: 5, name: "Student ID Card", category: "ID/Cards", location: "Library", date: "Jun 12, 2026", icon: "🪪", color: "indigo" },
-  { id: 6, name: "Scientific Calculator", category: "Electronics", location: "Room 402", date: "Jun 11, 2026", icon: "🧮", color: "purple" },
-  { id: 7, name: "Blue Umbrella", category: "Personal Belongings", location: "Main Entrance", date: "Jun 10, 2026", icon: "☂️", color: "blue" },
-  { id: 8, name: "Wireless Earbuds", category: "Electronics", location: "Gymnasium", date: "Jun 9, 2026", icon: "🎧", color: "purple" },
-  { id: 9, name: "Notebook", category: "School Supplies", location: "Room 305", date: "Jun 8, 2026", icon: "📓", color: "green" },
-  { id: 10, name: "Wristwatch", category: "Accessories", location: "Parking Lot", date: "Jun 7, 2026", icon: "⌚", color: "amber" },
-  { id: 11, name: "iPhone 15 Pro Max", category: "Electronics", location: "Classroom 201", date: "Jun 16, 2026", icon: "📱", color: "purple" },
-  { id: 12, name: "MacBook Air", category: "Electronics", location: "Computer Lab", date: "Jun 16, 2026", icon: "💻", color: "indigo" },
-  { id: 13, name: "Samsung Galaxy Phone", category: "Electronics", location: "Canteen", date: "Jun 15, 2026", icon: "📱", color: "purple" },
-  { id: 14, name: "Dell Laptop", category: "Electronics", location: "Library", date: "Jun 14, 2026", icon: "💻", color: "indigo" },
-  { id: 15, name: "iPad Tablet", category: "Electronics", location: "Room 402", date: "Jun 13, 2026", icon: "📱", color: "purple" },
-  { id: 16, name: "Power Bank", category: "Electronics", location: "Gymnasium", date: "Jun 12, 2026", icon: "🔋", color: "teal" },
-  { id: 17, name: "USB Flash Drive", category: "Electronics", location: "Computer Lab", date: "Jun 11, 2026", icon: "💾", color: "gray" },
-  { id: 18, name: "Backpack (Black)", category: "Personal Belongings", location: "Main Entrance", date: "Jun 10, 2026", icon: "🎒", color: "amber" },
-  { id: 19, name: "Wired Headphones", category: "Electronics", location: "Room 305", date: "Jun 9, 2026", icon: "🎧", color: "purple" },
-  { id: 20, name: "Smart Watch", category: "Electronics", location: "Parking Lot", date: "Jun 8, 2026", icon: "⌚", color: "indigo" },
-];
-
-const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-  blue: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-100" },
-  amber: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-100" },
-  gray: { bg: "bg-gray-100", text: "text-gray-700", border: "border-gray-200" },
-  teal: { bg: "bg-teal-50", text: "text-teal-700", border: "border-teal-100" },
-  indigo: { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-100" },
-  purple: { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-100" },
-  green: { bg: "bg-green-50", text: "text-green-700", border: "border-green-100" },
-};
+interface FoundItem {
+  id: number;
+  item_name: string;
+  category: string;
+  location_found: string;
+  date_found: string;
+  photo_url: string | null;
+  status: string;
+}
 
 const categories = ["All", "Electronics", "Personal Belongings", "Accessories", "ID/Cards", "Keys", "School Supplies"];
 
 export default function ViewFoundItems() {
+  const [userInitial, setUserInitial] = useState("");
+  const [foundItems, setFoundItems] = useState<FoundItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
 
+  useEffect(() => {
+    const stored = localStorage.getItem("findnest_user");
+    if (stored) {
+      const currentUser = JSON.parse(stored);
+      setUserInitial(currentUser?.name?.charAt(0).toUpperCase() || "");
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetchItems = async () => {
+      try {
+        const response = await api.get("/found-items", { params: { status: "unclaimed" } });
+        setFoundItems(response.data.records || []);
+      } catch (err) {
+        console.error("Error fetching found items:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchItems();
+  }, []);
+
   const filtered = foundItems.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = item.item_name.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = activeCategory === "All" || item.category === activeCategory;
     return matchesSearch && matchesCategory;
   });
@@ -51,11 +52,9 @@ export default function ViewFoundItems() {
   return (
     <div className="min-h-screen bg-[#f8f9fc]">
       <nav className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <a href="/student-home" className="text-lg font-black text-[#1a237e] hover:opacity-80 transition">
-            FIND<span className="text-[#ffd700]">NEST</span>
-          </a>
-        </div>
+        <a href="/student-home" className="flex items-center gap-3">
+          <span className="text-lg font-black text-[#1a237e]">FIND<span className="text-[#ffd700]">NEST</span></span>
+        </a>
 
         <div className="flex items-center gap-8">
           <a href="/student-home" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Home</a>
@@ -66,11 +65,12 @@ export default function ViewFoundItems() {
 
         <div className="flex items-center gap-4">
           <a href="/notifications" className="relative w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-xl flex items-center justify-center transition">
-            <span className="text-lg">🔔</span>
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center">1</span>
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
           </a>
-          <a href="/profile" className="w-10 h-10 bg-[#1a237e] rounded-full flex items-center justify-center text-white font-bold">
-            R
+          <a href="/profile" className="w-10 h-10 bg-[#1a237e] rounded-full flex items-center justify-center text-white font-bold text-sm">
+            {userInitial}
           </a>
         </div>
       </nav>
@@ -113,49 +113,58 @@ export default function ViewFoundItems() {
           ))}
         </div>
 
-        <div className="grid grid-cols-5 gap-5">
-          {filtered.map((item) => {
-            const colors = colorMap[item.color];
-            return (
-              <div
-                key={item.id}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group cursor-pointer hover:-translate-y-1"
+        {loading ? (
+          <div className="text-center py-20 text-gray-400 text-sm">Loading found items...</div>
+        ) : (
+          <>
+            <div className="grid grid-cols-5 gap-5">
+              {filtered.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group cursor-pointer hover:-translate-y-1"
                 >
-                <div className={`${colors.bg} h-28 flex items-center justify-center relative`}>
-                  <span className="text-5xl group-hover:scale-110 transition-transform duration-300">
-                    {item.icon}
-                  </span>
-                  <span className={`absolute top-3 right-3 ${colors.bg} ${colors.text} text-[10px] font-bold px-2 py-1 rounded-full border ${colors.border}`}>
-                    {item.category}
-                  </span>
-                </div>
-
-                <div className="p-4">
-                  <p className="font-bold text-gray-700 text-sm leading-tight mb-2">{item.name}</p>
-                  <div className="flex items-center gap-1.5 text-gray-400 text-xs mb-1">
-                    <span>📍</span>
-                    <span>{item.location}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-gray-400 text-xs">
-                    <span>📅</span>
-                    <span>{item.date}</span>
+                  <div className="bg-gray-50 h-28 flex items-center justify-center relative overflow-hidden">
+                    {item.photo_url ? (
+                      <img
+                        src={item.photo_url}
+                        alt={item.item_name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs font-bold">
+                        No Photo
+                      </div>
+                    )}
+                    <span className="absolute top-3 right-3 bg-white text-[#1a237e] text-[10px] font-bold px-2 py-1 rounded-full border border-gray-100 shadow-sm">
+                      {item.category}
+                    </span>
                   </div>
 
-                  <a href="/report-lost" className="block w-full mt-3 bg-gray-50 group-hover:bg-[#1a237e] text-gray-500 group-hover:text-white text-xs font-bold py-2.5 rounded-xl transition text-center">
-                    Is this yours?
-                  </a>
+                  <div className="p-4">
+                    <p className="font-bold text-gray-700 text-sm leading-tight mb-2">{item.item_name}</p>
+                    <p className="text-gray-400 text-xs mb-1">Location: {item.location_found}</p>
+                    <p className="text-gray-400 text-xs">
+                      Found: {new Date(item.date_found).toLocaleDateString()}
+                    </p>
+
+                    <a
+                      href="/report-lost"
+                      className="block w-full mt-3 bg-gray-50 group-hover:bg-[#1a237e] text-gray-500 group-hover:text-white text-xs font-bold py-2.5 rounded-xl transition text-center"
+                    >
+                      Is this yours?
+                    </a>
+                  </div>
                 </div>
+              ))}
+            </div>
+
+            {filtered.length === 0 && (
+              <div className="text-center py-20 text-gray-400">
+                <p className="font-bold text-lg">No items found</p>
+                <p className="text-sm mt-1">Try a different search or category</p>
               </div>
-            );
-          })}
-        </div>
-
-        {filtered.length === 0 && (
-          <div className="text-center py-20 text-gray-400">
-            <p className="text-5xl mb-4">🔍</p>
-            <p className="font-bold text-lg">No items found</p>
-            <p className="text-sm mt-1">Try a different search or category</p>
-          </div>
+            )}
+          </>
         )}
       </main>
     </div>
