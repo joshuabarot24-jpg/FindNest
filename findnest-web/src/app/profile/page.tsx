@@ -74,14 +74,15 @@ export default function ProfilePage() {
     setInfoError("");
     setInfoSuccess("");
     setInfoLoading(true);
-    try {
-      const res = await api.put("/profile", {
-        name: name.trim(),
-        school_id: schoolId.trim() || null,
-        course: course.trim() || null,
-        year_level: yearLevel.trim() || null,
-      });
+   try {
+  const res = await api.put("/profile", {
+    name: name.trim(),
+    school_id: schoolId.trim() || null,
+    course: course.trim() || null,
+    year_level: yearLevel.trim() || null,
+  });
       setUser(res.data.user);
+      localStorage.setItem("findnest_user", JSON.stringify(res.data.user));
       setInfoSuccess("Profile updated successfully.");
       setToast("Profile updated successfully.");
     } catch (err: any) {
