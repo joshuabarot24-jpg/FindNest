@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -240,6 +241,46 @@ class AuthController extends Controller
         ]);
     }
 
+    public function resetPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'token' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $record = \DB::table('password_reset_tokens')->where('email', $request->email)->first();
+
+        if (!$record) {
+            return response()->json(['message' => 'Invalid or expired reset link.'], 400);
+        }
+
+        if (now()->diffInMinutes($record->created_at) > 60) {
+            \DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+            return response()->json(['message' => 'This reset link has expired. Please request a new one.'], 400);
+        }
+
+        if (!hash_equals($record->token, hash('sha256', $request->token))) {
+            return response()->json(['message' => 'Invalid or expired reset link.'], 400);
+        }
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found.'], 404);
+        }
+
+        $user->update(['password' => Hash::make($request->password)]);
+
+        \DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        return response()->json(['message' => 'Password reset successfully. You can now log in with your new password.']);
+    }
+
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
@@ -251,4 +292,40 @@ class AuthController extends Controller
     {
         return response()->json(['user' => $request->user()]);
     }
+
+        public function forgotPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'If that email exists in our system, a reset link has been sent.']);
+        }
+
+        $token = Str::random(64);
+
+        \DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $user->email],
+            ['token' => hash('sha256', $token), 'created_at' => now()]
+        );
+
+        $resetUrl = "http://localhost:3000/reset-password?token={$token}&email=" . urlencode($user->email);
+
+        \Mail::raw(
+            "Hello {$user->name},\n\nWe received a request to reset your FindNest password. Click the link below to set a new password. This link expires in 60 minutes.\n\n{$resetUrl}\n\nIf you did not request this, please ignore this email.",
+            function ($message) use ($user) {
+                $message->to($user->email)->subject('FindNest - Reset Your Password');
+            }
+        );
+
+        return response()->json(['message' => 'If that email exists in our system, a reset link has been sent.']);
+    }
+
 }
