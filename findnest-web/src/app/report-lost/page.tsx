@@ -1,10 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import api from "@/lib/api";
 
 const categories = ["Electronics", "Personal Belongings", "ID/Cards", "Keys", "School Supplies", "Accessories", "Others"];
 
 export default function ReportLostPage() {
+  const [userInitial, setUserInitial] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState("Electronics");
   const [description, setDescription] = useState("");
@@ -16,6 +19,24 @@ export default function ReportLostPage() {
   const [uploading, setUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("findnest_user");
+    if (stored) {
+      const currentUser = JSON.parse(stored);
+      setUserInitial(currentUser?.name?.charAt(0).toUpperCase() || "");
+    }
+
+    const fetchUnread = async () => {
+      try {
+        const res = await api.get("/notifications/unread-count");
+        setUnreadCount(res.data.count || 0);
+      } catch (err) {
+        console.error("Error fetching unread count:", err);
+      }
+    };
+    fetchUnread();
+  }, []);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -34,7 +55,6 @@ export default function ReportLostPage() {
       const res = await api.post("/upload/image", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-
       setPhotoUrl(res.data.url);
     } catch (err) {
       console.error("Photo upload failed:", err);
@@ -92,9 +112,15 @@ export default function ReportLostPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
             </span>
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center">1</span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center">
+                {unreadCount}
+              </span>
+            )}
           </a>
-          <a href="/profile" className="w-10 h-10 bg-[#1a237e] rounded-full flex items-center justify-center text-white font-bold">R</a>
+          <a href="/profile" className="w-10 h-10 bg-[#1a237e] rounded-full flex items-center justify-center text-white font-bold">
+            {userInitial}
+          </a>
         </div>
       </nav>
 
