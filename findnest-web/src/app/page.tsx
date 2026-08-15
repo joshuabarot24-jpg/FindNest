@@ -134,13 +134,13 @@ export default function Home() {
                 onClick={() => setShowLoginModal(true)}
                 className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold px-8 py-4 rounded-2xl transition shadow-xl shadow-red-500/20 hover:-translate-y-1"
               >
-                <span>📋</span> Report Lost Item
+                Report Lost Item
               </button>
               <button
                 onClick={() => setShowLoginModal(true)}
                 className="flex items-center gap-2 bg-white hover:bg-gray-50 border-2 border-[#1a237e]/10 text-[#1a237e] font-bold px-8 py-4 rounded-2xl transition hover:-translate-y-1"
               >
-                <span>🔍</span> Found Something?
+                Found Something?
               </button>
             </div>
 
@@ -200,10 +200,10 @@ export default function Home() {
             </div>
 
             <div className="absolute -top-5 -right-5 bg-green-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg rotate-6">
-              ✅ Match Found!
+              Match Found!
             </div>
             <div className="absolute -bottom-5 -left-5 bg-[#1a237e] text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg -rotate-6">
-              🤝 Owner Notified!
+              Owner Notified!
             </div>
           </div>
         </div>
@@ -219,34 +219,27 @@ export default function Home() {
         <div className="grid grid-cols-3 gap-8">
           <div className="group relative text-center p-8 rounded-3xl bg-[#f5f7ff] hover:bg-[#1a237e] transition-all duration-300">
             <span className="absolute top-6 right-6 text-5xl font-black text-[#1a237e]/10 group-hover:text-white/10">01</span>
-            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md">
-              <span className="text-3xl">📸</span>
-            </div>
+            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md" />
             <h3 className="font-black text-[#1a237e] group-hover:text-white text-xl mb-3 transition">Submit a Report</h3>
             <p className="text-gray-500 group-hover:text-blue-200 leading-relaxed transition">Upload a photo of your lost or found item. Our AI automatically detects item details.</p>
           </div>
 
           <div className="group relative text-center p-8 rounded-3xl bg-[#fff9e6] hover:bg-[#ffd700] transition-all duration-300">
             <span className="absolute top-6 right-6 text-5xl font-black text-[#1a237e]/10 group-hover:text-[#1a237e]/20">02</span>
-            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md">
-              <span className="text-3xl">🤖</span>
-            </div>
+            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md" />
             <h3 className="font-black text-[#1a237e] text-xl mb-3">AI Finds a Match</h3>
             <p className="text-gray-500 leading-relaxed">Our AI engine compares your report against all found items and finds potential matches instantly.</p>
           </div>
 
           <div className="group relative text-center p-8 rounded-3xl bg-red-50 hover:bg-red-500 transition-all duration-300">
             <span className="absolute top-6 right-6 text-5xl font-black text-red-500/10 group-hover:text-white/10">03</span>
-            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md">
-              <span className="text-3xl">✅</span>
-            </div>
+            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md" />
             <h3 className="font-black text-[#1a237e] group-hover:text-white text-xl mb-3 transition">Claim Your Item</h3>
             <p className="text-gray-500 group-hover:text-red-100 leading-relaxed transition">Go through our secure 5-layer verification process and claim your belongings from the school office.</p>
           </div>
         </div>
       </section>
 
-      {/* ABOUT FINDNEST SECTION */}
       <section id="about" className="px-20 py-24 bg-[#f5f7ff] scroll-mt-24">
         <div className="max-w-4xl mx-auto text-center">
           <span className="text-[#ffd700] font-bold text-sm uppercase tracking-widest">Who We Are</span>
@@ -401,10 +394,10 @@ export default function Home() {
           </div>
           <div>
             <p className="font-bold mb-4 text-[#ffd700] text-sm tracking-wide uppercase">Connect</p>
-            <a 
-              href="https://www.facebook.com/sjdmcci.2023" 
-              className="block text-blue-300 text-sm hover:text-white mb-2 transition-colors" 
-              target="_blank" 
+            <a
+              href="https://www.facebook.com/sjdmcci.2023"
+              className="block text-blue-300 text-sm hover:text-white mb-2 transition-colors"
+              target="_blank"
               rel="noopener noreferrer">
                 Facebook
             </a>
