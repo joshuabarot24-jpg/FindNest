@@ -217,23 +217,20 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-3 gap-8">
-          <div className="group relative text-center p-8 rounded-3xl bg-[#f5f7ff] hover:bg-[#1a237e] transition-all duration-300">
+          <div className="group relative text-center p-20 rounded-3xl bg-[#f5f7ff] hover:bg-[#1a237e] transition-all duration-300">
             <span className="absolute top-6 right-6 text-5xl font-black text-[#1a237e]/10 group-hover:text-white/10">01</span>
-            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md" />
             <h3 className="font-black text-[#1a237e] group-hover:text-white text-xl mb-3 transition">Submit a Report</h3>
             <p className="text-gray-500 group-hover:text-blue-200 leading-relaxed transition">Upload a photo of your lost or found item. Our AI automatically detects item details.</p>
           </div>
 
-          <div className="group relative text-center p-8 rounded-3xl bg-[#fff9e6] hover:bg-[#ffd700] transition-all duration-300">
+          <div className="group relative text-center p-20 rounded-3xl bg-[#fff9e6] hover:bg-[#ffd700] transition-all duration-300">
             <span className="absolute top-6 right-6 text-5xl font-black text-[#1a237e]/10 group-hover:text-[#1a237e]/20">02</span>
-            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md" />
             <h3 className="font-black text-[#1a237e] text-xl mb-3">AI Finds a Match</h3>
             <p className="text-gray-500 leading-relaxed">Our AI engine compares your report against all found items and finds potential matches instantly.</p>
           </div>
 
-          <div className="group relative text-center p-8 rounded-3xl bg-red-50 hover:bg-red-500 transition-all duration-300">
+          <div className="group relative text-center p-20 rounded-3xl bg-red-50 hover:bg-red-500 transition-all duration-300">
             <span className="absolute top-6 right-6 text-5xl font-black text-red-500/10 group-hover:text-white/10">03</span>
-            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md" />
             <h3 className="font-black text-[#1a237e] group-hover:text-white text-xl mb-3 transition">Claim Your Item</h3>
             <p className="text-gray-500 group-hover:text-red-100 leading-relaxed transition">Go through our secure 5-layer verification process and claim your belongings from the school office.</p>
           </div>
