@@ -116,7 +116,7 @@ export default function AdminLoginPage() {
           </button>
 
           <div className="text-center">
-            <a href="#" className="text-gray-400 hover:text-[#1a237e] text-sm transition font-medium">
+            <a href="/forgot-password" className="text-gray-400 hover:text-[#1a237e] text-sm transition font-medium">
               Forgot Password?
             </a>
           </div>

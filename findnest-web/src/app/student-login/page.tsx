@@ -178,7 +178,7 @@ export default function StudentLoginPage() {
               </button>
 
               <div className="text-center">
-                <a href="#" className="text-gray-400 hover:text-red-500 text-sm transition font-medium">
+                <a href="/forgot-password" className="text-gray-400 hover:text-red-500 text-sm transition font-medium">
                   Forgot Password?
                 </a>
               </div>
