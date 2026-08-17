@@ -57,9 +57,6 @@ export default function LandingScreen({ navigation }: any) {
             activeOpacity={0.85}
             onPress={() => navigation.navigate("StudentLogin")}
           >
-            <View style={styles.actionIconBox}>
-              <Text style={styles.actionIcon}>📋</Text>
-            </View>
             <Text style={styles.actionTitle}>Report Lost</Text>
             <Text style={styles.actionSub}>Something missing?</Text>
           </TouchableOpacity>
@@ -69,9 +66,6 @@ export default function LandingScreen({ navigation }: any) {
             activeOpacity={0.85}
             onPress={() => navigation.navigate("StudentLogin")}
           >
-            <View style={[styles.actionIconBox, styles.actionIconBoxAlt]}>
-              <Text style={styles.actionIcon}>🔍</Text>
-            </View>
             <Text style={[styles.actionTitle, styles.actionTitleAlt]}>Found Item</Text>
             <Text style={styles.actionSubAlt}>Turn it in here</Text>
           </TouchableOpacity>
@@ -270,21 +264,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1.5,
     borderColor: "rgba(255,215,0,0.35)",
-  },
-  actionIconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  actionIconBoxAlt: {
-    backgroundColor: "rgba(255,215,0,0.15)",
-  },
-  actionIcon: {
-    fontSize: 16,
   },
   actionTitle: {
     color: "white",
