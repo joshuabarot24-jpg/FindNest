@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,15 +8,59 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import api from "../lib/api";
 
-const recentFoundItems = [
-  { name: "Keys", icon: "❓" },
-  { name: "Student ID", icon: "❓" },
-  { name: "Aqua Flask", icon: "❓" },
-  { name: "Calculator", icon: "❓" },
-];
+interface FoundItem {
+  id: number;
+  item_name: string;
+  photo_url: string | null;
+}
+
+interface NotificationItem {
+  id: number;
+  title: string;
+  message: string;
+  type: string;
+  is_read: boolean;
+}
+
+const NAVY = "#1a237e";
+const GOLD = "#ffd700";
 
 export default function HomeScreen({ navigation }: any) {
+  const [foundItems, setFoundItems] = useState<FoundItem[]>([]);
+  const [foundLoading, setFoundLoading] = useState(true);
+  const [matchNotification, setMatchNotification] = useState<NotificationItem | null>(null);
+
+  useEffect(() => {
+    const fetchFoundItems = async () => {
+      try {
+        const response = await api.get("/found-items", { params: { status: "unclaimed" } });
+        setFoundItems((response.data.records || []).slice(0, 6));
+      } catch (err) {
+        console.error("Error fetching found items:", err);
+      } finally {
+        setFoundLoading(false);
+      }
+    };
+
+    const fetchNotifications = async () => {
+      try {
+        const response = await api.get("/notifications");
+        const notifications: NotificationItem[] = response.data.notifications || [];
+        const unreadMatch = notifications.find(
+          (n) => !n.is_read && n.type?.toLowerCase().includes("match")
+        );
+        setMatchNotification(unreadMatch || null);
+      } catch (err) {
+        console.error("Error fetching notifications:", err);
+      }
+    };
+
+    fetchFoundItems();
+    fetchNotifications();
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
@@ -28,40 +72,32 @@ export default function HomeScreen({ navigation }: any) {
         </View>
         <View style={styles.topBarIcons}>
           <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Notifications")}>
-            <Text style={styles.iconText}>🔔</Text>
-            <View style={styles.iconBadge} />
+            {matchNotification && <View style={styles.iconBadge} />}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Support")}>
-            <Text style={styles.iconText}>🛠️</Text>
-          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Support")} />
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        <TouchableOpacity
-          style={styles.notifBanner}
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate("ClaimStatus")}
-        >
-          <View style={styles.notifIconBox}>
-            <Text style={styles.notifIcon}>🤖</Text>
-          </View>
-          <View style={styles.notifTextBox}>
-            <Text style={styles.notifTitle}>AI Match Found!</Text>
-            <Text style={styles.notifMessage}>
-              A "Blue Umbrella" matches your report.
-            </Text>
-          </View>
-        </TouchableOpacity>
+        {matchNotification && (
+          <TouchableOpacity
+            style={styles.notifBanner}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate("ClaimStatus")}
+          >
+            <View style={styles.notifTextBox}>
+              <Text style={styles.notifTitle}>{matchNotification.title}</Text>
+              <Text style={styles.notifMessage}>{matchNotification.message}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.lostButton} activeOpacity={0.85} onPress={() => navigation.navigate("ReportLost")}>
-            <Text style={styles.actionIcon}>❓</Text>
             <Text style={styles.actionText}>Lost Item</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.foundButton} activeOpacity={0.85} onPress={() => navigation.navigate("ReportFound")}>
-            <Text style={styles.actionIcon}>🔍</Text>
             <Text style={styles.actionText}>Found Item</Text>
           </TouchableOpacity>
         </View>
@@ -73,47 +109,50 @@ export default function HomeScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.itemsScroll}>
-          {recentFoundItems.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.itemCard}
-              activeOpacity={0.85}
-              onPress={() => navigation.navigate("Browse")}
-            >
-              <View style={styles.itemIconBox}>
-                <Text style={styles.itemIcon}>{item.icon}</Text>
-              </View>
-              <Text style={styles.itemName}>{item.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {foundLoading ? (
+          <Text style={styles.loadingText}>Loading found items...</Text>
+        ) : foundItems.length === 0 ? (
+          <Text style={styles.loadingText}>No found items available right now.</Text>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.itemsScroll}>
+            {foundItems.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.itemCard}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate("Browse")}
+              >
+                <View style={styles.itemIconBox}>
+                  {item.photo_url ? (
+                    <Image source={{ uri: item.photo_url }} style={styles.itemImage} />
+                  ) : (
+                    <Text style={styles.noPhotoText}>No Photo</Text>
+                  )}
+                </View>
+                <Text style={styles.itemName} numberOfLines={1}>{item.item_name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </ScrollView>
 
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
-          <Text style={styles.navIconActive}>🏠</Text>
           <Text style={styles.navLabelActive}>Home</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Browse")}>
-          <Text style={styles.navIcon}>🔍</Text>
           <Text style={styles.navLabel}>Browse</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ClaimStatus")}>
-          <Text style={styles.navIcon}>📋</Text>
           <Text style={styles.navLabel}>Status</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Profile")}>
-          <Text style={styles.navIcon}>👤</Text>
           <Text style={styles.navLabel}>Profile</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
-
-const NAVY = "#1a237e";
-const GOLD = "#ffd700";
 
 const styles = StyleSheet.create({
   container: {
@@ -157,11 +196,6 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 12,
     backgroundColor: "#f3f4f6",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  iconText: {
-    fontSize: 16,
   },
   iconBadge: {
     position: "absolute",
@@ -177,26 +211,12 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   notifBanner: {
-    flexDirection: "row",
     backgroundColor: "#ecfdf5",
     borderRadius: 18,
     padding: 14,
     marginBottom: 20,
-    alignItems: "center",
     borderWidth: 1,
     borderColor: "#bbf7d0",
-  },
-  notifIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "#22c55e",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  notifIcon: {
-    fontSize: 18,
   },
   notifTextBox: {
     flex: 1,
@@ -230,10 +250,6 @@ const styles = StyleSheet.create({
     paddingVertical: 22,
     alignItems: "center",
   },
-  actionIcon: {
-    fontSize: 26,
-    marginBottom: 6,
-  },
   actionText: {
     color: "white",
     fontWeight: "800",
@@ -254,6 +270,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: NAVY,
+  },
+  loadingText: {
+    color: "#9ca3af",
+    fontSize: 13,
+    marginBottom: 10,
   },
   itemsScroll: {
     marginBottom: 10,
@@ -276,9 +297,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 8,
+    overflow: "hidden",
   },
-  itemIcon: {
-    fontSize: 22,
+  itemImage: {
+    width: "100%",
+    height: "100%",
+  },
+  noPhotoText: {
+    fontSize: 8,
+    fontWeight: "700",
+    color: "#9ca3af",
+    textAlign: "center",
   },
   itemName: {
     fontSize: 11,
@@ -297,15 +326,6 @@ const styles = StyleSheet.create({
   navItem: {
     flex: 1,
     alignItems: "center",
-  },
-  navIcon: {
-    fontSize: 20,
-    marginBottom: 3,
-    opacity: 0.4,
-  },
-  navIconActive: {
-    fontSize: 20,
-    marginBottom: 3,
   },
   navLabel: {
     fontSize: 10,
