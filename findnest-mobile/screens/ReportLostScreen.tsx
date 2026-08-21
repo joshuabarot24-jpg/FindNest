@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
+import api from "../lib/api";
 
 const categories = ["Electronics", "Personal Belongings", "ID/Cards", "Keys", "School Supplies", "Accessories", "Others"];
 
@@ -18,30 +19,73 @@ export default function ReportLostScreen({ navigation }: any) {
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState("Electronics");
   const [location, setLocation] = useState("");
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [photoError, setPhotoError] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
     });
-    if (!result.canceled) {
-      setPhoto(result.assets[0].uri);
-      setPhotoError(false);
+    if (result.canceled) return;
+
+    const uri = result.assets[0].uri;
+    setPhotoPreview(uri);
+    setPhotoError(false);
+    setPhotoUrl(null);
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("image", {
+        uri,
+        name: "photo.jpg",
+        type: "image/jpeg",
+      } as any);
+      formData.append("folder", "lost-items");
+
+      const res = await api.post("/upload/image", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setPhotoUrl(res.data.url);
+    } catch (err) {
+      console.error("Photo upload failed:", err);
+      setPhotoPreview(null);
+      setPhotoError(true);
+    } finally {
+      setUploading(false);
     }
   };
 
-  const handleSubmit = () => {
-    if (!itemName) return;
-    if (!photo) {
+  const handleSubmit = async () => {
+    if (!itemName.trim()) return;
+    if (!photoUrl) {
       setPhotoError(true);
       return;
     }
-    setPhotoError(false);
-    setSubmitted(true);
+
+    setSubmitError("");
+    setSubmitLoading(true);
+    try {
+      await api.post("/lost-items", {
+        item_name: itemName.trim(),
+        category: category,
+        location_lost: location.trim(),
+        date_lost: new Date().toISOString().split("T")[0],
+        photo_url: photoUrl,
+      });
+      setSubmitted(true);
+    } catch (err: any) {
+      setSubmitError(err.response?.data?.message || "Failed to submit report. Please try again.");
+    } finally {
+      setSubmitLoading(false);
+    }
   };
 
   return (
@@ -53,18 +97,13 @@ export default function ReportLostScreen({ navigation }: any) {
             FIND<Text style={styles.brandAccent}>NEST</Text>
           </Text>
         </View>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Support")}>
-          <Text style={styles.iconText}>🛠️</Text>
-        </TouchableOpacity>
+        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Support")} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
         {submitted ? (
           <View style={styles.successCard}>
-            <View style={styles.successIconBox}>
-              <Text style={styles.successIcon}>✅</Text>
-            </View>
             <Text style={styles.successTitle}>Report Submitted!</Text>
             <Text style={styles.successMessage}>
               Our AI is now comparing your report against found items.
@@ -116,12 +155,17 @@ export default function ReportLostScreen({ navigation }: any) {
             <TouchableOpacity
               style={[styles.uploadBox, photoError && styles.uploadBoxError]}
               onPress={pickImage}
+              disabled={uploading}
             >
-              {photo ? (
-                <Image source={{ uri: photo }} style={styles.previewImage} />
+              {uploading ? (
+                <Text style={styles.uploadText}>Uploading to cloud...</Text>
+              ) : photoPreview ? (
+                <>
+                  <Image source={{ uri: photoPreview }} style={styles.previewImage} />
+                  {photoUrl && <Text style={styles.uploadedText}>Photo uploaded successfully</Text>}
+                </>
               ) : (
                 <>
-                  <Text style={styles.uploadIcon}>📷</Text>
                   <Text style={[styles.uploadText, photoError && styles.uploadTextError]}>
                     Choose File
                   </Text>
@@ -143,12 +187,14 @@ export default function ReportLostScreen({ navigation }: any) {
               </Text>
             </View>
 
+            {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
+
             <TouchableOpacity
-              style={[styles.submitButton, !itemName && styles.submitButtonDisabled]}
+              style={[styles.submitButton, (!itemName.trim() || !photoUrl || submitLoading) && styles.submitButtonDisabled]}
               onPress={handleSubmit}
-              disabled={!itemName}
+              disabled={!itemName.trim() || !photoUrl || submitLoading}
             >
-              <Text style={styles.submitButtonText}>Post Report</Text>
+              <Text style={styles.submitButtonText}>{submitLoading ? "Submitting..." : "Post Report"}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -192,19 +238,15 @@ export default function ReportLostScreen({ navigation }: any) {
 
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
-          <Text style={styles.navIcon}>🏠</Text>
           <Text style={styles.navLabel}>Home</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Browse")}>
-          <Text style={styles.navIcon}>🔍</Text>
           <Text style={styles.navLabel}>Browse</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ClaimStatus")}>
-          <Text style={styles.navIcon}>📋</Text>
           <Text style={styles.navLabel}>Status</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Profile")}>
-          <Text style={styles.navIcon}>👤</Text>
           <Text style={styles.navLabel}>Profile</Text>
         </TouchableOpacity>
       </View>
@@ -215,10 +257,7 @@ export default function ReportLostScreen({ navigation }: any) {
 const NAVY = "#1a237e";
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8f9fc",
-  },
+  container: { flex: 1, backgroundColor: "#f8f9fc" },
   topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -229,59 +268,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
-  topBarLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  logoSmall: {
-    width: 30,
-    height: 30,
-    resizeMode: "contain",
-  },
-  brandText: {
-    fontSize: 16,
-    fontWeight: "900",
-    color: NAVY,
-  },
-  brandAccent: {
-    color: "#c99700",
-  },
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: "#f3f4f6",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  iconText: {
-    fontSize: 16,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 30,
-  },
-  pageTitle: {
-    fontSize: 20,
-    fontWeight: "900",
-    color: NAVY,
-    marginBottom: 4,
-  },
-  pageSubtitle: {
-    fontSize: 12.5,
-    color: "#9ca3af",
-    marginBottom: 22,
-  },
-  label: {
-    fontSize: 12.5,
-    fontWeight: "800",
-    color: "#374151",
-    marginBottom: 8,
-  },
-  requiredMark: {
-    color: "#ef4444",
-  },
+  topBarLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  logoSmall: { width: 30, height: 30, resizeMode: "contain" },
+  brandText: { fontSize: 16, fontWeight: "900", color: NAVY },
+  brandAccent: { color: "#c99700" },
+  iconButton: { width: 38, height: 38, borderRadius: 12, backgroundColor: "#f3f4f6" },
+  scrollContent: { padding: 20, paddingBottom: 30 },
+  pageTitle: { fontSize: 20, fontWeight: "900", color: NAVY, marginBottom: 4 },
+  pageSubtitle: { fontSize: 12.5, color: "#9ca3af", marginBottom: 22 },
+  label: { fontSize: 12.5, fontWeight: "800", color: "#374151", marginBottom: 8 },
+  requiredMark: { color: "#ef4444" },
   input: {
     backgroundColor: "white",
     borderWidth: 1.5,
@@ -305,15 +301,8 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginBottom: 16,
   },
-  selectText: {
-    fontSize: 13.5,
-    color: "#374151",
-    fontWeight: "600",
-  },
-  selectArrow: {
-    fontSize: 18,
-    color: "#9ca3af",
-  },
+  selectText: { fontSize: 13.5, color: "#374151", fontWeight: "600" },
+  selectArrow: { fontSize: 18, color: "#9ca3af" },
   uploadBox: {
     backgroundColor: "white",
     borderWidth: 1.5,
@@ -324,121 +313,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  uploadBoxError: {
-    borderColor: "#ef4444",
-    backgroundColor: "#fef2f2",
-  },
-  uploadIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  uploadText: {
-    fontSize: 13.5,
-    fontWeight: "700",
-    color: "#374151",
-  },
-  uploadTextError: {
-    color: "#ef4444",
-  },
-  uploadSubtext: {
-    fontSize: 11,
-    color: "#9ca3af",
-    marginTop: 3,
-  },
-  uploadSubtextError: {
-    color: "#f87171",
-  },
-  errorText: {
-    fontSize: 11.5,
-    fontWeight: "800",
-    color: "#ef4444",
-    marginBottom: 14,
-  },
-  previewImage: {
-    width: "100%",
-    height: 160,
-    borderRadius: 12,
-    resizeMode: "cover",
-  },
+  uploadBoxError: { borderColor: "#ef4444", backgroundColor: "#fef2f2" },
+  uploadText: { fontSize: 13.5, fontWeight: "700", color: "#374151" },
+  uploadTextError: { color: "#ef4444" },
+  uploadedText: { fontSize: 11, fontWeight: "700", color: "#22c55e", marginTop: 8 },
+  uploadSubtext: { fontSize: 11, color: "#9ca3af", marginTop: 3 },
+  uploadSubtextError: { color: "#f87171" },
+  errorText: { fontSize: 11.5, fontWeight: "800", color: "#ef4444", marginBottom: 14 },
+  previewImage: { width: "100%", height: 160, borderRadius: 12, resizeMode: "cover" },
   aiNote: {
-    flexDirection: "row",
     backgroundColor: "#eff6ff",
     borderRadius: 12,
     padding: 12,
-    gap: 8,
-    marginBottom: 20,
-    alignItems: "center",
-  },
-  aiNoteIcon: {
-    fontSize: 16,
-  },
-  aiNoteText: {
-    flex: 1,
-    fontSize: 11,
-    color: "#1e40af",
-    lineHeight: 16,
-  },
-  submitButton: {
-    backgroundColor: "#ef4444",
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  submitButtonDisabled: {
-    backgroundColor: "#fca5a5",
-  },
-  submitButtonText: {
-    color: "white",
-    fontWeight: "900",
-    fontSize: 15,
-  },
-  successCard: {
-    backgroundColor: "white",
-    borderRadius: 20,
-    padding: 32,
-    alignItems: "center",
-    marginTop: 60,
-  },
-  successIconBox: {
-    width: 70,
-    height: 70,
-    borderRadius: 20,
-    backgroundColor: "#ecfdf5",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  successIcon: {
-    fontSize: 30,
-  },
-  successTitle: {
-    fontSize: 18,
-    fontWeight: "900",
-    color: NAVY,
-    marginBottom: 6,
-  },
-  successMessage: {
-    fontSize: 13,
-    color: "#9ca3af",
-    textAlign: "center",
     marginBottom: 20,
   },
-  successButton: {
-    backgroundColor: NAVY,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-  },
-  successButtonText: {
-    color: "white",
-    fontWeight: "800",
-    fontSize: 13,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(13,19,63,0.6)",
-    justifyContent: "flex-end",
-  },
+  aiNoteText: { fontSize: 11, color: "#1e40af", lineHeight: 16 },
+  submitButton: { backgroundColor: "#ef4444", borderRadius: 16, paddingVertical: 16, alignItems: "center" },
+  submitButtonDisabled: { backgroundColor: "#fca5a5" },
+  submitButtonText: { color: "white", fontWeight: "900", fontSize: 15 },
+  successCard: { backgroundColor: "white", borderRadius: 20, padding: 32, alignItems: "center", marginTop: 60 },
+  successTitle: { fontSize: 18, fontWeight: "900", color: NAVY, marginBottom: 6 },
+  successMessage: { fontSize: 13, color: "#9ca3af", textAlign: "center", marginBottom: 20 },
+  successButton: { backgroundColor: NAVY, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 24 },
+  successButtonText: { color: "white", fontWeight: "800", fontSize: 13 },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(13,19,63,0.6)", justifyContent: "flex-end" },
   modalCard: {
     backgroundColor: "white",
     borderTopLeftRadius: 28,
@@ -447,21 +345,8 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
     maxHeight: "70%",
   },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#e5e7eb",
-    alignSelf: "center",
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: "900",
-    color: NAVY,
-    textAlign: "center",
-    marginBottom: 16,
-  },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#e5e7eb", alignSelf: "center", marginBottom: 16 },
+  modalTitle: { fontSize: 16, fontWeight: "900", color: NAVY, textAlign: "center", marginBottom: 16 },
   categoryOption: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -470,20 +355,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#f3f4f6",
   },
-  categoryOptionText: {
-    fontSize: 14,
-    color: "#374151",
-    fontWeight: "600",
-  },
-  categoryOptionTextActive: {
-    color: NAVY,
-    fontWeight: "800",
-  },
-  checkMark: {
-    fontSize: 16,
-    color: NAVY,
-    fontWeight: "900",
-  },
+  categoryOptionText: { fontSize: 14, color: "#374151", fontWeight: "600" },
+  categoryOptionTextActive: { color: NAVY, fontWeight: "800" },
+  checkMark: { fontSize: 16, color: NAVY, fontWeight: "900" },
   bottomNav: {
     flexDirection: "row",
     backgroundColor: "white",
@@ -492,18 +366,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingBottom: 16,
   },
-  navItem: {
-    flex: 1,
-    alignItems: "center",
-  },
-  navIcon: {
-    fontSize: 20,
-    marginBottom: 3,
-    opacity: 0.4,
-  },
-  navLabel: {
-    fontSize: 10,
-    color: "#9ca3af",
-    fontWeight: "600",
-  },
+  navItem: { flex: 1, alignItems: "center" },
+  navLabel: { fontSize: 10, color: "#9ca3af", fontWeight: "600" },
 });
