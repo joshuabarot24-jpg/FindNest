@@ -10,6 +10,7 @@ import {
   Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import api from "../lib/api";
 
 interface FoundItem {
@@ -44,6 +45,8 @@ function statusLabel(status: string) {
       return "Searching";
   }
 }
+
+const NAVY = "#1a237e";
 
 export default function BrowseScreen({ navigation }: any) {
   const [activeTab, setActiveTab] = useState<"browse" | "history">("browse");
@@ -96,7 +99,9 @@ export default function BrowseScreen({ navigation }: any) {
             FIND<Text style={styles.brandAccent}>NEST</Text>
           </Text>
         </View>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Support")} />
+        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Support")}>
+          <Ionicons name="help-circle-outline" size={20} color="#374151" />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.tabRow}>
@@ -105,7 +110,7 @@ export default function BrowseScreen({ navigation }: any) {
           onPress={() => setActiveTab("browse")}
         >
           <Text style={[styles.tabText, activeTab === "browse" && styles.tabTextActive]}>
-            Browse Found Items
+            My Found Items
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -122,20 +127,16 @@ export default function BrowseScreen({ navigation }: any) {
 
         {activeTab === "browse" ? (
           <>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search found items..."
-              placeholderTextColor="#9ca3af"
-              value={search}
-              onChangeText={setSearch}
-            />
-
-            <TouchableOpacity
-              style={styles.reportFoundButton}
-              onPress={() => navigation.navigate("ReportFound")}
-            >
-              <Text style={styles.reportFoundText}>Report Found Item</Text>
-            </TouchableOpacity>
+            <View style={styles.searchBox}>
+              <Ionicons name="search-outline" size={18} color="#9ca3af" style={{ marginRight: 8 }} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search found items..."
+                placeholderTextColor="#9ca3af"
+                value={search}
+                onChangeText={setSearch}
+              />
+            </View>
 
             {foundLoading ? (
               <Text style={styles.loadingText}>Loading found items...</Text>
@@ -152,19 +153,23 @@ export default function BrowseScreen({ navigation }: any) {
                       {item.photo_url ? (
                         <Image source={{ uri: item.photo_url }} style={styles.itemImage} />
                       ) : (
-                        <Text style={styles.noPhotoText}>No Photo</Text>
+                        <Ionicons name="image-outline" size={20} color="#9ca3af" />
                       )}
                     </View>
                     <View style={styles.itemTextBox}>
                       <Text style={styles.itemName}>{item.item_name}</Text>
-                      <Text style={styles.itemLocation}>Location: {item.location_found}</Text>
+                      <View style={styles.itemLocationRow}>
+                        <Ionicons name="location-outline" size={12} color="#9ca3af" />
+                        <Text style={styles.itemLocation}>{item.location_found}</Text>
+                      </View>
                     </View>
-                    <Text style={styles.itemArrow}>›</Text>
+                    <Ionicons name="chevron-forward" size={20} color="#d1d5db" />
                   </TouchableOpacity>
                 ))}
 
                 {filtered.length === 0 && (
                   <View style={styles.emptyState}>
+                    <Ionicons name="cube-outline" size={32} color="#d1d5db" />
                     <Text style={styles.emptyText}>No items found</Text>
                   </View>
                 )}
@@ -182,6 +187,7 @@ export default function BrowseScreen({ navigation }: any) {
               <Text style={styles.loadingText}>Loading your reports...</Text>
             ) : myReports.length === 0 ? (
               <View style={styles.emptyState}>
+                <Ionicons name="document-text-outline" size={32} color="#d1d5db" />
                 <Text style={styles.emptyText}>You haven't reported any lost items yet</Text>
               </View>
             ) : (
@@ -219,7 +225,7 @@ export default function BrowseScreen({ navigation }: any) {
                   {selectedItem.photo_url ? (
                     <Image source={{ uri: selectedItem.photo_url }} style={styles.modalImage} />
                   ) : (
-                    <Text style={styles.noPhotoText}>No Photo</Text>
+                    <Ionicons name="image-outline" size={30} color="#9ca3af" />
                   )}
                 </View>
                 <Text style={styles.modalItemName}>{selectedItem.item_name}</Text>
@@ -258,23 +264,25 @@ export default function BrowseScreen({ navigation }: any) {
 
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
+          <Ionicons name="home-outline" size={22} color="#9ca3af" />
           <Text style={styles.navLabel}>Home</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Browse")}>
+          <Ionicons name="search" size={22} color={NAVY} />
           <Text style={styles.navLabelActive}>Browse</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ClaimStatus")}>
+          <Ionicons name="document-text-outline" size={22} color="#9ca3af" />
           <Text style={styles.navLabel}>Status</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Profile")}>
+          <Ionicons name="person-outline" size={22} color="#9ca3af" />
           <Text style={styles.navLabel}>Profile</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
-
-const NAVY = "#1a237e";
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f8f9fc" },
@@ -292,34 +300,36 @@ const styles = StyleSheet.create({
   logoSmall: { width: 30, height: 30, resizeMode: "contain" },
   brandText: { fontSize: 16, fontWeight: "900", color: NAVY },
   brandAccent: { color: "#c99700" },
-  iconButton: { width: 38, height: 38, borderRadius: 12, backgroundColor: "#f3f4f6" },
+  iconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   tabRow: { flexDirection: "row", backgroundColor: "white", paddingHorizontal: 16, paddingTop: 10, gap: 8 },
   tabButton: { flex: 1, paddingVertical: 10, alignItems: "center", borderBottomWidth: 2, borderBottomColor: "transparent" },
   tabButtonActive: { borderBottomColor: NAVY },
   tabText: { fontSize: 12.5, fontWeight: "700", color: "#9ca3af" },
   tabTextActive: { color: NAVY },
   scrollContent: { padding: 20, paddingBottom: 30 },
-  searchInput: {
+  searchBox: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "white",
     borderWidth: 1.5,
     borderColor: "#e5e7eb",
     borderRadius: 14,
     paddingHorizontal: 16,
+    marginBottom: 14,
+  },
+  searchInput: {
+    flex: 1,
     paddingVertical: 13,
     fontSize: 13.5,
     color: "#374151",
-    marginBottom: 14,
   },
-  reportFoundButton: {
-    backgroundColor: "white",
-    borderWidth: 1.5,
-    borderColor: "#22c55e",
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  reportFoundText: { color: "#22c55e", fontWeight: "800", fontSize: 13.5 },
   loadingText: { color: "#9ca3af", fontSize: 13, textAlign: "center", marginTop: 20 },
   itemRow: {
     flexDirection: "row",
@@ -342,12 +352,11 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   itemImage: { width: "100%", height: "100%" },
-  noPhotoText: { fontSize: 7, fontWeight: "700", color: "#9ca3af", textAlign: "center" },
   itemTextBox: { flex: 1 },
   itemName: { fontSize: 13.5, fontWeight: "800", color: "#374151" },
-  itemLocation: { fontSize: 11.5, color: "#9ca3af", marginTop: 2 },
-  itemArrow: { fontSize: 22, color: "#d1d5db" },
-  emptyState: { alignItems: "center", paddingVertical: 60 },
+  itemLocationRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 },
+  itemLocation: { fontSize: 11.5, color: "#9ca3af" },
+  emptyState: { alignItems: "center", paddingVertical: 60, gap: 8 },
   emptyText: { color: "#9ca3af", fontWeight: "700" },
   historyHeading: { fontSize: 18, fontWeight: "900", color: NAVY, marginBottom: 4 },
   historySubheading: { fontSize: 12, color: "#9ca3af", marginBottom: 18 },
@@ -402,7 +411,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingBottom: 16,
   },
-  navItem: { flex: 1, alignItems: "center" },
+  navItem: { flex: 1, alignItems: "center", gap: 3 },
   navLabel: { fontSize: 10, color: "#9ca3af", fontWeight: "600" },
   navLabelActive: { fontSize: 10, color: NAVY, fontWeight: "800" },
 });
