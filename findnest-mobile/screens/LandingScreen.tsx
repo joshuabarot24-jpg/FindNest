@@ -7,38 +7,22 @@ import {
   SafeAreaView,
   Image,
   ScrollView,
-  Dimensions,
 } from "react-native";
-
-const { width } = Dimensions.get("window");
+import { Ionicons } from "@expo/vector-icons";
 
 export default function LandingScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.bgGlowTop} />
-        <View style={styles.bgGlowBottom} />
-        <View style={styles.tagWrapper}>
-          <View style={styles.tagNotch} />
 
-          <View style={styles.tagCard}>
-            <View style={styles.perforationRow}>
-              {Array.from({ length: 14 }).map((_, i) => (
-                <View key={i} style={styles.perfDot} />
-              ))}
-            </View>
-
-            <View style={styles.tagBody}>
-              <View style={styles.logoBox}>
-                <Image source={require("../assets/icon.png")} style={styles.logo} />
-              </View>
-
-              <Text style={styles.brand}>
-                FIND<Text style={styles.brandAccent}>NEST</Text>
-              </Text>
-              <Text style={styles.tagLabel}>Securing and Verifying Campus Recoveries</Text>
-            </View>
+        <View style={styles.logoWrap}>
+          <View style={styles.logoBox}>
+            <Image source={require("../assets/icon.png")} style={styles.logo} />
           </View>
+          <Text style={styles.brand}>
+            FIND<Text style={styles.brandAccent}>NEST</Text>
+          </Text>
+          <Text style={styles.tagLabel}>SJDM Cornerstone College Inc.</Text>
         </View>
 
         <Text style={styles.title}>
@@ -53,40 +37,47 @@ export default function LandingScreen({ navigation }: any) {
 
         <View style={styles.actionRow}>
           <TouchableOpacity
-            style={styles.lostButton}
+            style={styles.lostCard}
             activeOpacity={0.85}
             onPress={() => navigation.navigate("StudentLogin")}
           >
+            <View style={styles.actionIconCircle}>
+              <Ionicons name="alert-circle-outline" size={24} color="white" />
+            </View>
             <Text style={styles.actionTitle}>Report Lost</Text>
             <Text style={styles.actionSub}>Something missing?</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.foundButton}
+            style={styles.foundCard}
             activeOpacity={0.85}
             onPress={() => navigation.navigate("StudentLogin")}
           >
+            <View style={[styles.actionIconCircle, styles.actionIconCircleAlt]}>
+              <Ionicons name="search-outline" size={24} color="#1a237e" />
+            </View>
             <Text style={[styles.actionTitle, styles.actionTitleAlt]}>Found Item</Text>
             <Text style={styles.actionSubAlt}>Turn it in here</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.manifestCard}>
-          <View style={styles.manifestRow}>
-            <View style={styles.manifestStat}>
-              <Text style={styles.statNumber}>675+</Text>
-              <Text style={styles.statLabel}>STUDENTS</Text>
-            </View>
-            <View style={styles.manifestDivider} />
-            <View style={styles.manifestStat}>
-              <Text style={styles.statNumber}>AI</Text>
-              <Text style={styles.statLabel}>POWERED</Text>
-            </View>
-            <View style={styles.manifestDivider} />
-            <View style={styles.manifestStat}>
-              <Text style={styles.statNumber}>24/7</Text>
-              <Text style={styles.statLabel}>ALERTS</Text>
-            </View>
+        <View style={styles.statsCard}>
+          <View style={styles.statBlock}>
+            <Ionicons name="people-outline" size={20} color="#ffd700" />
+            <Text style={styles.statNumber}>675+</Text>
+            <Text style={styles.statLabel}>Students</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statBlock}>
+            <Ionicons name="sparkles-outline" size={20} color="#ffd700" />
+            <Text style={styles.statNumber}>AI</Text>
+            <Text style={styles.statLabel}>Powered</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statBlock}>
+            <Ionicons name="notifications-outline" size={20} color="#ffd700" />
+            <Text style={styles.statNumber}>24/7</Text>
+            <Text style={styles.statLabel}>Alerts</Text>
           </View>
         </View>
 
@@ -96,6 +87,7 @@ export default function LandingScreen({ navigation }: any) {
           onPress={() => navigation.navigate("StudentLogin")}
         >
           <Text style={styles.loginButtonText}>LOG IN</Text>
+          <Ionicons name="arrow-forward" size={18} color="#1a237e" />
         </TouchableOpacity>
 
         <Text style={styles.footerText}>
@@ -108,8 +100,8 @@ export default function LandingScreen({ navigation }: any) {
 
 const NAVY = "#1a237e";
 const GOLD = "#ffd700";
-const CREAM = "#fff8e1";
-const RED = "#e63946";
+const RED = "#ef4444";
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -118,108 +110,47 @@ const styles = StyleSheet.create({
   scrollContent: {
     alignItems: "center",
     padding: 24,
-    paddingTop: 36,
+    paddingTop: 40,
     paddingBottom: 48,
   },
-  bgGlowTop: {
-    position: "absolute",
-    top: -60,
-    right: -60,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: "rgba(255,215,0,0.06)",
-  },
-  bgGlowBottom: {
-    position: "absolute",
-    bottom: 200,
-    left: -80,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: "rgba(34,197,94,0.05)",
-  },
-  tagWrapper: {
+  logoWrap: {
     alignItems: "center",
-    marginBottom: 28,
-  },
-  tagNotch: {
-    width: 28,
-    height: 14,
-    backgroundColor: NAVY,
-    borderBottomLeftRadius: 14,
-    borderBottomRightRadius: 14,
-    borderWidth: 2,
-    borderColor: "rgba(255,215,0,0.3)",
-    borderTopWidth: 0,
-    marginBottom: -2,
-    zIndex: 2,
-  },
-  tagCard: {
-    backgroundColor: CREAM,
-    borderRadius: 24,
-    width: width * 0.62,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10,
-    borderWidth: 2,
-    borderColor: "rgba(26,35,126,0.08)",
-    transform: [{ rotate: "-1.2deg" }],
-  },
-  perforationRow: {
-    flexDirection: "row",
-    justifyContent: "space-evenly",
-    paddingTop: 14,
-    paddingHorizontal: 16,
-  },
-  perfDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: "rgba(26,35,126,0.18)",
-  },
-  tagBody: {
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 22,
+    marginBottom: 32,
   },
   logoBox: {
-    width: 76,
-    height: 76,
-    borderRadius: 20,
+    width: 84,
+    height: 84,
+    borderRadius: 22,
     backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 14,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 6,
   },
   logo: {
-    width: 56,
-    height: 56,
+    width: 60,
+    height: 60,
     resizeMode: "contain",
   },
   brand: {
-    fontSize: 19,
+    fontSize: 22,
     fontWeight: "900",
-    color: NAVY,
+    color: "white",
     letterSpacing: 1.5,
   },
   brandAccent: {
-    color: "#c99700",
+    color: GOLD,
   },
   tagLabel: {
-    fontSize: 9,
-    fontWeight: "800",
-    color: "rgba(26,35,126,0.45)",
-    letterSpacing: 2,
-    marginTop: 4,
+    fontSize: 11,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.55)",
+    marginTop: 6,
+    letterSpacing: 0.5,
   },
   title: {
     fontSize: 30,
@@ -244,85 +175,100 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: "row",
     gap: 12,
-    marginBottom: 22,
+    marginBottom: 24,
     width: "100%",
   },
-  lostButton: {
+  lostCard: {
     flex: 1,
     backgroundColor: RED,
-    paddingVertical: 18,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    borderBottomWidth: 3,
-    borderBottomColor: "#b71c2c",
+    padding: 20,
+    borderRadius: 22,
+    shadowColor: RED,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  foundButton: {
+  foundCard: {
     flex: 1,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    paddingVertical: 18,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,215,0,0.35)",
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 22,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  actionIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.22)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  actionIconCircleAlt: {
+    backgroundColor: "rgba(26,35,126,0.08)",
   },
   actionTitle: {
     color: "white",
     fontWeight: "800",
-    fontSize: 14,
-    marginBottom: 2,
+    fontSize: 15,
+    marginBottom: 3,
   },
   actionTitleAlt: {
-    color: GOLD,
+    color: NAVY,
   },
   actionSub: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 10.5,
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 11,
   },
   actionSubAlt: {
-    color: "#9fa8da",
-    fontSize: 10.5,
+    color: "#6b7280",
+    fontSize: 11,
   },
-  manifestCard: {
+  statsCard: {
     width: "100%",
     backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 20,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: "rgba(255,215,0,0.15)",
-    paddingVertical: 18,
+    paddingVertical: 20,
     paddingHorizontal: 12,
     marginBottom: 28,
-    alignItems: "center",
-  },
-  manifestRow: {
     flexDirection: "row",
     alignItems: "center",
-    width: "100%",
-    justifyContent: "center",
   },
-  manifestStat: {
+  statBlock: {
     flex: 1,
     alignItems: "center",
+    gap: 4,
   },
-  manifestDivider: {
+  statDivider: {
     width: 1,
-    height: 28,
+    height: 36,
     backgroundColor: "rgba(255,255,255,0.15)",
   },
   statNumber: {
-    fontSize: 21,
+    fontSize: 18,
     fontWeight: "900",
-    color: GOLD,
+    color: "white",
   },
   statLabel: {
     fontSize: 9,
     color: "#9fa8da",
-    marginTop: 3,
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   loginButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
     backgroundColor: GOLD,
     paddingVertical: 17,
-    paddingHorizontal: 70,
+    paddingHorizontal: 60,
     borderRadius: 50,
     marginBottom: 18,
     shadowColor: GOLD,
@@ -335,8 +281,7 @@ const styles = StyleSheet.create({
     color: NAVY,
     fontWeight: "900",
     fontSize: 15,
-    letterSpacing: 2,
-    textAlign: "center",
+    letterSpacing: 1.5,
   },
   footerText: {
     color: "#7986cb",
