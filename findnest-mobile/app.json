@@ -20,6 +20,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow FindNest to access your photos to attach a photo to your report.",
+          "cameraPermission": "Allow FindNest to access your camera to take a photo of your item."
+        }
+      ]
+    ]
   }
 }
