@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import api from "../lib/api";
 
 interface Claim {
@@ -54,11 +55,7 @@ function statusLabel(status: string) {
 }
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return new Date(dateStr).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
 const NAVY = "#1a237e";
@@ -88,10 +85,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
     const item = claim.match?.found_record || claim.match?.lost_report;
     return {
       name: item?.item_name || "Unknown Item",
-      location:
-        claim.match?.found_record?.location_found ||
-        claim.match?.lost_report?.location_lost ||
-        "Unknown",
+      location: claim.match?.found_record?.location_found || claim.match?.lost_report?.location_lost || "Unknown",
     };
   };
 
@@ -107,7 +101,9 @@ export default function ClaimStatusScreen({ navigation }: any) {
             FIND<Text style={styles.brandAccent}>NEST</Text>
           </Text>
         </View>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Support")} />
+        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Support")}>
+          <Ionicons name="help-circle-outline" size={20} color="#374151" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -119,16 +115,12 @@ export default function ClaimStatusScreen({ navigation }: any) {
           <Text style={styles.loadingText}>Loading claims...</Text>
         ) : claims.length === 0 ? (
           <View style={styles.emptyState}>
+            <Ionicons name="document-text-outline" size={32} color="#d1d5db" />
             <Text style={styles.emptyText}>No claims submitted yet</Text>
           </View>
         ) : (
           <>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.carousel}
-              contentContainerStyle={{ paddingRight: 8 }}
-            >
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carousel} contentContainerStyle={{ paddingRight: 8 }}>
               {claims.map((claim) => {
                 const info = getItemInfo(claim);
                 const status = statusLabel(claim.claim_status);
@@ -159,9 +151,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
                 <View style={styles.bannerCard}>
                   <View style={styles.bannerTextBox}>
                     <Text style={styles.bannerName}>{getItemInfo(selected).name}</Text>
-                    <Text style={styles.bannerSub}>
-                      {getItemInfo(selected).location} · {formatDate(selected.created_at)}
-                    </Text>
+                    <Text style={styles.bannerSub}>{getItemInfo(selected).location} · {formatDate(selected.created_at)}</Text>
                   </View>
                   {selected.claim_status !== "rejected" && (
                     <View style={styles.bannerPercentBox}>
@@ -173,10 +163,9 @@ export default function ClaimStatusScreen({ navigation }: any) {
 
                 {selected.claim_status === "rejected" ? (
                   <View style={styles.rejectedCard}>
+                    <Ionicons name="close-circle" size={22} color="#dc2626" style={{ marginBottom: 6 }} />
                     <Text style={styles.rejectedTitle}>Claim Rejected</Text>
-                    {selected.admin_notes && (
-                      <Text style={styles.rejectedText}>Reason: {selected.admin_notes}</Text>
-                    )}
+                    {selected.admin_notes && <Text style={styles.rejectedText}>Reason: {selected.admin_notes}</Text>}
                   </View>
                 ) : (
                   <View style={styles.timelineWrap}>
@@ -187,21 +176,16 @@ export default function ClaimStatusScreen({ navigation }: any) {
                       const isDone = stepNumber <= currentStep;
 
                       return (
-                        <View
-                          key={step.key}
-                          style={[
-                            styles.timelineCard,
-                            isCurrent && styles.timelineCardCurrent,
-                            !isDone && styles.timelineCardInactive,
-                          ]}
-                        >
+                        <View key={step.key} style={[styles.timelineCard, isCurrent && styles.timelineCardCurrent, !isDone && styles.timelineCardInactive]}>
                           <View style={[styles.timelineBadge, (isComplete || isCurrent) && styles.timelineBadgeDone]}>
-                            <Text style={styles.timelineBadgeText}>{isComplete ? "✓" : stepNumber}</Text>
+                            {isComplete ? (
+                              <Ionicons name="checkmark" size={16} color="white" />
+                            ) : (
+                              <Text style={styles.timelineBadgeText}>{stepNumber}</Text>
+                            )}
                           </View>
                           <View style={styles.timelineTextBox}>
-                            <Text style={[styles.timelineLabel, isDone && styles.timelineLabelDone]}>
-                              {step.label}
-                            </Text>
+                            <Text style={[styles.timelineLabel, isDone && styles.timelineLabelDone]}>{step.label}</Text>
                             <Text style={styles.timelineDesc}>{step.desc}</Text>
                           </View>
                           {isCurrent && (
@@ -217,6 +201,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
 
                 {selected.claim_status === "approved" && (
                   <View style={styles.actionAlert}>
+                    <Ionicons name="checkmark-circle-outline" size={18} color="#15803d" style={{ marginRight: 8 }} />
                     <Text style={styles.actionAlertText}>
                       Visit the Guidance Office to collect your item
                       {selected.claimed_at && ` — approved ${formatDate(selected.claimed_at)}`}
@@ -231,15 +216,19 @@ export default function ClaimStatusScreen({ navigation }: any) {
 
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
+          <Ionicons name="home-outline" size={22} color="#9ca3af" />
           <Text style={styles.navLabel}>Home</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Browse")}>
+          <Ionicons name="search-outline" size={22} color="#9ca3af" />
           <Text style={styles.navLabel}>Browse</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ClaimStatus")}>
+          <Ionicons name="document-text" size={22} color={NAVY} />
           <Text style={styles.navLabelActive}>Status</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Profile")}>
+          <Ionicons name="person-outline" size={22} color="#9ca3af" />
           <Text style={styles.navLabel}>Profile</Text>
         </TouchableOpacity>
       </View>
@@ -249,100 +238,53 @@ export default function ClaimStatusScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f8f9fc" },
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
+  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingVertical: 14, backgroundColor: "white", borderBottomWidth: 1, borderBottomColor: "#f0f0f0" },
   topBarLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   logoSmall: { width: 30, height: 30, resizeMode: "contain" },
   brandText: { fontSize: 16, fontWeight: "900", color: NAVY },
   brandAccent: { color: "#c99700" },
-  iconButton: { width: 38, height: 38, borderRadius: 12, backgroundColor: "#f3f4f6" },
+  iconButton: { width: 38, height: 38, borderRadius: 12, backgroundColor: "#f3f4f6", justifyContent: "center", alignItems: "center" },
   scrollContent: { padding: 20, paddingBottom: 30 },
   pageTitle: { fontSize: 20, fontWeight: "900", color: NAVY, marginBottom: 4 },
   pageSubtitle: { fontSize: 12.5, color: "#9ca3af", marginBottom: 18 },
   loadingText: { color: "#9ca3af", fontSize: 13, textAlign: "center", marginTop: 20 },
-  emptyState: { alignItems: "center", paddingVertical: 60 },
+  emptyState: { alignItems: "center", paddingVertical: 60, gap: 8 },
   emptyText: { color: "#9ca3af", fontWeight: "700" },
   carousel: { marginBottom: 18 },
-  carouselCard: {
-    width: 130,
-    backgroundColor: "white",
-    borderRadius: 18,
-    padding: 14,
-    marginRight: 10,
-    borderWidth: 1.5,
-    borderColor: "#f0f0f0",
-  },
+  carouselCard: { width: 130, backgroundColor: "white", borderRadius: 18, padding: 14, marginRight: 10, borderWidth: 1.5, borderColor: "#f0f0f0" },
   carouselCardActive: { borderColor: NAVY, backgroundColor: "#eef2ff" },
   carouselName: { fontSize: 12.5, fontWeight: "800", color: "#374151", marginBottom: 8 },
   carouselPill: { borderRadius: 20, paddingVertical: 3, paddingHorizontal: 8, alignSelf: "flex-start", marginBottom: 10 },
   carouselPillText: { fontSize: 9, fontWeight: "800" },
   carouselRing: { height: 4, borderRadius: 2, backgroundColor: "#f3f4f6", overflow: "hidden" },
   carouselRingFill: { height: 4, borderRadius: 2, backgroundColor: NAVY },
-  bannerCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 16,
-    backgroundColor: NAVY,
-  },
+  bannerCard: { flexDirection: "row", alignItems: "center", borderRadius: 20, padding: 18, marginBottom: 16, backgroundColor: NAVY },
   bannerTextBox: { flex: 1 },
   bannerName: { color: "white", fontWeight: "900", fontSize: 16 },
   bannerSub: { color: "rgba(255,255,255,0.8)", fontSize: 11.5, marginTop: 2 },
   bannerPercentBox: { alignItems: "center" },
   bannerPercent: { color: "white", fontWeight: "900", fontSize: 20 },
   bannerPercentLabel: { color: "rgba(255,255,255,0.7)", fontSize: 9, fontWeight: "800", letterSpacing: 1 },
-  rejectedCard: { backgroundColor: "#fef2f2", borderRadius: 16, padding: 16, marginBottom: 16 },
+  rejectedCard: { backgroundColor: "#fef2f2", borderRadius: 16, padding: 16, marginBottom: 16, alignItems: "center" },
   rejectedTitle: { color: "#dc2626", fontWeight: "900", fontSize: 14, marginBottom: 4 },
-  rejectedText: { color: "#b91c1c", fontSize: 12.5 },
+  rejectedText: { color: "#b91c1c", fontSize: 12.5, textAlign: "center" },
   timelineWrap: { gap: 10 },
-  timelineCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1.5,
-    borderColor: "#f0f0f0",
-  },
+  timelineCard: { flexDirection: "row", alignItems: "center", backgroundColor: "white", borderRadius: 16, padding: 14, borderWidth: 1.5, borderColor: "#f0f0f0" },
   timelineCardCurrent: { borderColor: NAVY, backgroundColor: "#eef2ff" },
   timelineCardInactive: { opacity: 0.5 },
-  timelineBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "#f3f4f6",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
+  timelineBadge: { width: 32, height: 32, borderRadius: 10, backgroundColor: "#f3f4f6", justifyContent: "center", alignItems: "center", marginRight: 12 },
   timelineBadgeDone: { backgroundColor: NAVY },
-  timelineBadgeText: { fontSize: 13, fontWeight: "800", color: "white" },
+  timelineBadgeText: { fontSize: 13, fontWeight: "800", color: "#9ca3af" },
   timelineTextBox: { flex: 1 },
   timelineLabel: { fontSize: 13, fontWeight: "800", color: "#9ca3af" },
   timelineLabelDone: { color: "#1f2937" },
   timelineDesc: { fontSize: 11, color: "#9ca3af", marginTop: 2 },
   timelineNowTag: { borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: NAVY },
   timelineNowText: { color: "white", fontSize: 9, fontWeight: "900" },
-  actionAlert: { backgroundColor: "#ecfdf5", marginTop: 14, borderRadius: 14, padding: 14 },
-  actionAlertText: { fontSize: 11.5, color: "#15803d", lineHeight: 16 },
-  bottomNav: {
-    flexDirection: "row",
-    backgroundColor: "white",
-    borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
-    paddingVertical: 10,
-    paddingBottom: 16,
-  },
-  navItem: { flex: 1, alignItems: "center" },
+  actionAlert: { flexDirection: "row", alignItems: "center", backgroundColor: "#ecfdf5", marginTop: 14, borderRadius: 14, padding: 14 },
+  actionAlertText: { flex: 1, fontSize: 11.5, color: "#15803d", lineHeight: 16 },
+  bottomNav: { flexDirection: "row", backgroundColor: "white", borderTopWidth: 1, borderTopColor: "#f0f0f0", paddingVertical: 10, paddingBottom: 16 },
+  navItem: { flex: 1, alignItems: "center", gap: 3 },
   navLabel: { fontSize: 10, color: "#9ca3af", fontWeight: "600" },
   navLabelActive: { fontSize: 10, color: NAVY, fontWeight: "800" },
 });
