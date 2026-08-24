@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import api from "../lib/api";
 
 interface NotificationItem {
@@ -31,6 +32,14 @@ function formatTime(dateStr: string) {
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
   return date.toLocaleDateString();
+}
+
+function iconFor(type: string) {
+  const t = type?.toLowerCase() || "";
+  if (t.includes("match")) return "checkmark-circle-outline";
+  if (t.includes("reject")) return "close-circle-outline";
+  if (t.includes("status") || t.includes("claim")) return "document-text-outline";
+  return "notifications-outline";
 }
 
 const NAVY = "#1a237e";
@@ -92,7 +101,9 @@ export default function NotificationsScreen({ navigation }: any) {
             FIND<Text style={styles.brandAccent}>NEST</Text>
           </Text>
         </View>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Support")} />
+        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Support")}>
+          <Ionicons name="help-circle-outline" size={20} color="#374151" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -116,6 +127,7 @@ export default function NotificationsScreen({ navigation }: any) {
           <Text style={styles.loadingText}>Loading notifications...</Text>
         ) : items.length === 0 ? (
           <View style={styles.emptyState}>
+            <Ionicons name="notifications-off-outline" size={32} color="#d1d5db" />
             <Text style={styles.emptyText}>No notifications</Text>
           </View>
         ) : (
@@ -126,6 +138,9 @@ export default function NotificationsScreen({ navigation }: any) {
               onPress={() => handleNotifPress(notif)}
               activeOpacity={0.7}
             >
+              <View style={styles.notifIconBox}>
+                <Ionicons name={iconFor(notif.type) as any} size={20} color={NAVY} />
+              </View>
               <View style={styles.notifTextBox}>
                 <View style={styles.notifTitleRow}>
                   <Text style={styles.notifTitle}>{notif.title}</Text>
@@ -141,15 +156,19 @@ export default function NotificationsScreen({ navigation }: any) {
 
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
+          <Ionicons name="home-outline" size={22} color="#9ca3af" />
           <Text style={styles.navLabel}>Home</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Browse")}>
+          <Ionicons name="search-outline" size={22} color="#9ca3af" />
           <Text style={styles.navLabel}>Browse</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ClaimStatus")}>
+          <Ionicons name="document-text-outline" size={22} color="#9ca3af" />
           <Text style={styles.navLabel}>Status</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Profile")}>
+          <Ionicons name="person-outline" size={22} color="#9ca3af" />
           <Text style={styles.navLabel}>Profile</Text>
         </TouchableOpacity>
       </View>
@@ -159,21 +178,12 @@ export default function NotificationsScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f8f9fc" },
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
+  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingVertical: 14, backgroundColor: "white", borderBottomWidth: 1, borderBottomColor: "#f0f0f0" },
   topBarLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   logoSmall: { width: 30, height: 30, resizeMode: "contain" },
   brandText: { fontSize: 16, fontWeight: "900", color: NAVY },
   brandAccent: { color: "#c99700" },
-  iconButton: { width: 38, height: 38, borderRadius: 12, backgroundColor: "#f3f4f6" },
+  iconButton: { width: 38, height: 38, borderRadius: 12, backgroundColor: "#f3f4f6", justifyContent: "center", alignItems: "center" },
   scrollContent: { padding: 20, paddingBottom: 30 },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
   pageTitle: { fontSize: 20, fontWeight: "900", color: NAVY },
@@ -182,31 +192,18 @@ const styles = StyleSheet.create({
   markAllButton: { alignSelf: "flex-end", marginBottom: 14 },
   markAllText: { fontSize: 12, fontWeight: "800", color: NAVY },
   loadingText: { color: "#9ca3af", fontSize: 13, textAlign: "center", marginTop: 20 },
-  notifCard: {
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
-  },
+  notifCard: { flexDirection: "row", backgroundColor: "white", borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: "#f0f0f0" },
   notifCardUnread: { backgroundColor: "#f5f7ff", borderColor: "#e0e7ff" },
+  notifIconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: "#eef2ff", justifyContent: "center", alignItems: "center", marginRight: 12 },
   notifTextBox: { flex: 1 },
   notifTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   notifTitle: { fontSize: 13.5, fontWeight: "800", color: "#374151" },
   unreadDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#3b82f6" },
   notifMessage: { fontSize: 12, color: "#6b7280", marginTop: 3, lineHeight: 17 },
   notifTime: { fontSize: 10.5, color: "#9ca3af", marginTop: 6 },
-  emptyState: { alignItems: "center", paddingVertical: 60 },
+  emptyState: { alignItems: "center", paddingVertical: 60, gap: 8 },
   emptyText: { color: "#9ca3af", fontWeight: "700" },
-  bottomNav: {
-    flexDirection: "row",
-    backgroundColor: "white",
-    borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
-    paddingVertical: 10,
-    paddingBottom: 16,
-  },
-  navItem: { flex: 1, alignItems: "center" },
+  bottomNav: { flexDirection: "row", backgroundColor: "white", borderTopWidth: 1, borderTopColor: "#f0f0f0", paddingVertical: 10, paddingBottom: 16 },
+  navItem: { flex: 1, alignItems: "center", gap: 3 },
   navLabel: { fontSize: 10, color: "#9ca3af", fontWeight: "600" },
 });
