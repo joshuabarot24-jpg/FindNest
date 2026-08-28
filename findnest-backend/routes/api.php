@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\SystemStatsController;
 use App\Http\Controllers\Api\CaseTrailController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SupportController;
+use App\Http\Controllers\Api\AdminManagementController;
 
 
 Route::prefix('auth')->group(function () {
@@ -115,5 +116,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/support', [SupportController::class, 'store']);
     Route::get('/support', [SupportController::class, 'index']);
     Route::post('/support/{id}/read', [SupportController::class, 'markAsRead']);
+
+    Route::get('/admins', [AdminManagementController::class, 'index']);
+    Route::post('/admins', [AdminManagementController::class, 'store']);
+    Route::get('/admins/{id}', [AdminManagementController::class, 'show']);
+    Route::put('/admins/{id}', [AdminManagementController::class, 'update']);
+    Route::post('/admins/{id}/revoke', [AdminManagementController::class, 'revoke']);
+    Route::post('/admins/{id}/restore', [AdminManagementController::class, 'restore']);
 
 });
