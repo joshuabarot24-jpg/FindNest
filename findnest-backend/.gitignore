@@ -23,3 +23,5 @@ yarn-error.log
 /.zed
 
 firebase-credentials.json
+
+storage/google-cloud-credentials.json

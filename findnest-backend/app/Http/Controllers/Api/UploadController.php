@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\ContentModerationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
@@ -21,14 +22,25 @@ class UploadController extends Controller
 
         $uploadedFile = Cloudinary::uploadApi()->upload(
             $request->file('image')->getRealPath(),
-        [
-            'folder' => 'findnest/' . ($request->folder ?? 'items'),
-            'transformation' => [
-                'quality' => 'auto',
-                'fetch_format' => 'auto',
-            ],
-        ]
-);
+            [
+                'folder' => 'findnest/' . ($request->folder ?? 'items'),
+                'transformation' => [
+                    'quality' => 'auto',
+                    'fetch_format' => 'auto',
+                ],
+            ]
+        );
+
+        $moderationService = new ContentModerationService();
+        $moderationResult = $moderationService->checkImage($uploadedFile['secure_url']);
+
+        if (!$moderationResult['passed']) {
+            Cloudinary::uploadApi()->destroy($uploadedFile['public_id']);
+
+            return response()->json([
+                'message' => $moderationResult['message'],
+            ], 422);
+        }
 
         return response()->json([
             'message' => 'Image uploaded successfully',
