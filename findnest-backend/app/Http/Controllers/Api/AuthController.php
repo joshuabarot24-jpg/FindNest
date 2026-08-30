@@ -3,19 +3,20 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Password;
+use Carbon\Carbon;
 use Illuminate\Support\Str;
-use Illuminate\Auth\Events\PasswordReset;
 
 class AuthController extends Controller
 {
     public function superAdminLogin(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email'    => 'required|email',
+            'email' => 'required|email',
             'password' => 'required|string',
         ]);
 
@@ -28,28 +29,41 @@ class AuthController extends Controller
             ->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Invalid credentials.'], 401);
+            return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
         if (!$user->is_active) {
-            return response()->json(['message' => 'Your account has been deactivated.'], 403);
+            return response()->json(['message' => 'Account is deactivated'], 403);
         }
-
-        $user->update(['last_login_at' => now()]);
 
         $token = $user->createToken('super-admin-token')->plainTextToken;
 
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'Super Admin Login',
+            'target_type' => 'users',
+            'target_id' => $user->id,
+            'details' => 'Super Admin logged in successfully',
+            'performed_by' => 'Super Admin: ' . $user->name,
+            'ip_address' => $request->ip(),
+        ]);
+
         return response()->json([
             'message' => 'Login successful',
-            'token'   => $token,
-            'user'    => $user,
+            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+            ]
         ]);
     }
 
     public function adminLogin(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email'    => 'required|email',
+            'email' => 'required|email',
             'password' => 'required|string',
         ]);
 
@@ -62,21 +76,34 @@ class AuthController extends Controller
             ->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Invalid credentials.'], 401);
+            return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
         if (!$user->is_active) {
-            return response()->json(['message' => 'Your account has been deactivated.'], 403);
+            return response()->json(['message' => 'Account is deactivated'], 403);
         }
-
-        $user->update(['last_login_at' => now()]);
 
         $token = $user->createToken('admin-token')->plainTextToken;
 
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'Admin Login',
+            'target_type' => 'users',
+            'target_id' => $user->id,
+            'details' => 'Admin logged in successfully',
+            'performed_by' => 'Admin: ' . $user->name,
+            'ip_address' => $request->ip(),
+        ]);
+
         return response()->json([
             'message' => 'Login successful',
-            'token'   => $token,
-            'user'    => $user,
+            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+            ]
         ]);
     }
 
@@ -84,7 +111,7 @@ class AuthController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'school_id' => 'required|string',
-            'password'  => 'required|string',
+            'password' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -96,122 +123,87 @@ class AuthController extends Controller
             ->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Invalid credentials.'], 401);
+            return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
         if (!$user->is_active) {
-            return response()->json(['message' => 'Your account has been deactivated.'], 403);
+            return response()->json(['message' => 'Account is deactivated'], 403);
         }
 
-        $user->update(['last_login_at' => now()]);
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $user->update([
+            'otp_code' => $otp,
+            'otp_expires_at' => Carbon::now()->addMinutes(10),
+        ]);
 
-        $token = $user->createToken('student-token')->plainTextToken;
+        Mail::raw("Your FindNest OTP code is: $otp\n\nThis code expires in 10 minutes.\n\nDo not share this code with anyone.", function ($message) use ($user) {
+            $message->to($user->email)
+                ->subject('FindNest — Your OTP Verification Code');
+        });
 
         return response()->json([
-            'message' => 'Login successful',
-            'token'   => $token,
-            'user'    => $user,
+            'message' => 'OTP sent to your registered email',
+            'email' => substr($user->email, 0, 3) . '****@' . explode('@', $user->email)[1],
         ]);
-    }
-
-    public function logout(Request $request)
-    {
-        $request->user()->currentAccessToken()->delete();
-        return response()->json(['message' => 'Logged out successfully']);
-    }
-
-    public function me(Request $request)
-    {
-        return response()->json(['user' => $request->user()]);
-    }
-
-    public function forgotPassword(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email|exists:users,email',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $status = Password::sendResetLink($request->only('email'));
-
-        if ($status === Password::RESET_LINK_SENT) {
-            return response()->json(['message' => 'Password reset link sent to your email.']);
-        }
-
-        return response()->json(['message' => 'Unable to send reset link.'], 500);
-    }
-
-    public function resetPassword(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'token'                 => 'required',
-            'email'                 => 'required|email',
-            'password'              => 'required|string|min:8|confirmed',
-            'password_confirmation' => 'required',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
-            function (User $user, string $password) {
-                $user->forceFill([
-                    'password'       => Hash::make($password),
-                    'remember_token' => Str::random(60),
-                ])->save();
-                event(new PasswordReset($user));
-            }
-        );
-
-        if ($status === Password::PASSWORD_RESET) {
-            return response()->json(['message' => 'Password reset successfully.']);
-        }
-
-        return response()->json(['message' => 'Invalid or expired reset token.'], 422);
     }
 
     public function verifyOtp(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'school_id' => 'required|string',
-            'otp_code'  => 'required|string',
+            'otp' => 'required|string|size:6',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user = User::where('school_id', $request->school_id)->first();
+        $user = User::where('school_id', $request->school_id)
+            ->where('role', 'student')
+            ->first();
 
         if (!$user) {
-            return response()->json(['message' => 'User not found.'], 404);
+            return response()->json(['message' => 'Student not found'], 404);
         }
 
-        if ($user->otp_code !== $request->otp_code) {
-            return response()->json(['message' => 'Invalid OTP code.'], 422);
+        if ($user->otp_code !== $request->otp) {
+            return response()->json(['message' => 'Invalid OTP code'], 401);
         }
 
-        if ($user->otp_expires_at && now()->isAfter($user->otp_expires_at)) {
-            return response()->json(['message' => 'OTP has expired.'], 422);
+        if (Carbon::now()->isAfter($user->otp_expires_at)) {
+            return response()->json(['message' => 'OTP has expired. Please request a new one.'], 401);
         }
 
         $user->update([
-            'otp_code'       => null,
+            'otp_code' => null,
             'otp_expires_at' => null,
-            'last_login_at'  => now(),
         ]);
 
         $token = $user->createToken('student-token')->plainTextToken;
 
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'Student Login',
+            'target_type' => 'users',
+            'target_id' => $user->id,
+            'details' => 'Student verified OTP and logged in successfully',
+            'performed_by' => 'Student: ' . $user->name,
+            'ip_address' => $request->ip(),
+        ]);
+
         return response()->json([
-            'message' => 'OTP verified successfully',
-            'token'   => $token,
-            'user'    => $user,
+            'message' => 'Login successful',
+            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'school_id' => $user->school_id,
+                'course' => $user->course,
+                'year_level' => $user->year_level,
+                'trust_score' => $user->trust_score,
+            ]
         ]);
     }
 
@@ -225,19 +217,115 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user = User::where('school_id', $request->school_id)->first();
+        $user = User::where('school_id', $request->school_id)
+            ->where('role', 'student')
+            ->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Student not found'], 404);
+        }
+
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $user->update([
+            'otp_code' => $otp,
+            'otp_expires_at' => Carbon::now()->addMinutes(10),
+        ]);
+
+        Mail::raw("Your FindNest OTP code is: $otp\n\nThis code expires in 10 minutes.\n\nDo not share this code with anyone.", function ($message) use ($user) {
+            $message->to($user->email)
+                ->subject('FindNest — Your OTP Verification Code');
+        });
+
+        return response()->json([
+            'message' => 'New OTP sent to your registered email',
+        ]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'token' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $record = \DB::table('password_reset_tokens')->where('email', $request->email)->first();
+
+        if (!$record) {
+            return response()->json(['message' => 'Invalid or expired reset link.'], 400);
+        }
+
+        if (now()->diffInMinutes($record->created_at) > 60) {
+            \DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+            return response()->json(['message' => 'This reset link has expired. Please request a new one.'], 400);
+        }
+
+        if (!hash_equals($record->token, hash('sha256', $request->token))) {
+            return response()->json(['message' => 'Invalid or expired reset link.'], 400);
+        }
+
+        $user = User::where('email', $request->email)->first();
 
         if (!$user) {
             return response()->json(['message' => 'User not found.'], 404);
         }
 
-        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $user->update(['password' => Hash::make($request->password)]);
 
-        $user->update([
-            'otp_code'       => $otp,
-            'otp_expires_at' => now()->addMinutes(10),
+        \DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        return response()->json(['message' => 'Password reset successfully. You can now log in with your new password.']);
+    }
+
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json(['message' => 'Logged out successfully']);
+    }
+
+    public function me(Request $request)
+    {
+        return response()->json(['user' => $request->user()]);
+    }
+
+        public function forgotPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
         ]);
 
-        return response()->json(['message' => 'OTP resent successfully.']);
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'If that email exists in our system, a reset link has been sent.']);
+        }
+
+        $token = Str::random(64);
+
+        \DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $user->email],
+            ['token' => hash('sha256', $token), 'created_at' => now()]
+        );
+
+        $resetUrl = "http://localhost:3000/reset-password?token={$token}&email=" . urlencode($user->email);
+
+        \Mail::raw(
+            "Hello {$user->name},\n\nWe received a request to reset your FindNest password. Click the link below to set a new password. This link expires in 60 minutes.\n\n{$resetUrl}\n\nIf you did not request this, please ignore this email.",
+            function ($message) use ($user) {
+                $message->to($user->email)->subject('FindNest - Reset Your Password');
+            }
+        );
+
+        return response()->json(['message' => 'If that email exists in our system, a reset link has been sent.']);
     }
+
 }
