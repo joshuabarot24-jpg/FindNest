@@ -1,72 +1,79 @@
 <?php
 namespace App\Services;
 
-use Google\Cloud\Vision\V1\Client\ImageAnnotatorClient;
-use Google\Cloud\Vision\V1\AnnotateImageRequest;
-use Google\Cloud\Vision\V1\Feature;
-use Google\Cloud\Vision\V1\Feature\Type;
-use Google\Cloud\Vision\V1\Image;
-use Google\Cloud\Vision\V1\Likelihood;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ContentModerationService
 {
-    protected $client;
+    protected $apiKey;
+    protected $apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent';
 
     public function __construct()
     {
-        $credentialsPath = base_path(env('GOOGLE_CLOUD_VISION_CREDENTIALS'));
-
-        $this->client = new ImageAnnotatorClient([
-            'credentials' => $credentialsPath,
-        ]);
+        $this->apiKey = env('GEMINI_API_KEY');
     }
 
     public function checkImage(string $imageUrl): array
     {
         try {
-            $image = (new Image())->setContent(file_get_contents($imageUrl));
+            $imageContent = file_get_contents($imageUrl);
+            $base64Image = base64_encode($imageContent);
 
-            $feature = (new Feature())->setType(Type::SAFE_SEARCH_DETECTION);
+            $response = Http::timeout(30)->post($this->apiUrl . '?key=' . $this->apiKey, [
+                'contents' => [
+                    [
+                        'parts' => [
+                            [
+                                'text' => 'Analyze this image and determine if it contains inappropriate content (nudity, violence, graphic content, offensive material, or anything unsuitable for a school lost-and-found system). Respond with ONLY a JSON object in this exact format, no other text: {"appropriate": true or false, "reason": "brief explanation if inappropriate, or empty string if appropriate"}'
+                            ],
+                            [
+                                'inline_data' => [
+                                    'mime_type' => 'image/jpeg',
+                                    'data' => $base64Image,
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]);
 
-            $request = (new AnnotateImageRequest())
-                ->setImage($image)
-                ->setFeatures([$feature]);
+            if (!$response->successful()) {
+                Log::error('Gemini content check failed: ' . $response->body());
+                return [
+                    'passed' => false,
+                    'message' => 'We could not verify this image right now. Please try again in a moment.',
+                ];
+            }
 
-            $response = $this->client->annotateImage($request);
-            $safeSearch = $response->getSafeSearchAnnotation();
+            $data = $response->json();
+            $textResult = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
 
-            $flaggedCategories = [];
+            $cleanedText = preg_replace('/```json\s*|\s*```/', '', $textResult);
+            $cleanedText = trim($cleanedText);
 
-            $checks = [
-                'adult' => $safeSearch->getAdult(),
-                'violence' => $safeSearch->getViolence(),
-                'racy' => $safeSearch->getRacy(),
-                'medical' => $safeSearch->getMedical(),
-                'spoof' => $safeSearch->getSpoof(),
-            ];
+            $result = json_decode($cleanedText, true);
 
-            foreach ($checks as $category => $likelihood) {
-                if ($likelihood === Likelihood::LIKELY || $likelihood === Likelihood::VERY_LIKELY) {
-                    $flaggedCategories[] = $category;
-                }
+            if (!is_array($result) || !isset($result['appropriate'])) {
+                Log::error('Gemini content check returned unexpected format: ' . $textResult);
+                return [
+                    'passed' => false,
+                    'message' => 'We could not verify this image right now. Please try again in a moment.',
+                ];
             }
 
             return [
-                'passed' => count($flaggedCategories) === 0,
-                'flagged_categories' => $flaggedCategories,
-                'message' => count($flaggedCategories) > 0
-                    ? 'This image was flagged as inappropriate (' . implode(', ', $flaggedCategories) . '). Please upload a different photo.'
-                    : 'Image passed content moderation.',
+                'passed' => $result['appropriate'] === true,
+                'message' => $result['appropriate'] === true
+                    ? 'Image passed content moderation.'
+                    : 'This image was flagged as inappropriate' . (!empty($result['reason']) ? ': ' . $result['reason'] : '') . '. Please upload a different photo.',
             ];
         } catch (\Exception $e) {
-            \Log::error('Content moderation check failed: ' . $e->getMessage());
+            Log::error('Content moderation check failed: ' . $e->getMessage());
             return [
                 'passed' => false,
-                'flagged_categories' => [],
                 'message' => 'We could not verify this image right now. Please try again in a moment.',
             ];
-        } finally {
-            $this->client->close();
         }
     }
 }
