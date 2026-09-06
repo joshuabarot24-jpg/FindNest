@@ -96,7 +96,7 @@ class MatchScoreService
         ]);
 
         if ($finalScore >= 80) {
-            $this->notifyStudent($report, $found, $finalScore);
+            $this->notifyStudent($report, $found, $finalScore, $match->id);
         }
     }
 
@@ -161,11 +161,11 @@ class MatchScoreService
         return (int) round(($dateScore + $locationPercent) / 2);
     }
 
-    protected function notifyStudent(LostItemReport $report, FoundItemRecord $found, int $score)
+    protected function notifyStudent(LostItemReport $report, FoundItemRecord $found, int $score, int $matchId)
     {
         Notification::create([
             'user_id' => $report->user_id,
-            'match_id' => null,
+            'match_id' => $matchId,
             'title' => 'Possible Match Found!',
             'message' => 'We found a ' . $score . '% match for your lost "' . $report->item_name . '". Check Claim Status to view the details.',
             'type' => 'match',
