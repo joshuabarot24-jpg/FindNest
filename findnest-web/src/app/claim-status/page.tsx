@@ -23,6 +23,18 @@ interface Claim {
   } | null;
 }
 
+interface PendingMatch {
+  id: number;
+  confidence_score: number;
+  match_status: string;
+  matched_at: string;
+  lost_item: {
+    item_name: string;
+    category: string;
+    location_lost: string;
+  };
+}
+
 function statusStep(status: string) {
   switch (status) {
     case "approved":
@@ -70,6 +82,14 @@ export default function ClaimStatusPage() {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [pendingMatches, setPendingMatches] = useState<PendingMatch[]>([]);
+  const [matchesLoading, setMatchesLoading] = useState(true);
+
+  const [claimingMatch, setClaimingMatch] = useState<PendingMatch | null>(null);
+  const [proofDescription, setProofDescription] = useState("");
+  const [claimSubmitting, setClaimSubmitting] = useState(false);
+  const [claimError, setClaimError] = useState("");
+
   useEffect(() => {
     const stored = localStorage.getItem("findnest_user");
     if (stored) {
@@ -78,19 +98,61 @@ export default function ClaimStatusPage() {
     }
   }, []);
 
+  const fetchClaims = async () => {
+    try {
+      const response = await api.get("/claims/my-claims");
+      setClaims(response.data.claims || []);
+    } catch (err) {
+      console.error("Error fetching claims:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPendingMatches = async () => {
+    try {
+      const response = await api.get("/ai-matches/my-matches");
+      setPendingMatches(response.data.matches || []);
+    } catch (err) {
+      console.error("Error fetching pending matches:", err);
+    } finally {
+      setMatchesLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchClaims = async () => {
-      try {
-        const response = await api.get("/claims/my-claims");
-        setClaims(response.data.claims || []);
-      } catch (err) {
-        console.error("Error fetching claims:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchClaims();
+    fetchPendingMatches();
   }, []);
+
+  const handleSubmitClaim = async () => {
+    if (!claimingMatch) return;
+    if (!proofDescription.trim()) {
+      setClaimError("Please describe why you believe this item is yours.");
+      return;
+    }
+
+    setClaimError("");
+    setClaimSubmitting(true);
+    try {
+      await api.post("/claims", {
+        match_id: claimingMatch.id,
+        proof_description: proofDescription.trim(),
+      });
+      setClaimingMatch(null);
+      setProofDescription("");
+      fetchClaims();
+      fetchPendingMatches();
+    } catch (err: any) {
+      setClaimError(
+        err.response?.data?.message ||
+          Object.values(err.response?.data?.errors || {}).flat().join(", ") ||
+          "Failed to submit claim. Please try again."
+      );
+    } finally {
+      setClaimSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f8f9fc]">
@@ -124,6 +186,34 @@ export default function ClaimStatusPage() {
           <p className="text-gray-400 text-sm mt-1">Track the progress of your ownership claims</p>
         </div>
 
+        {!matchesLoading && pendingMatches.length > 0 && (
+          <div className="mb-10">
+            <h2 className="text-sm font-black text-gray-700 uppercase tracking-wide mb-4">
+              Possible Matches for Your Lost Items
+            </h2>
+            <div className="space-y-3">
+              {pendingMatches.map((match) => (
+                <div key={match.id} className="bg-green-50 border border-green-100 rounded-2xl p-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <p className="font-black text-green-800">{match.lost_item.item_name}</p>
+                      <p className="text-green-600 text-xs mt-1">
+                        {match.confidence_score}% confidence match &middot; {match.lost_item.category}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { setClaimingMatch(match); setProofDescription(""); setClaimError(""); }}
+                      className="bg-green-600 hover:bg-green-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition whitespace-nowrap"
+                    >
+                      Submit Claim
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="text-center py-20 text-gray-400 text-sm">Loading claims...</div>
         ) : claims.length === 0 ? (
@@ -136,7 +226,7 @@ export default function ClaimStatusPage() {
             {claims.map((claim) => {
               const item = claim.match?.found_record || claim.match?.lost_report;
               const itemName = item?.item_name || "Unknown Item";
-              const photoUrl = item?.photo_url || null;
+              const photoUrl = claim.claim_status === "approved" ? item?.photo_url : null;
               const step = statusStep(claim.claim_status);
 
               return (
@@ -148,7 +238,7 @@ export default function ClaimStatusPage() {
                           <img src={photoUrl} alt={itemName} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-300 text-[10px] font-bold text-center px-1">
-                            No Photo
+                            {claim.claim_status === "approved" ? "No Photo" : "Pending"}
                           </div>
                         )}
                       </div>
@@ -217,6 +307,51 @@ export default function ClaimStatusPage() {
           </div>
         )}
       </main>
+
+      {claimingMatch && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm px-4">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+            <button
+              onClick={() => setClaimingMatch(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none"
+            >
+              &times;
+            </button>
+
+            <h2 className="text-xl font-black text-[#1a237e] mb-1">Submit Claim</h2>
+            <p className="text-gray-400 text-sm mb-6">
+              For your reported "{claimingMatch.lost_item.item_name}"
+            </p>
+
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5">
+              <p className="text-blue-700 text-xs leading-relaxed">
+                Describe specific details only the true owner would know (color, brand, scratches, stickers, contents). You will also be asked a few verification questions after submitting.
+              </p>
+            </div>
+
+            <label className="block text-sm font-bold text-gray-600 mb-2">Your Description</label>
+            <textarea
+              value={proofDescription}
+              onChange={(e) => setProofDescription(e.target.value)}
+              placeholder="Describe why you believe this item belongs to you..."
+              rows={4}
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#1a237e] focus:outline-none transition text-gray-700 resize-none mb-4"
+            />
+
+            {claimError && (
+              <p className="text-red-500 text-xs font-semibold mb-4">{claimError}</p>
+            )}
+
+            <button
+              onClick={handleSubmitClaim}
+              disabled={claimSubmitting}
+              className="w-full bg-[#1a237e] hover:bg-[#283593] text-white font-black py-3.5 rounded-xl transition disabled:opacity-50"
+            >
+              {claimSubmitting ? "Submitting..." : "Submit Claim"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
