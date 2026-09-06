@@ -38,6 +38,33 @@ class AiMatchController extends Controller
         return response()->json(['match' => $match]);
     }
 
+    public function myMatches(Request $request)
+        {
+            $matches = AiMatch::with(['lostReport', 'claim'])
+                ->whereHas('lostReport', function ($query) use ($request) {
+                    $query->where('user_id', $request->user()->id);
+                })
+                ->whereDoesntHave('claim')
+                ->where('confidence_score', '>=', 50)
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($match) {
+                    return [
+                        'id' => $match->id,
+                        'confidence_score' => $match->confidence_score,
+                        'match_status' => $match->match_status,
+                        'matched_at' => $match->matched_at,
+                        'lost_item' => [
+                            'item_name' => $match->lostReport->item_name,
+                            'category' => $match->lostReport->category,
+                            'location_lost' => $match->lostReport->location_lost,
+                        ],
+                    ];
+                });
+
+            return response()->json(['matches' => $matches]);
+        }
+
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -151,4 +178,5 @@ class AiMatchController extends Controller
 
         return response()->json(['message' => 'Match rejected', 'match' => $match]);
     }
+
 }

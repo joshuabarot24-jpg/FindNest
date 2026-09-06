@@ -80,6 +80,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('ai-matches')->group(function () {
         Route::get('/', [AiMatchController::class, 'index']);
+        Route::get('/my-matches', [AiMatchController::class, 'myMatches']);
         Route::get('/{id}', [AiMatchController::class, 'show']);
         Route::post('/', [AiMatchController::class, 'store']);
         Route::post('/{id}/confirm', [AiMatchController::class, 'confirm']);

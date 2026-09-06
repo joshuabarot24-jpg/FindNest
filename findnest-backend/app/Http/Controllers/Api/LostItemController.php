@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Services\ItemDescriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Services\MatchScoreService;
 
 class LostItemController extends Controller
 {
@@ -83,6 +84,9 @@ class LostItemController extends Controller
             'performed_by' => 'Student: ' . $request->user()->name,
             'ip_address' => $request->ip(),
         ]);
+
+        $matchService = new MatchScoreService();
+        $matchService->checkNewLostReport($report);
 
         return response()->json([
             'message' => 'Lost item report submitted successfully',

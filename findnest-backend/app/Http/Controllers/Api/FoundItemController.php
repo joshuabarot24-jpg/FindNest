@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Services\ItemDescriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Services\MatchScoreService;
 
 class FoundItemController extends Controller
 {
@@ -76,6 +77,9 @@ class FoundItemController extends Controller
             'performed_by' => 'Admin: ' . $request->user()->name,
             'ip_address' => $request->ip(),
         ]);
+
+        $matchService = new MatchScoreService();
+        $matchService->checkNewFoundRecord($record);
 
         return response()->json([
             'message' => 'Found item recorded successfully',
