@@ -9,14 +9,14 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
 class UserManagementController extends Controller
-{
+    {
     public function index()
     {
         $users = User::orderBy('created_at', 'desc')->get();
         return response()->json(['users' => $users]);
     }
 
-    public function store(Request $request)
+   public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
@@ -27,6 +27,10 @@ class UserManagementController extends Controller
             'course' => 'nullable|string',
             'year_level' => 'nullable|string',
             'education_level' => 'nullable|in:college,high_school',
+            'privileges' => 'nullable|array',
+            'is_restricted' => 'nullable|boolean',
+            'restriction_reason' => 'nullable|string',
+            'restricted_until' => 'nullable|date',
         ]);
 
         if ($validator->fails()) {
@@ -42,6 +46,10 @@ class UserManagementController extends Controller
             'course' => $request->course,
             'year_level' => $request->year_level,
             'education_level' => $request->education_level,
+            'privileges' => $request->privileges,
+            'is_restricted' => $request->is_restricted ?? false,
+            'restriction_reason' => $request->restriction_reason,
+            'restricted_until' => $request->restricted_until,
             'is_active' => true,
             'trust_score' => 100,
         ]);
@@ -62,7 +70,7 @@ class UserManagementController extends Controller
         ], 201);
     }
 
-   public function update(Request $request, $id)
+    public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);
 
@@ -74,6 +82,10 @@ class UserManagementController extends Controller
             'course' => 'nullable|string',
             'year_level' => 'nullable|string',
             'education_level' => 'nullable|in:college,high_school',
+            'privileges' => 'nullable|array',
+            'is_restricted' => 'nullable|boolean',
+            'restriction_reason' => 'nullable|string',
+            'restricted_until' => 'nullable|date',
         ]);
 
         if ($validator->fails()) {
@@ -88,6 +100,10 @@ class UserManagementController extends Controller
             'course' => $request->course,
             'year_level' => $request->year_level,
             'education_level' => $request->education_level,
+            'privileges' => $request->privileges,
+            'is_restricted' => $request->is_restricted ?? false,
+            'restriction_reason' => $request->restriction_reason,
+            'restricted_until' => $request->restricted_until,
         ]);
 
         if ($request->password) {
