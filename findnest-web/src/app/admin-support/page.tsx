@@ -226,7 +226,7 @@ export default function SupportInbox() {
                             value={replyText}
                             onChange={(e) => setReplyText(e.target.value)}
                             placeholder="Type your reply..."
-                            className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-sm"
+                            className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-sm text-gray-800"
                             onKeyDown={(e) => { if (e.key === "Enter") handleSendReply(msg.id); }}
                           />
                           <button
