@@ -18,6 +18,7 @@ class User extends Authenticatable
         'school_id',
         'course',
         'year_level',
+        'education_level',
         'is_active',
         'otp_code',
         'otp_expires_at',

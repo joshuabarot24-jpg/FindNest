@@ -26,6 +26,7 @@ class UserManagementController extends Controller
             'school_id' => 'nullable|string|unique:users,school_id',
             'course' => 'nullable|string',
             'year_level' => 'nullable|string',
+            'education_level' => 'nullable|in:college,high_school',
         ]);
 
         if ($validator->fails()) {
@@ -40,6 +41,7 @@ class UserManagementController extends Controller
             'school_id' => $request->school_id,
             'course' => $request->course,
             'year_level' => $request->year_level,
+            'education_level' => $request->education_level,
             'is_active' => true,
             'trust_score' => 100,
         ]);
@@ -60,7 +62,7 @@ class UserManagementController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, $id)
+   public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);
 
@@ -71,6 +73,7 @@ class UserManagementController extends Controller
             'school_id' => 'nullable|string|unique:users,school_id,' . $id,
             'course' => 'nullable|string',
             'year_level' => 'nullable|string',
+            'education_level' => 'nullable|in:college,high_school',
         ]);
 
         if ($validator->fails()) {
@@ -84,6 +87,7 @@ class UserManagementController extends Controller
             'school_id' => $request->school_id,
             'course' => $request->course,
             'year_level' => $request->year_level,
+            'education_level' => $request->education_level,
         ]);
 
         if ($request->password) {
