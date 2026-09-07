@@ -24,6 +24,10 @@ class User extends Authenticatable
         'otp_expires_at',
         'trust_score',
         'fcm_token',
+        'privileges',
+        'is_restricted',
+        'restriction_reason',
+        'restricted_until',
     ];
 
     protected $hidden = [
@@ -37,6 +41,9 @@ class User extends Authenticatable
         'otp_expires_at' => 'datetime',
         'password' => 'hashed',
         'is_active' => 'boolean',
+        'privileges' => 'array',
+        'is_restricted' => 'boolean',
+        'restricted_until' => 'date',
     ];
 
     public function lostReports()
