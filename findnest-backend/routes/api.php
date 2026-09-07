@@ -62,6 +62,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [ClaimController::class, 'index']);
         Route::get('/my-claims', [ClaimController::class, 'myClaims']);
         Route::post('/', [ClaimController::class, 'store']);
+        Route::get('/{id}/questions', [ClaimController::class, 'getQuestions']);
+        Route::post('/{id}/answers', [ClaimController::class, 'submitAnswers']);
         Route::post('/{id}/approve', [ClaimController::class, 'approve']);
         Route::post('/{id}/reject', [ClaimController::class, 'reject']);
     });
