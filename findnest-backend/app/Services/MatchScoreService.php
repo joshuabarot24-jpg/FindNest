@@ -106,8 +106,8 @@ class MatchScoreService
             return 0;
         }
 
-        try {
-            $response = Http::timeout(20)->post($this->apiUrl . '?key=' . $this->apiKey, [
+    try {
+        $response = Http::timeout(20)->retry(2, 500)->post($this->apiUrl . '?key=' . $this->apiKey, [
                 'contents' => [
                     [
                         'parts' => [
