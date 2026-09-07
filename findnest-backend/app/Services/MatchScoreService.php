@@ -23,8 +23,7 @@ class MatchScoreService
 
     public function checkNewLostReport(LostItemReport $report)
     {
-        $candidates = FoundItemRecord::where('status', 'unclaimed')
-            ->get();
+        $candidates = FoundItemRecord::where('status', 'unclaimed')->get();
 
         foreach ($candidates as $found) {
             $this->evaluatePair($report, $found);
@@ -33,8 +32,7 @@ class MatchScoreService
 
     public function checkNewFoundRecord(FoundItemRecord $found)
     {
-        $candidates = LostItemReport::where('status', 'searching')
-            ->get();
+        $candidates = LostItemReport::where('status', 'searching')->get();
 
         foreach ($candidates as $report) {
             $this->evaluatePair($report, $found);
@@ -72,6 +70,9 @@ class MatchScoreService
             return;
         }
 
+        $daysSinceFound = Carbon::parse($found->created_at)->diffInDays(Carbon::parse($report->created_at));
+        $reverseEngineeringFlag = $daysSinceFound > 3;
+
         $match = AiMatch::create([
             'report_id' => $report->id,
             'found_id' => $found->id,
@@ -83,6 +84,7 @@ class MatchScoreService
             ]),
             'match_status' => $matchStatus,
             'matched_at' => Carbon::now(),
+            'reverse_engineering_flag' => $reverseEngineeringFlag,
         ]);
 
         AuditLog::create([
@@ -90,7 +92,8 @@ class MatchScoreService
             'action' => 'AI Match Generated',
             'target_type' => 'ai_matches',
             'target_id' => $match->id,
-            'details' => 'AI matched "' . $report->item_name . '" with found item "' . $found->item_name . '" at ' . $finalScore . '% confidence',
+            'details' => 'AI matched "' . $report->item_name . '" with found item "' . $found->item_name . '" at ' . $finalScore . '% confidence'
+                . ($reverseEngineeringFlag ? ' — FLAGGED: lost report submitted ' . $daysSinceFound . ' days after found item was recorded' : ''),
             'performed_by' => 'System: AI Matching Engine',
             'ip_address' => request()->ip() ?? 'system',
         ]);
@@ -106,8 +109,8 @@ class MatchScoreService
             return 0;
         }
 
-    try {
-        $response = Http::timeout(20)->retry(2, 500)->post($this->apiUrl . '?key=' . $this->apiKey, [
+        try {
+            $response = Http::timeout(20)->retry(2, 500)->post($this->apiUrl . '?key=' . $this->apiKey, [
                 'contents' => [
                     [
                         'parts' => [

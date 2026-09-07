@@ -8,10 +8,13 @@ use App\Models\LostItemReport;
 use App\Models\FoundItemRecord;
 use App\Models\Notification;
 use App\Models\AuditLog;
+use App\Models\OwnershipQuestion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 use App\Services\FcmService;
+use App\Services\OwnershipQuestionService;
+use App\Services\TrustScoreService;
 
 class ClaimController extends Controller
 {
@@ -36,6 +39,15 @@ class ClaimController extends Controller
 
     public function store(Request $request)
     {
+        $student = $request->user();
+        $trustService = new TrustScoreService();
+
+        if ($trustService->isRestricted($student)) {
+            return response()->json([
+                'message' => 'Your account is currently restricted from submitting claims. Reason: ' . $student->restriction_reason,
+            ], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'match_id' => 'required|exists:ai_matches,id',
             'proof_description' => 'required|string',
@@ -72,10 +84,112 @@ class ClaimController extends Controller
             'ip_address' => $request->ip(),
         ]);
 
+        $questionService = new OwnershipQuestionService();
+        $questionsGenerated = $questionService->generateQuestions($claim);
+
+        if ($questionsGenerated) {
+            AuditLog::create([
+                'user_id' => $request->user()->id,
+                'action' => 'Ownership Questions Generated',
+                'target_type' => 'claims',
+                'target_id' => $claim->id,
+                'details' => 'AI generated ownership verification questions for this claim',
+                'performed_by' => 'System: AI Engine',
+                'ip_address' => $request->ip(),
+            ]);
+        }
+
         return response()->json([
             'message' => 'Claim submitted successfully',
-            'claim' => $claim
+            'claim' => $claim,
+            'questions_generated' => $questionsGenerated,
         ], 201);
+    }
+
+    public function getQuestions(Request $request, $id)
+    {
+        $claim = Claim::where('id', $id)
+            ->where('student_id', $request->user()->id)
+            ->firstOrFail();
+
+        $questions = OwnershipQuestion::where('claim_id', $claim->id)
+            ->get()
+            ->map(function ($q) {
+                return [
+                    'id' => $q->id,
+                    'question' => $q->question_text,
+                    'option_a' => $q->option_a,
+                    'option_b' => $q->option_b,
+                    'option_c' => $q->option_c,
+                    'option_d' => $q->option_d,
+                    'student_answer' => $q->student_answer,
+                ];
+            });
+
+        return response()->json(['questions' => $questions]);
+    }
+
+    public function submitAnswers(Request $request, $id)
+    {
+        $claim = Claim::where('id', $id)
+            ->where('student_id', $request->user()->id)
+            ->firstOrFail();
+
+        $validator = Validator::make($request->all(), [
+            'answers' => 'required|array',
+            'answers.*.question_id' => 'required|exists:ownership_questions,id',
+            'answers.*.answer' => 'required|string|in:a,b,c,d',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $correctCount = 0;
+        $totalCount = 0;
+
+        foreach ($request->answers as $answer) {
+            $question = OwnershipQuestion::where('id', $answer['question_id'])
+                ->where('claim_id', $claim->id)
+                ->first();
+
+            if (!$question) {
+                continue;
+            }
+
+            $question->update(['student_answer' => strtolower($answer['answer'])]);
+            $totalCount++;
+
+            if (strtolower($answer['answer']) === strtolower($question->correct_option)) {
+                $correctCount++;
+            }
+        }
+
+        $passed = $totalCount > 0 && $correctCount >= 2;
+
+        if (!$passed && $totalCount > 0) {
+            $trustService = new TrustScoreService();
+            $trustService->failedVerification($request->user());
+        }
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'Ownership Questions Answered',
+            'target_type' => 'claims',
+            'target_id' => $claim->id,
+            'details' => 'Student scored ' . $correctCount . ' out of ' . $totalCount . ' on ownership verification. Passed: ' . ($passed ? 'Yes' : 'No'),
+            'performed_by' => 'Student: ' . $request->user()->name,
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json([
+            'message' => $passed
+                ? 'Verification passed. Your claim is now ready for admin review.'
+                : 'Verification did not pass. Your claim will still be reviewed by an administrator.',
+            'correct_count' => $correctCount,
+            'total_count' => $totalCount,
+            'passed' => $passed,
+        ]);
     }
 
     public function approve(Request $request, $id)
@@ -97,15 +211,20 @@ class ClaimController extends Controller
         }
 
         $student = \App\Models\User::find($claim->student_id);
-        if ($student && $student->fcm_token) {
-            $fcm = new FcmService();
-            $fcm->sendToUser(
-            $student->fcm_token,
-            'Claim Approved! ✅',
-            'Your claim has been approved. Visit the Guidance Office to collect your item.',
-            ['type' => 'claim_approved', 'claim_id' => (string)$claim->id]
-        );
-    }
+        if ($student) {
+            $trustService = new TrustScoreService();
+            $trustService->approvedClaim($student);
+
+            if ($student->fcm_token) {
+                $fcm = new FcmService();
+                $fcm->sendToUser(
+                    $student->fcm_token,
+                    'Claim Approved',
+                    'Your claim has been approved. Visit the Guidance Office to collect your item.',
+                    ['type' => 'claim_approved', 'claim_id' => (string)$claim->id]
+                );
+            }
+        }
 
         Notification::create([
             'user_id' => $claim->student_id,
@@ -141,15 +260,20 @@ class ClaimController extends Controller
         ]);
 
         $student = \App\Models\User::find($claim->student_id);
-        if ($student && $student->fcm_token) {
-            $fcm = new FcmService();
-            $fcm->sendToUser(
-            $student->fcm_token,
-            'Claim Rejected ❌',
-            'Your claim was rejected. Reason: ' . ($request->admin_notes ?? 'Insufficient proof.'),
-            ['type' => 'claim_rejected', 'claim_id' => (string)$claim->id]
-        );
-    }
+        if ($student) {
+            $trustService = new TrustScoreService();
+            $trustService->rejectedClaim($student);
+
+            if ($student->fcm_token) {
+                $fcm = new FcmService();
+                $fcm->sendToUser(
+                    $student->fcm_token,
+                    'Claim Rejected',
+                    'Your claim was rejected. Reason: ' . ($request->admin_notes ?? 'Insufficient proof.'),
+                    ['type' => 'claim_rejected', 'claim_id' => (string)$claim->id]
+                );
+            }
+        }
 
         Notification::create([
             'user_id' => $claim->student_id,
@@ -173,5 +297,4 @@ class ClaimController extends Controller
 
         return response()->json(['message' => 'Claim rejected', 'claim' => $claim]);
     }
-
 }
