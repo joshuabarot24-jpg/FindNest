@@ -11,6 +11,14 @@ interface SupportMessage {
   created_at: string;
 }
 
+interface SupportReplyItem {
+  id: number;
+  sender_type: "student" | "admin";
+  message: string;
+  created_at: string;
+  user: { id: number; name: string } | null;
+}
+
 function formatTime(dateStr: string) {
   return new Date(dateStr).toLocaleString();
 }
@@ -19,6 +27,11 @@ export default function SupportInbox() {
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const [replies, setReplies] = useState<SupportReplyItem[]>([]);
+  const [threadLoading, setThreadLoading] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [replySending, setReplySending] = useState(false);
 
   const fetchMessages = async () => {
     try {
@@ -35,17 +48,49 @@ export default function SupportInbox() {
     fetchMessages();
   }, []);
 
+  const fetchThread = async (id: number) => {
+    setThreadLoading(true);
+    try {
+      const response = await api.get(`/support/${id}/thread`);
+      setReplies(response.data.replies || []);
+    } catch (err) {
+      console.error("Error fetching thread:", err);
+    } finally {
+      setThreadLoading(false);
+    }
+  };
+
   const handleExpand = async (msg: SupportMessage) => {
-    setExpandedId(expandedId === msg.id ? null : msg.id);
+    if (expandedId === msg.id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(msg.id);
+    setReplyText("");
+    fetchThread(msg.id);
+
     if (msg.status === "new") {
       try {
         await api.post(`/support/${msg.id}/read`);
-        setMessages((prev) =>
-          prev.map((m) => (m.id === msg.id ? { ...m, status: "read" } : m))
-        );
+        setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, status: "read" } : m)));
       } catch (err) {
         console.error("Error marking message as read:", err);
       }
+    }
+  };
+
+  const handleSendReply = async (id: number) => {
+    if (!replyText.trim()) return;
+    setReplySending(true);
+    try {
+      await api.post(`/support/${id}/reply`, { message: replyText.trim() });
+      setReplyText("");
+      fetchThread(id);
+      setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, status: "replied" } : m)));
+    } catch (err) {
+      console.error("Error sending reply:", err);
+    } finally {
+      setReplySending(false);
     }
   };
 
@@ -82,13 +127,7 @@ export default function SupportInbox() {
           <a href="/digital-records" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
             <span>Digital Records</span>
           </a>
-          <a href="/ai-matching" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
-            <span>Assistive AI Matching</span>
-          </a>
-          <a href="/admin-audit-trail" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
-            <span>Audit Trail</span>
-          </a>
-          <a href="/support-inbox" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/20 text-white font-semibold border border-white/20">
+          <a href="/admin-support" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/20 text-white font-semibold border border-white/20">
             <span>Support Inbox</span>
           </a>
         </nav>
@@ -98,7 +137,6 @@ export default function SupportInbox() {
             <p className="text-white text-sm font-semibold">Guidance Counselor</p>
             <p className="text-blue-300 text-xs mt-1">Administrator</p>
           </div>
-
           <button
             onClick={() => { localStorage.removeItem("findnest_token"); localStorage.removeItem("findnest_user"); window.location.href = "/"; }}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium w-full text-left"
@@ -145,9 +183,9 @@ export default function SupportInbox() {
                         <div className="flex items-center gap-2">
                           <p className="font-bold text-gray-700 text-sm">{msg.name}</p>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            msg.status === "new" ? "bg-red-50 text-red-600" : "bg-gray-100 text-gray-500"
+                            msg.status === "new" ? "bg-red-50 text-red-600" : msg.status === "replied" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
                           }`}>
-                            {msg.status === "new" ? "NEW" : "READ"}
+                            {msg.status === "new" ? "NEW" : msg.status === "replied" ? "REPLIED" : "READ"}
                           </span>
                         </div>
                         <p className="text-gray-400 text-xs mt-0.5">{msg.email}</p>
@@ -161,8 +199,44 @@ export default function SupportInbox() {
 
                   {expandedId === msg.id && (
                     <div className="px-6 pb-5">
-                      <div className="bg-gray-50 rounded-xl p-4 ml-14">
-                        <p className="text-gray-700 text-sm leading-relaxed">{msg.message}</p>
+                      <div className="ml-14 space-y-3">
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-gray-700 text-sm leading-relaxed">{msg.message}</p>
+                        </div>
+
+                        {threadLoading ? (
+                          <p className="text-gray-400 text-xs">Loading conversation...</p>
+                        ) : (
+                          replies.map((r) => (
+                            <div
+                              key={r.id}
+                              className={`rounded-xl p-4 ${r.sender_type === "admin" ? "bg-blue-50 ml-8" : "bg-gray-50 mr-8"}`}
+                            >
+                              <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">
+                                {r.sender_type === "admin" ? "Guidance Office" : msg.name} &middot; {formatTime(r.created_at)}
+                              </p>
+                              <p className="text-gray-700 text-sm">{r.message}</p>
+                            </div>
+                          ))
+                        )}
+
+                        <div className="flex gap-2 pt-2">
+                          <input
+                            type="text"
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            placeholder="Type your reply..."
+                            className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-sm"
+                            onKeyDown={(e) => { if (e.key === "Enter") handleSendReply(msg.id); }}
+                          />
+                          <button
+                            onClick={() => handleSendReply(msg.id)}
+                            disabled={replySending || !replyText.trim()}
+                            className="bg-[#1a237e] hover:bg-[#283593] text-white text-sm font-bold px-5 py-2.5 rounded-xl transition disabled:opacity-50"
+                          >
+                            {replySending ? "Sending..." : "Reply"}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
