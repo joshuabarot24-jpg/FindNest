@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect } from "react";
 import api from "@/lib/api";
 
-type ItemStatus = "unclaimed" | "claimed" | "for_disposal" | "confiscated";
+type ItemStatus = "unclaimed" | "claimed" | "for_disposal" | "confiscated" | "found_item";
 
 interface FoundItem {
   id: number;
@@ -14,24 +14,19 @@ interface FoundItem {
   photo_url: string | null;
   description: string | null;
   date_found: string | null;
+  created_at: string;
 }
 
 const CATEGORY_OPTIONS = [
-  "Electronics",
-  "Personal Belongings",
-  "ID/Cards",
-  "Keys",
-  "School Supplies",
-  "Accessories",
-  "Books",
-  "Vapes",
-  "Others",
+  "Electronics", "Personal Belongings", "ID/Cards", "Keys",
+  "School Supplies", "Accessories", "Books", "Vapes", "Others",
 ];
 
 const STATUS_OPTIONS: { value: ItemStatus; label: string }[] = [
   { value: "unclaimed", label: "Unclaimed" },
   { value: "claimed", label: "Claimed" },
   { value: "for_disposal", label: "For Disposal" },
+  { value: "found_item", label: "Found Item" },
   { value: "confiscated", label: "Confiscated" },
 ];
 
@@ -39,16 +34,17 @@ const PAGE_SIZE = 5;
 
 function statusStyles(status: ItemStatus) {
   switch (status) {
-    case "claimed":
-      return { dot: "bg-green-500", badge: "bg-green-50 text-green-700", label: "Claimed" };
-    case "unclaimed":
-      return { dot: "bg-blue-500", badge: "bg-blue-50 text-blue-700", label: "Unclaimed" };
-    case "confiscated":
-      return { dot: "bg-purple-500", badge: "bg-purple-50 text-purple-700", label: "Confiscated" };
+    case "claimed": return { dot: "bg-green-500", badge: "bg-green-50 text-green-700", label: "Claimed" };
+    case "unclaimed": return { dot: "bg-blue-500", badge: "bg-blue-50 text-blue-700", label: "Unclaimed" };
+    case "confiscated": return { dot: "bg-purple-500", badge: "bg-purple-50 text-purple-700", label: "Confiscated" };
+    case "found_item": return { dot: "bg-teal-500", badge: "bg-teal-50 text-teal-700", label: "Found Item" };
     case "for_disposal":
-    default:
-      return { dot: "bg-red-500", badge: "bg-red-50 text-red-600", label: "For Disposal" };
+    default: return { dot: "bg-red-500", badge: "bg-red-50 text-red-600", label: "For Disposal" };
   }
+}
+
+function formatDateTime(dateStr: string) {
+  return new Date(dateStr).toLocaleString();
 }
 
 export default function ItemManagement() {
@@ -57,10 +53,10 @@ export default function ItemManagement() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const [showLogModal, setShowLogModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [viewingItem, setViewingItem] = useState<FoundItem | null>(null);
   const [editingItem, setEditingItem] = useState<FoundItem | null>(null);
-  const [disposingItem, setDisposingItem] = useState<FoundItem | null>(null);
+  const [deletingItem, setDeletingItem] = useState<FoundItem | null>(null);
 
   const [formName, setFormName] = useState("");
   const [formCategory, setFormCategory] = useState(CATEGORY_OPTIONS[0]);
@@ -68,6 +64,7 @@ export default function ItemManagement() {
   const [formStorageLocation, setFormStorageLocation] = useState("");
   const [formDateFound, setFormDateFound] = useState("");
   const [formDescription, setFormDescription] = useState("");
+  const [formIntakeType, setFormIntakeType] = useState<"confiscated" | "found_item">("found_item");
   const [formStatus, setFormStatus] = useState<ItemStatus>("unclaimed");
   const [formPhotoUrl, setFormPhotoUrl] = useState<string | null>(null);
   const [formPhotoPreview, setFormPhotoPreview] = useState<string | null>(null);
@@ -125,6 +122,7 @@ export default function ItemManagement() {
     setFormStorageLocation("");
     setFormDateFound("");
     setFormDescription("");
+    setFormIntakeType("found_item");
     setFormStatus("unclaimed");
     setFormPhotoUrl(null);
     setFormPhotoPreview(null);
@@ -156,9 +154,9 @@ export default function ItemManagement() {
     }
   }
 
-  async function handleLogSubmit() {
-    if (!formName.trim() || !formLocationFound.trim() || !formDateFound) {
-      setFormError("Item name, location found, and date found are required.");
+  async function handleAddSubmit() {
+    if (!formName.trim() || !formLocationFound.trim() || !formDateFound || !formPhotoUrl) {
+      setFormError("Item name, location found, date found, and photo are required.");
       return;
     }
     setFormError("");
@@ -172,14 +170,15 @@ export default function ItemManagement() {
         date_found: formDateFound,
         photo_url: formPhotoUrl,
         storage_location: formStorageLocation.trim() || null,
+        status: formIntakeType,
       });
-      setShowLogModal(false);
+      setShowAddModal(false);
       resetForm();
       setPage(1);
-      setToast(`${formName.trim()} was logged as a found item.`);
+      setToast(`${formName.trim()} was added.`);
       fetchItems();
     } catch (err: any) {
-      setFormError(err.response?.data?.message || Object.values(err.response?.data?.errors || {}).flat().join(", ") || "Failed to log item.");
+      setFormError(err.response?.data?.message || Object.values(err.response?.data?.errors || {}).flat().join(", ") || "Failed to add item.");
     } finally {
       setFormLoading(false);
     }
@@ -196,6 +195,7 @@ export default function ItemManagement() {
     setFormPhotoUrl(item.photo_url);
     setFormPhotoPreview(item.photo_url);
     setFormError("");
+    setViewingItem(null);
     setEditingItem(item);
   }
 
@@ -229,20 +229,16 @@ export default function ItemManagement() {
     }
   }
 
-  async function handleDisposeConfirm() {
-    if (!disposingItem) return;
-    const nextStatus: ItemStatus = disposingItem.status === "for_disposal" ? "unclaimed" : "for_disposal";
+  async function handleDeleteConfirm() {
+    if (!deletingItem) return;
     try {
-      await api.put(`/found-items/${disposingItem.id}`, { status: nextStatus });
-      setToast(
-        nextStatus === "for_disposal"
-          ? `${disposingItem.item_name} was marked for disposal.`
-          : `${disposingItem.item_name} was restored from disposal.`
-      );
-      setDisposingItem(null);
+      await api.delete(`/found-items/${deletingItem.id}`);
+      setToast(`${deletingItem.item_name} was deleted.`);
+      setDeletingItem(null);
+      setViewingItem(null);
       fetchItems();
     } catch (err) {
-      console.error("Error updating item status:", err);
+      console.error("Error deleting item:", err);
     }
   }
 
@@ -283,12 +279,6 @@ export default function ItemManagement() {
           <a href="/digital-records" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
             <span>Digital Records</span>
           </a>
-          <a href="/ai-matching" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
-            <span>Assistive AI Matching</span>
-          </a>
-          <a href="/admin-audit-trail" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
-            <span>Audit Trail</span>
-          </a>
           <a href="/admin-support" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
             <span>Support Inbox</span>
           </a>
@@ -315,10 +305,10 @@ export default function ItemManagement() {
             <p className="text-gray-400 text-sm mt-1">Review, approve and manage all lost and found item reports</p>
           </div>
           <button
-            onClick={() => { resetForm(); setShowLogModal(true); }}
+            onClick={() => { resetForm(); setShowAddModal(true); }}
             className="flex items-center gap-2 bg-[#1a237e] hover:bg-[#283593] text-white font-bold px-6 py-3 rounded-2xl transition shadow-lg hover:-translate-y-0.5 transform"
           >
-            + Log New Found Item
+            + Add Item
           </button>
         </div>
 
@@ -360,6 +350,7 @@ export default function ItemManagement() {
                   <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Category</th>
                   <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Storage Location</th>
                   <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Logged</th>
                   <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -394,19 +385,10 @@ export default function ItemManagement() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => setViewingItem(item)} className="bg-blue-50 hover:bg-[#1a237e] hover:text-white text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg transition">View</button>
-                          <button onClick={() => openEditModal(item)} className="bg-yellow-50 hover:bg-yellow-500 hover:text-white text-yellow-600 text-xs font-bold px-3 py-1.5 rounded-lg transition">Edit</button>
-                          <button
-                            onClick={() => setDisposingItem(item)}
-                            className={item.status === "for_disposal"
-                              ? "bg-green-50 hover:bg-green-600 hover:text-white text-green-600 text-xs font-bold px-3 py-1.5 rounded-lg transition"
-                              : "bg-red-50 hover:bg-red-500 hover:text-white text-red-500 text-xs font-bold px-3 py-1.5 rounded-lg transition"
-                            }
-                          >
-                            {item.status === "for_disposal" ? "Restore" : "Dispose"}
-                          </button>
-                        </div>
+                        <p className="text-gray-400 text-xs">{formatDateTime(item.created_at)}</p>
+                      </td>
+                      <td className="px-8 py-10">
+                        <button onClick={() => setViewingItem(item)} className="bg-blue-30 hover:bg-[#1a237e] hover:text-white text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg transition">View</button>
                       </td>
                     </tr>
                   );
@@ -439,15 +421,34 @@ export default function ItemManagement() {
         </div>
       </main>
 
-      {showLogModal && (
+      {showAddModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
           <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 p-8 max-h-[90vh] overflow-y-auto">
-            <button onClick={() => { setShowLogModal(false); resetForm(); }} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none">&times;</button>
-            <h2 className="text-2xl font-black text-[#1a237e] mb-1">Log New Found Item</h2>
-            <p className="text-gray-400 text-sm mb-6">Record an item that was physically surrendered to the office</p>
+            <button onClick={() => { setShowAddModal(false); resetForm(); }} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none">&times;</button>
+            <h2 className="text-2xl font-black text-[#1a237e] mb-1">Add Item</h2>
+            <p className="text-gray-400 text-sm mb-6">Record an item that was physically received by the office</p>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Photo (Optional)</label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Intake Type</label>
+                <div className="flex gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setFormIntakeType("found_item")}
+                    className={`flex-1 py-3 rounded-xl text-sm font-bold border-2 transition ${formIntakeType === "found_item" ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-400"}`}
+                  >
+                    Found Item
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormIntakeType("confiscated")}
+                    className={`flex-1 py-3 rounded-xl text-sm font-bold border-2 transition ${formIntakeType === "confiscated" ? "border-purple-500 bg-purple-50 text-purple-700" : "border-gray-200 text-gray-400"}`}
+                  >
+                    Confiscated
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Photo <span className="text-red-500">*</span></label>
                 <label className="mt-1 block cursor-pointer">
                   <div className="border-2 border-dashed border-gray-200 hover:border-[#1a237e] rounded-xl p-4 text-center transition">
                     {formUploading ? (
@@ -496,9 +497,9 @@ export default function ItemManagement() {
               {formError && <p className="text-red-500 text-xs font-semibold">{formError}</p>}
             </div>
             <div className="flex gap-3 mt-8">
-              <button onClick={() => { setShowLogModal(false); resetForm(); }} className="flex-1 border-2 border-gray-200 text-gray-500 font-bold py-3 rounded-2xl hover:bg-gray-50 transition">Cancel</button>
-              <button onClick={handleLogSubmit} disabled={formLoading || formUploading} className="flex-1 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition disabled:opacity-50">
-                {formLoading ? "Logging..." : "Log Item"}
+              <button onClick={() => { setShowAddModal(false); resetForm(); }} className="flex-1 border-2 border-gray-200 text-gray-500 font-bold py-3 rounded-2xl hover:bg-gray-50 transition">Cancel</button>
+              <button onClick={handleAddSubmit} disabled={formLoading || formUploading} className="flex-1 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition disabled:opacity-50">
+                {formLoading ? "Adding..." : "Add Item"}
               </button>
             </div>
           </div>
@@ -507,9 +508,9 @@ export default function ItemManagement() {
 
       {viewingItem && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 p-8">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 p-8 max-h-[85vh] overflow-y-auto">
             <button onClick={() => setViewingItem(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none">&times;</button>
-            <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-5 flex items-center justify-center">
+            <div className="w-full h-48 rounded-2xl overflow-hidden bg-gray-100 mb-5 flex items-center justify-center">
               {viewingItem.photo_url ? (
                 <img src={viewingItem.photo_url} alt={viewingItem.item_name} className="w-full h-full object-cover" />
               ) : (
@@ -536,6 +537,10 @@ export default function ItemManagement() {
                 <span className="font-bold text-gray-700">{viewingItem.date_found || "—"}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-gray-400 font-medium">Logged</span>
+                <span className="font-bold text-gray-700 text-xs">{formatDateTime(viewingItem.created_at)}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                 <span className="text-gray-400 font-medium">Status</span>
                 <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${statusStyles(viewingItem.status).badge}`}>{statusStyles(viewingItem.status).label}</span>
               </div>
@@ -546,7 +551,11 @@ export default function ItemManagement() {
                 </div>
               )}
             </div>
-            <button onClick={() => setViewingItem(null)} className="w-full mt-6 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition">Close</button>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => openEditModal(viewingItem)} className="flex-1 bg-yellow-50 hover:bg-yellow-500 hover:text-white text-yellow-600 font-bold py-3 rounded-2xl transition">Edit</button>
+              <button onClick={() => setDeletingItem(viewingItem)} className="flex-1 bg-red-50 hover:bg-red-500 hover:text-white text-red-500 font-bold py-3 rounded-2xl transition">Delete</button>
+            </div>
+            <button onClick={() => setViewingItem(null)} className="w-full mt-3 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition">Close</button>
           </div>
         </div>
       )}
@@ -598,25 +607,16 @@ export default function ItemManagement() {
         </div>
       )}
 
-      {disposingItem && (
+      {deletingItem && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
           <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 p-8 text-center">
-            <h2 className="text-xl font-black text-[#1a237e] mb-2">
-              {disposingItem.status === "for_disposal" ? "Restore This Item?" : "Mark for Disposal?"}
-            </h2>
+            <h2 className="text-xl font-black text-[#1a237e] mb-2">Delete This Item?</h2>
             <p className="text-gray-400 text-sm mb-8">
-              {disposingItem.status === "for_disposal"
-                ? `${disposingItem.item_name} will be moved back to Unclaimed.`
-                : `${disposingItem.item_name} will be flagged for disposal and removed from active search results.`}
+              {deletingItem.item_name} will be permanently removed. This cannot be undone.
             </p>
             <div className="flex gap-3">
-              <button onClick={() => setDisposingItem(null)} className="flex-1 border-2 border-gray-200 text-gray-500 font-bold py-3 rounded-2xl hover:bg-gray-50 transition">Cancel</button>
-              <button
-                onClick={handleDisposeConfirm}
-                className={`flex-1 text-white font-bold py-3 rounded-2xl transition ${disposingItem.status === "for_disposal" ? "bg-green-600 hover:bg-green-700" : "bg-red-500 hover:bg-red-600"}`}
-              >
-                {disposingItem.status === "for_disposal" ? "Restore" : "Dispose"}
-              </button>
+              <button onClick={() => setDeletingItem(null)} className="flex-1 border-2 border-gray-200 text-gray-500 font-bold py-3 rounded-2xl hover:bg-gray-50 transition">Cancel</button>
+              <button onClick={handleDeleteConfirm} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-2xl transition">Delete</button>
             </div>
           </div>
         </div>
