@@ -113,10 +113,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}', [CaseTrailController::class, 'show']);
     });
 
+    Route::prefix('support')->group(function () {
+        Route::post('/', [SupportController::class, 'store']);
+        Route::get('/', [SupportController::class, 'index']);
+        Route::get('/my-messages', [SupportController::class, 'myMessages']);
+        Route::post('/{id}/read', [SupportController::class, 'markAsRead']);
+        Route::get('/{id}/thread', [SupportController::class, 'getThread']);
+        Route::post('/{id}/reply', [SupportController::class, 'reply']);
+    });
+
     Route::post('/fcm/update-token', [FcmController::class, 'updateToken']);
     Route::get('/system-stats', [SystemStatsController::class, 'index']);
-    Route::post('/support', [SupportController::class, 'store']);
-    Route::get('/support', [SupportController::class, 'index']);
-    Route::post('/support/{id}/read', [SupportController::class, 'markAsRead']);
 
 });
