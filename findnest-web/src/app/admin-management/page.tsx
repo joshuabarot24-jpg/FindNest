@@ -8,10 +8,21 @@ interface AdminUser {
   email: string;
   role: string;
   is_active: boolean;
+  privileges: string[] | null;
+  is_restricted: boolean;
+  restriction_reason: string | null;
+  restricted_until: string | null;
 }
 
-const ROLE_OPTIONS = ["admin", "super_admin"];
 const PAGE_SIZE = 5;
+
+const PRIVILEGE_OPTIONS = [
+  { key: "item_management", label: "Item Management" },
+  { key: "claim_verification", label: "Claim Verification" },
+  { key: "location_analytics", label: "Location Analytics" },
+  { key: "digital_records", label: "Digital Records" },
+  { key: "support_inbox", label: "Support Inbox" },
+];
 
 function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || "?";
@@ -26,16 +37,22 @@ export default function AdminManagement() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [mainTab, setMainTab] = useState<"admin" | "super_admin">("admin");
 
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
   const [revokingAdmin, setRevokingAdmin] = useState<AdminUser | null>(null);
+  const [editTab, setEditTab] = useState<"credentials" | "privileges" | "restrictions">("credentials");
 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     role: "admin",
+    privileges: [] as string[],
+    is_restricted: false,
+    restriction_reason: "",
+    restricted_until: "",
   });
   const [formError, setFormError] = useState("");
   const [formLoading, setFormLoading] = useState(false);
@@ -64,17 +81,22 @@ export default function AdminManagement() {
     fetchUsers();
   }, []);
 
+  const baseFiltered = useMemo(() => {
+    return users.filter((u) => u.role === mainTab);
+  }, [users, mainTab]);
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return users.filter(
-      (a) =>
-        a.name.toLowerCase().includes(q) ||
-        a.email.toLowerCase().includes(q) ||
-        a.role.toLowerCase().includes(q)
+    return baseFiltered.filter(
+      (a) => a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q)
     );
-  }, [users, search]);
+  }, [baseFiltered, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+
+  useEffect(() => {
+    setPage(1);
+  }, [mainTab, search]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -86,8 +108,18 @@ export default function AdminManagement() {
   const revokedCount = users.filter((a) => !a.is_active).length;
 
   function resetForm() {
-    setFormData({ name: "", email: "", password: "", role: "admin" });
+    setFormData({
+      name: "",
+      email: "",
+      password: "",
+      role: mainTab,
+      privileges: [],
+      is_restricted: false,
+      restriction_reason: "",
+      restricted_until: "",
+    });
     setFormError("");
+    setEditTab("credentials");
   }
 
   function openAssignModal() {
@@ -96,9 +128,28 @@ export default function AdminManagement() {
   }
 
   function openEditModal(admin: AdminUser) {
-    setFormData({ name: admin.name, email: admin.email, password: "", role: admin.role });
+    setFormData({
+      name: admin.name,
+      email: admin.email,
+      password: "",
+      role: admin.role,
+      privileges: admin.privileges || [],
+      is_restricted: admin.is_restricted || false,
+      restriction_reason: admin.restriction_reason || "",
+      restricted_until: admin.restricted_until || "",
+    });
     setFormError("");
+    setEditTab("credentials");
     setEditingAdmin(admin);
+  }
+
+  function togglePrivilege(key: string) {
+    setFormData((prev) => ({
+      ...prev,
+      privileges: prev.privileges.includes(key)
+        ? prev.privileges.filter((p) => p !== key)
+        : [...prev.privileges, key],
+    }));
   }
 
   async function handleAssignSubmit() {
@@ -172,6 +223,7 @@ export default function AdminManagement() {
           {toast}
         </div>
       )}
+
       <aside className="w-72 bg-[#1a237e] min-h-screen flex flex-col fixed left-0 top-0 bottom-0">
         <div className="flex items-center gap-3 px-6 py-6">
           <div>
@@ -213,13 +265,6 @@ export default function AdminManagement() {
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
           >
             <span>Digital Records</span>
-          </a>
-
-          <a
-            href="/audit-trail"
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium"
-          >
-            <span>Audit Trail</span>
           </a>
         </nav>
 
@@ -275,17 +320,39 @@ export default function AdminManagement() {
           </div>
         </div>
 
+        <div className="flex items-center gap-2 mb-6">
+          <button
+            onClick={() => setMainTab("admin")}
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition ${
+              mainTab === "admin"
+                ? "bg-[#1a237e] text-white shadow-md"
+                : "bg-white text-gray-500 border border-gray-200 hover:border-[#1a237e] hover:text-[#1a237e]"
+            }`}
+          >
+            Admins
+          </button>
+          <button
+            onClick={() => setMainTab("super_admin")}
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition ${
+              mainTab === "super_admin"
+                ? "bg-[#1a237e] text-white shadow-md"
+                : "bg-white text-gray-500 border border-gray-200 hover:border-[#1a237e] hover:text-[#1a237e]"
+            }`}
+          >
+            Super Admins
+          </button>
+        </div>
+
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-            <h2 className="font-black text-gray-700 text-lg">All Administrators</h2>
+            <h2 className="font-black text-gray-700 text-lg">
+              {mainTab === "admin" ? "All Admins" : "All Super Admins"}
+            </h2>
             <input
               type="text"
-              placeholder="Search by name, email, or role..."
+              placeholder="Search by name or email..."
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
+              onChange={(e) => setSearch(e.target.value)}
               className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm w-72"
             />
           </div>
@@ -298,21 +365,11 @@ export default function AdminManagement() {
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    Personnel
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    Role
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    Action
-                  </th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Personnel</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Role</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Email</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -325,9 +382,7 @@ export default function AdminManagement() {
                         </div>
                         <div>
                           <p className="font-bold text-gray-700">{admin.name}</p>
-                          <p className="text-gray-400 text-xs mt-0.5">
-                            ID: ADM-{String(admin.id).padStart(3, "0")}
-                          </p>
+                          <p className="text-gray-400 text-xs mt-0.5">ID: ADM-{String(admin.id).padStart(3, "0")}</p>
                         </div>
                       </div>
                     </td>
@@ -335,22 +390,21 @@ export default function AdminManagement() {
                       <span className="bg-blue-50 text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg capitalize">
                         {formatRole(admin.role)}
                       </span>
+                      {admin.is_restricted && (
+                        <span className="ml-2 bg-orange-50 text-orange-600 text-xs font-bold px-2 py-1 rounded-lg">
+                          Restricted
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <p className="text-gray-500 text-sm">{admin.email}</p>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            admin.is_active ? "bg-green-500" : "bg-red-500"
-                          }`}
-                        ></div>
+                        <div className={`w-2 h-2 rounded-full ${admin.is_active ? "bg-green-500" : "bg-red-500"}`}></div>
                         <span
                           className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
-                            admin.is_active
-                              ? "bg-green-50 text-green-700"
-                              : "bg-red-50 text-red-600"
+                            admin.is_active ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
                           }`}
                         >
                           {admin.is_active ? "ACTIVE" : "REVOKED"}
@@ -441,70 +495,58 @@ export default function AdminManagement() {
             </button>
 
             <h2 className="text-2xl font-black text-[#1a237e] mb-1">Assign New Admin</h2>
-            <p className="text-gray-400 text-sm mb-6">
-              Grant a personnel account admin panel access
-            </p>
+            <p className="text-gray-400 text-sm mb-6">Grant a personnel account admin panel access</p>
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  Personnel Name
-                </label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Personnel Name</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g. Juan Dela Cruz"
+                  autoComplete="off"
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  Email
-                </label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Email</label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="e.g. juan.delacruz@sjdmcci.edu.ph"
+                  autoComplete="off"
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  Password
-                </label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Password</label>
                 <input
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="Minimum 8 characters"
+                  autoComplete="new-password"
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  Role
-                </label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Role</label>
                 <select
                   value={formData.role}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm capitalize"
                 >
-                  {ROLE_OPTIONS.map((r) => (
-                    <option key={r} value={r} className="capitalize">
-                      {formatRole(r)}
-                    </option>
-                  ))}
+                  <option value="admin">Admin</option>
+                  <option value="super_admin">Super Admin</option>
                 </select>
               </div>
 
-              {formError && (
-                <p className="text-red-500 text-xs font-semibold">{formError}</p>
-              )}
+              {formError && <p className="text-red-500 text-xs font-semibold">{formError}</p>}
             </div>
 
             <div className="flex gap-3 mt-8">
@@ -528,7 +570,7 @@ export default function AdminManagement() {
 
       {editingAdmin && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 p-8">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 p-8">
             <button
               onClick={() => setEditingAdmin(null)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none"
@@ -537,68 +579,156 @@ export default function AdminManagement() {
             </button>
 
             <h2 className="text-2xl font-black text-[#1a237e] mb-1">Edit Admin</h2>
-            <p className="text-gray-400 text-sm mb-6">
-              Update {editingAdmin.name}&apos;s account details
-            </p>
+            <p className="text-gray-400 text-sm mb-6">Update {editingAdmin.name}&apos;s account details</p>
 
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  Personnel Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  New Password (leave blank to keep current)
-                </label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  Role
-                </label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm capitalize"
-                >
-                  {ROLE_OPTIONS.map((r) => (
-                    <option key={r} value={r} className="capitalize">
-                      {formatRole(r)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {formError && (
-                <p className="text-red-500 text-xs font-semibold">{formError}</p>
-              )}
+            <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-4">
+              <button
+                onClick={() => setEditTab("credentials")}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
+                  editTab === "credentials" ? "bg-[#1a237e] text-white" : "bg-gray-50 text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                User Credentials
+              </button>
+              <button
+                onClick={() => setEditTab("privileges")}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
+                  editTab === "privileges" ? "bg-[#1a237e] text-white" : "bg-gray-50 text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                User Privileges
+              </button>
+              <button
+                onClick={() => setEditTab("restrictions")}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
+                  editTab === "restrictions" ? "bg-[#1a237e] text-white" : "bg-gray-50 text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Restrictions
+              </button>
             </div>
+
+            {editTab === "credentials" && (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Personnel Name</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    autoComplete="off"
+                    className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Email</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    autoComplete="off"
+                    className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                    New Password (leave blank to keep current)
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    autoComplete="new-password"
+                    className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Role</label>
+                  <select
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm capitalize"
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="super_admin">Super Admin</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {editTab === "privileges" && (
+              <div className="space-y-2">
+                <p className="text-gray-400 text-xs mb-3">Select which pages this account can access</p>
+                {PRIVILEGE_OPTIONS.map((priv) => (
+                  <label
+                    key={priv.key}
+                    className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:border-[#1a237e] transition"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.privileges.includes(priv.key)}
+                      onChange={() => togglePrivilege(priv.key)}
+                      className="w-4 h-4 accent-[#1a237e]"
+                    />
+                    <span className="text-sm font-semibold text-gray-700">{priv.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {editTab === "restrictions" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div>
+                    <p className="font-bold text-gray-700 text-sm">Suspend Account</p>
+                    <p className="text-gray-400 text-xs mt-0.5">Temporarily block access to the admin panel</p>
+                  </div>
+                  <button
+                    onClick={() => setFormData({ ...formData, is_restricted: !formData.is_restricted })}
+                    className={`w-12 h-6 rounded-full transition-all duration-300 relative ${
+                      formData.is_restricted ? "bg-red-500" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300 ${
+                        formData.is_restricted ? "left-6" : "left-0.5"
+                      }`}
+                    ></span>
+                  </button>
+                </div>
+
+                {formData.is_restricted && (
+                  <>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Reason</label>
+                      <textarea
+                        value={formData.restriction_reason}
+                        onChange={(e) => setFormData({ ...formData, restriction_reason: e.target.value })}
+                        placeholder="Reason for restriction..."
+                        rows={3}
+                        className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                        Restricted Until (optional)
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.restricted_until}
+                        onChange={(e) => setFormData({ ...formData, restricted_until: e.target.value })}
+                        className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {formError && <p className="text-red-500 text-xs font-semibold mt-4">{formError}</p>}
 
             <div className="flex gap-3 mt-8">
               <button
@@ -641,9 +771,7 @@ export default function AdminManagement() {
               <button
                 onClick={handleRevokeConfirm}
                 className={`flex-1 text-white font-bold py-3 rounded-2xl transition ${
-                  revokingAdmin.is_active
-                    ? "bg-red-500 hover:bg-red-600"
-                    : "bg-green-600 hover:bg-green-700"
+                  revokingAdmin.is_active ? "bg-red-500 hover:bg-red-600" : "bg-green-600 hover:bg-green-700"
                 }`}
               >
                 {revokingAdmin.is_active ? "Revoke" : "Restore"}
