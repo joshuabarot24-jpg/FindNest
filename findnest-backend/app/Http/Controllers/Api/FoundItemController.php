@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\FoundItemRecord;
 use App\Models\AuditLog;
-use App\Services\ItemDescriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Services\MatchScoreService;
@@ -28,6 +27,7 @@ class FoundItemController extends Controller
             'item_name' => 'required|string|max:255',
             'category' => 'required|string',
             'description' => 'nullable|string',
+            'ai_description' => 'nullable|string',
             'location_found' => 'required|string',
             'date_found' => 'required|date',
             'photo_url' => 'nullable|string',
@@ -38,29 +38,12 @@ class FoundItemController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $aiDescription = null;
-
-        if ($request->photo_url) {
-            $descriptionService = new ItemDescriptionService();
-            $analysis = $descriptionService->analyzeImage($request->photo_url);
-
-            if (!$analysis['success']) {
-                return response()->json(['message' => $analysis['message']], 422);
-            }
-
-            if (!$analysis['item_detected']) {
-                return response()->json(['message' => $analysis['message']], 422);
-            }
-
-            $aiDescription = $analysis['ai_description'];
-        }
-
         $record = FoundItemRecord::create([
             'admin_id' => $request->user()->id,
             'item_name' => $request->item_name,
             'category' => $request->category,
             'description' => $request->description,
-            'ai_description' => $aiDescription,
+            'ai_description' => $request->ai_description,
             'location_found' => $request->location_found,
             'date_found' => $request->date_found,
             'photo_url' => $request->photo_url,
