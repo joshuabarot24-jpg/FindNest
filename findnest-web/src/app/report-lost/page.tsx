@@ -10,15 +10,20 @@ export default function ReportLostPage() {
 
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState("Electronics");
+  const [othersSpecify, setOthersSpecify] = useState("");
   const [description, setDescription] = useState("");
+  const [aiFilled, setAiFilled] = useState(false);
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("findnest_user");
@@ -56,37 +61,56 @@ export default function ReportLostPage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setPhotoUrl(res.data.url);
-    } catch (err) {
+
+      if (res.data.ai_category && categories.includes(res.data.ai_category)) {
+        setCategory(res.data.ai_category);
+      }
+      if (res.data.ai_description) {
+        setDescription(res.data.ai_description);
+        setAiFilled(true);
+      } else {
+        setAiFilled(false);
+      }
+    } catch (err: any) {
       console.error("Photo upload failed:", err);
       setPhotoPreview(null);
       setPhotoError(true);
-      alert("Photo upload failed. Please try again.");
+      alert(err.response?.data?.message || "Photo upload failed. Please try again.");
     } finally {
       setUploading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleReview = (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!photoUrl) {
       setPhotoError(true);
       return;
     }
+    if (!description.trim()) {
+      setSubmitError("Description is required. Please add details manually since our AI could not auto-fill it.");
+      return;
+    }
+    setSubmitError("");
+    setShowConfirm(true);
+  };
 
+  const handleFinalSubmit = async () => {
     setSubmitLoading(true);
     try {
       await api.post("/lost-items", {
         item_name: itemName,
-        category: category,
+        category: category === "Others" ? othersSpecify.trim() : category,
         description: description,
         location_lost: location,
         date_lost: date,
         photo_url: photoUrl,
       });
+      setShowConfirm(false);
       setSubmitted(true);
     } catch (err: any) {
       console.error("Error submitting report:", err);
+      setShowConfirm(false);
       alert(err.response?.data?.message || "Failed to submit report. Please try again.");
     } finally {
       setSubmitLoading(false);
@@ -101,17 +125,15 @@ export default function ReportLostPage() {
         </a>
         <div className="flex items-center gap-8">
           <a href="/student-home" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Home</a>
-          <a href="/view-found-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">View Found Items</a>
+          <a href="/view-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">View Items</a>
           <a href="/claim-status" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Claim Status</a>
           <a href="/support" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Support</a>
         </div>
         <div className="flex items-center gap-4">
           <a href="/notifications" className="relative w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-xl flex items-center justify-center transition">
-            <span className="w-5 h-5 text-gray-500">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            </span>
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center">
                 {unreadCount}
@@ -138,13 +160,10 @@ export default function ReportLostPage() {
             </p>
             <div className="bg-blue-50 rounded-2xl p-4 mt-6 text-left">
               <p className="text-[#1a237e] font-bold text-sm">{itemName || "Your Item"}</p>
-              <p className="text-gray-500 text-xs mt-1">Category: {category}</p>
-              <p className="text-gray-500 text-xs">Last seen: {location || "Not specified"}</p>
+              <p className="text-gray-500 text-xs mt-1">Category: {category === "Others" ? othersSpecify : category}</p>
+              <p className="text-gray-500 text-xs">Last seen: {location || "Not specified"} {time && `at ${time}`}</p>
               <p className="text-gray-500 text-xs">Date lost: {date || "Not specified"}</p>
               <p className="text-gray-500 text-xs mt-1">Status: <span className="font-bold text-blue-600">Searching for match...</span></p>
-            </div>
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mt-4">
-              <p className="text-blue-700 text-xs">Our AI will notify you as soon as a potential match is found</p>
             </div>
             <div className="flex gap-3 mt-6">
               <a href="/student-home" className="flex-1 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-xl transition text-center text-sm">
@@ -158,20 +177,11 @@ export default function ReportLostPage() {
         ) : (
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="bg-gradient-to-r from-red-500 to-red-600 px-8 py-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h1 className="text-white font-black text-xl">Report Lost Item</h1>
-                  <p className="text-red-100 text-sm">Help us help you find it faster</p>
-                </div>
-              </div>
+              <h1 className="text-white font-black text-xl">Report Lost Item</h1>
+              <p className="text-red-100 text-sm">Help us help you find it faster</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-8 space-y-5">
+            <form onSubmit={handleReview} className="p-8 space-y-5">
 
               <label className="block">
                 <p className="text-sm font-bold text-gray-600 mb-2">
@@ -183,32 +193,21 @@ export default function ReportLostPage() {
                   {uploading ? (
                     <div className="flex flex-col items-center gap-2">
                       <div className="w-8 h-8 border-4 border-red-300 border-t-red-500 rounded-full animate-spin" />
-                      <p className="text-sm text-gray-500 font-medium">Uploading to cloud...</p>
+                      <p className="text-sm text-gray-500 font-medium">Analyzing photo with AI...</p>
                     </div>
                   ) : photoPreview ? (
                     <div className="relative">
                       <img src={photoPreview} alt="Preview" className="max-h-48 mx-auto rounded-xl" />
                       {photoUrl && (
                         <div className="mt-2 inline-flex items-center gap-1 bg-green-50 border border-green-200 rounded-full px-3 py-1">
-                          <span className="text-green-600 text-xs font-bold">Photo uploaded successfully</span>
+                          <span className="text-green-600 text-xs font-bold">Photo uploaded and analyzed</span>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <>
-                      <div className="flex justify-center mb-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-10 h-10 ${photoError ? "text-red-400" : "text-gray-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                      </div>
-                      <p className={`font-bold text-sm ${photoError ? "text-red-600" : "text-gray-600"}`}>
-                        Click to upload a photo
-                      </p>
-                      <p className={`text-xs mt-1 ${photoError ? "text-red-400" : "text-gray-400"}`}>
-                        PNG, JPG up to 10MB
-                      </p>
-                    </>
+                    <p className={`font-bold text-sm ${photoError ? "text-red-600" : "text-gray-600"}`}>
+                      Click to upload a photo
+                    </p>
                   )}
                 </div>
                 <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
@@ -218,10 +217,6 @@ export default function ReportLostPage() {
                   </p>
                 )}
               </label>
-
-              <div className="bg-blue-50 rounded-xl p-3">
-                <p className="text-blue-700 text-xs">Our AI will automatically check image quality and detect item attributes from your photo</p>
-              </div>
 
               <div>
                 <label className="block text-sm font-bold text-gray-600 mb-2">Item Name</label>
@@ -236,7 +231,9 @@ export default function ReportLostPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">Category</label>
+                <label className="block text-sm font-bold text-gray-600 mb-2">
+                  Category {photoUrl && <span className="text-green-600 font-normal">(auto-detected, editable)</span>}
+                </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
@@ -248,65 +245,118 @@ export default function ReportLostPage() {
                 </select>
               </div>
 
+              {category === "Others" && (
+                <div>
+                  <label className="block text-sm font-bold text-gray-600 mb-2">Please Specify</label>
+                  <input
+                    type="text"
+                    value={othersSpecify}
+                    onChange={(e) => setOthersSpecify(e.target.value)}
+                    placeholder="Tell us what kind of item this is"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-400 focus:outline-none transition text-gray-700"
+                    required
+                  />
+                </div>
+              )}
+
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">Description (Optional)</label>
+                <label className="block text-sm font-bold text-gray-600 mb-2">
+                  Description {aiFilled ? <span className="text-green-600 font-normal">(auto-filled by AI, editable)</span> : <span className="text-red-500">*</span>}
+                </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Add any extra details about your item e.g. color, brand, markings"
-                  rows={3}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-400 focus:outline-none transition text-gray-700 resize-none"
+                  placeholder={aiFilled ? "" : "If our AI could not auto-fill this. Please describe your item manually (color, brand, markings)."}
+                  rows={4}
+                  className={`w-full px-4 py-3 border-2 rounded-xl focus:border-red-400 focus:outline-none transition text-gray-700 resize-none ${
+                    !aiFilled && !description.trim() ? "border-red-200 bg-red-50" : "border-gray-200"
+                  }`}
+                  required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">Last Seen Location & Time</label>
+                <label className="block text-sm font-bold text-gray-600 mb-2">Last Seen Location</label>
                 <input
                   type="text"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g. Science Lab, Canteen, Room 402, Around 2:30 PM"
+                  placeholder="e.g. Science Lab, Canteen, Room 402"
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-400 focus:outline-none transition text-gray-700"
                   required
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">Date Lost</label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-400 focus:outline-none transition text-gray-700"
-                  required
-                />
-              </div>
-
-              <div className="bg-gray-50 rounded-2xl p-4">
-                <p className="font-bold text-gray-700 text-sm mb-2">Review Your Report</p>
-                <div className="space-y-1 text-sm">
-                  <p className="text-gray-500"><span className="font-semibold text-gray-700">Item:</span> {itemName || "Not filled yet"}</p>
-                  <p className="text-gray-500"><span className="font-semibold text-gray-700">Category:</span> {category}</p>
-                  <p className="text-gray-500"><span className="font-semibold text-gray-700">Location:</span> {location || "Not filled yet"}</p>
-                  <p className="text-gray-500"><span className="font-semibold text-gray-700">Date:</span> {date || "Not filled yet"}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-600 mb-2">Date Lost</label>
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-400 focus:outline-none transition text-gray-700"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-600 mb-2">Approx. Time</label>
+                  <input
+                    type="time"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-400 focus:outline-none transition text-gray-700"
+                  />
                 </div>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-3">
-                <p className="text-yellow-700 text-xs">Only category, general date, and area will be publicly visible to prevent fake claims</p>
-              </div>
+              {submitError && (
+                <p className="text-red-500 text-xs font-bold">{submitError}</p>
+              )}
 
               <button
                 type="submit"
-                disabled={submitLoading || uploading || !photoUrl}
+                disabled={uploading || !photoUrl}
                 className="w-full bg-red-500 hover:bg-red-600 text-white font-black py-4 rounded-xl transition shadow-lg text-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitLoading ? "Submitting..." : uploading ? "Waiting for photo upload..." : "Submit Report"}
+                {uploading ? "Waiting for photo analysis..." : "Review Report"}
               </button>
             </form>
           </div>
         )}
       </main>
+
+      {showConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm px-4">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+            <h2 className="text-xl font-black text-[#1a237e] mb-1">Confirm Your Report</h2>
+            <p className="text-gray-400 text-sm mb-6">Please review before submitting — this will be visible to other students</p>
+
+            <div className="bg-gray-50 rounded-2xl p-4 space-y-2 text-sm mb-6">
+              <p><span className="font-bold text-gray-700">Item:</span> <span className="text-gray-600">{itemName}</span></p>
+              <p><span className="font-bold text-gray-700">Category:</span> <span className="text-gray-600">{category === "Others" ? othersSpecify : category}</span></p>
+              <p><span className="font-bold text-gray-700">Description:</span> <span className="text-gray-600">{description}</span></p>
+              <p><span className="font-bold text-gray-700">Location:</span> <span className="text-gray-600">{location}</span></p>
+              <p><span className="font-bold text-gray-700">Date:</span> <span className="text-gray-600">{date}</span> {time && <span className="text-gray-600">at {time}</span>}</p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 border-2 border-gray-200 text-gray-500 font-bold py-3 rounded-2xl hover:bg-gray-50 transition"
+              >
+                Go Back
+              </button>
+              <button
+                onClick={handleFinalSubmit}
+                disabled={submitLoading}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-2xl transition disabled:opacity-50"
+              >
+                {submitLoading ? "Submitting..." : "Confirm & Submit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

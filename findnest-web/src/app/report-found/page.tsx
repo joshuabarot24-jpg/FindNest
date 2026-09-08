@@ -10,14 +10,19 @@ export default function ReportFoundPage() {
 
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState("Electronics");
+  const [othersSpecify, setOthersSpecify] = useState("");
   const [description, setDescription] = useState("");
+  const [aiFilled, setAiFilled] = useState(false);
   const [location, setLocation] = useState("");
+  const [time, setTime] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("findnest_user");
@@ -55,37 +60,56 @@ export default function ReportFoundPage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setPhotoUrl(res.data.url);
-    } catch (err) {
+
+      if (res.data.ai_category && categories.includes(res.data.ai_category)) {
+        setCategory(res.data.ai_category);
+      }
+      if (res.data.ai_description) {
+        setDescription(res.data.ai_description);
+        setAiFilled(true);
+      } else {
+        setAiFilled(false);
+      }
+    } catch (err: any) {
       console.error("Photo upload failed:", err);
       setPhotoPreview(null);
       setPhotoError(true);
-      alert("Photo upload failed. Please try again.");
+      alert(err.response?.data?.message || "Photo upload failed. Please try again.");
     } finally {
       setUploading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleReview = (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!photoUrl) {
       setPhotoError(true);
       return;
     }
+    if (!description.trim()) {
+      setSubmitError("Description is required. Please add details manually since our AI could not auto-fill it.");
+      return;
+    }
+    setSubmitError("");
+    setShowConfirm(true);
+  };
 
+  const handleFinalSubmit = async () => {
     setSubmitLoading(true);
     try {
       await api.post("/found-items", {
         item_name: itemName,
-        category: category,
+        category: category === "Others" ? othersSpecify.trim() : category,
         description: description,
         location_found: location,
         date_found: new Date().toISOString().split("T")[0],
         photo_url: photoUrl,
       });
+      setShowConfirm(false);
       setSubmitted(true);
     } catch (err: any) {
       console.error("Error submitting report:", err);
+      setShowConfirm(false);
       alert(err.response?.data?.message || "Failed to submit report. Please try again.");
     } finally {
       setSubmitLoading(false);
@@ -100,7 +124,7 @@ export default function ReportFoundPage() {
         </a>
         <div className="flex items-center gap-8">
           <a href="/student-home" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Home</a>
-          <a href="/view-found-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">View Found Items</a>
+          <a href="/view-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">View Items</a>
           <a href="/claim-status" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Claim Status</a>
           <a href="/support" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Support</a>
         </div>
@@ -134,17 +158,15 @@ export default function ReportFoundPage() {
               Your found item report has been submitted. Please surrender the item to the school office to complete the process.
             </p>
             <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 mt-6 text-left">
-              <div className="flex items-center gap-2 mb-2">
-                <p className="font-bold text-orange-700 text-sm">Important Reminder!</p>
-              </div>
+              <p className="font-bold text-orange-700 text-sm mb-2">Important Reminder!</p>
               <p className="text-orange-600 text-xs leading-relaxed">
-                Surrender this item to Ms. Shelly S. Durban at the Guidance Office within <strong>2 school days</strong>. If not surrendered within this window, the post will be automatically rejected and your account may be flagged.
+                Surrender this item to <strong>Ms. Shelly S. Durban</strong> at the Guidance Office within <strong>2 school days</strong>. If not surrendered within this window, the post will be automatically rejected and your account may be flagged.
               </p>
             </div>
             <div className="bg-blue-50 rounded-2xl p-4 mt-4 text-left">
               <p className="text-[#1a237e] font-bold text-sm">{itemName || "Your Reported Item"}</p>
-              <p className="text-gray-500 text-xs mt-1">Category: {category}</p>
-              <p className="text-gray-500 text-xs">Found at: {location || "Not specified"}</p>
+              <p className="text-gray-500 text-xs mt-1">Category: {category === "Others" ? othersSpecify : category}</p>
+              <p className="text-gray-500 text-xs">Found at: {location || "Not specified"} {time && `at ${time}`}</p>
               <p className="text-gray-500 text-xs mt-1">Status: <span className="font-bold text-yellow-600">Pending Physical Receipt</span></p>
             </div>
             <div className="flex gap-3 mt-6">
@@ -159,61 +181,37 @@ export default function ReportFoundPage() {
         ) : (
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="bg-gradient-to-r from-green-500 to-green-600 px-8 py-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h1 className="text-white font-black text-xl">Report Found Item</h1>
-                  <p className="text-green-100 text-sm">Help reunite this item with its owner</p>
-                </div>
-              </div>
+              <h1 className="text-white font-black text-xl">Report Found Item</h1>
+              <p className="text-green-100 text-sm">Help reunite this item with its owner</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-8 space-y-5">
+            <form onSubmit={handleReview} className="p-8 space-y-5">
 
-              <label id="photo-upload-section" className="block">
+              <label className="block">
                 <p className="text-sm font-bold text-gray-600 mb-2">
                   Upload Photo <span className="text-red-500">*</span>
                 </p>
-                <div
-                  className={`border-2 border-dashed rounded-2xl p-8 text-center transition cursor-pointer ${
-                    photoError
-                      ? "border-red-400 bg-red-50"
-                      : "border-gray-200 hover:border-green-300 bg-gray-50"
-                  }`}
-                >
+                <div className={`border-2 border-dashed rounded-2xl p-8 text-center transition cursor-pointer ${
+                  photoError ? "border-red-400 bg-red-50" : "border-gray-200 hover:border-green-300 bg-gray-50"
+                }`}>
                   {uploading ? (
                     <div className="flex flex-col items-center gap-2">
                       <div className="w-8 h-8 border-4 border-green-300 border-t-green-500 rounded-full animate-spin" />
-                      <p className="text-sm text-gray-500 font-medium">Uploading to cloud...</p>
+                      <p className="text-sm text-gray-500 font-medium">Analyzing photo with AI...</p>
                     </div>
                   ) : photoPreview ? (
                     <div className="relative">
                       <img src={photoPreview} alt="Preview" className="max-h-48 mx-auto rounded-xl" />
                       {photoUrl && (
                         <div className="mt-2 inline-flex items-center gap-1 bg-green-50 border border-green-200 rounded-full px-3 py-1">
-                          <span className="text-green-600 text-xs font-bold">Photo uploaded successfully</span>
+                          <span className="text-green-600 text-xs font-bold">Photo uploaded and analyzed</span>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <>
-                      <div className="flex justify-center mb-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-10 h-10 ${photoError ? "text-red-400" : "text-gray-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                      </div>
-                      <p className={`font-bold text-sm ${photoError ? "text-red-600" : "text-gray-600"}`}>
-                        Click to upload a photo
-                      </p>
-                      <p className={`text-xs mt-1 ${photoError ? "text-red-400" : "text-gray-400"}`}>
-                        PNG, JPG up to 10MB
-                      </p>
-                    </>
+                    <p className={`font-bold text-sm ${photoError ? "text-red-600" : "text-gray-600"}`}>
+                      Click to upload a photo
+                    </p>
                   )}
                 </div>
                 <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
@@ -237,7 +235,9 @@ export default function ReportFoundPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">Category</label>
+                <label className="block text-sm font-bold text-gray-600 mb-2">
+                  Category {photoUrl && <span className="text-green-600 font-normal">(auto-detected, editable)</span>}
+                </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
@@ -249,33 +249,60 @@ export default function ReportFoundPage() {
                 </select>
               </div>
 
+              {category === "Others" && (
+                <div>
+                  <label className="block text-sm font-bold text-gray-600 mb-2">Please Specify</label>
+                  <input
+                    type="text"
+                    value={othersSpecify}
+                    onChange={(e) => setOthersSpecify(e.target.value)}
+                    placeholder="Tell us what kind of item this is"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-400 focus:outline-none transition text-gray-700"
+                    required
+                  />
+                </div>
+              )}
+
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">Location Found & Time</label>
+                <label className="block text-sm font-bold text-gray-600 mb-2">
+                  Description {aiFilled ? <span className="text-green-600 font-normal">(auto-filled by AI, editable)</span> : <span className="text-red-500">*</span>}
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder={aiFilled ? "" : "If our AI could not auto-fill this. Please describe the item manually — any details that might help identify the owner."}
+                  rows={4}
+                  className={`w-full px-4 py-3 border-2 rounded-xl focus:border-green-400 focus:outline-none transition text-gray-700 resize-none ${
+                    !aiFilled && !description.trim() ? "border-red-200 bg-red-50" : "border-gray-200"
+                  }`}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-600 mb-2">Location Found</label>
                 <input
                   type="text"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g. Library, Canteen, Room 402, Around 2:30 PM"
+                  placeholder="e.g. Library, Canteen, Room 402"
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-400 focus:outline-none transition text-gray-700"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">Description (Optional)</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Any details that might help identify the owner"
-                  rows={3}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-400 focus:outline-none transition text-gray-700 resize-none"
+                <label className="block text-sm font-bold text-gray-600 mb-2">Approx. Time Found</label>
+                <input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-400 focus:outline-none transition text-gray-700"
                 />
               </div>
 
               <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="font-bold text-orange-700 text-sm">Surrender Reminder!</p>
-                </div>
+                <p className="font-bold text-orange-700 text-sm mb-1">Surrender Reminder!</p>
                 <p className="text-orange-600 text-xs leading-relaxed">
                   You must surrender this item to <strong>Ms. Shelly S. Durban</strong> at the Guidance Office within <strong>2 school days</strong>. Failure to do so will result in automatic post rejection and account flagging.
                 </p>
@@ -285,17 +312,53 @@ export default function ReportFoundPage() {
                 <p className="text-purple-700 text-xs">This report is private and visible only to you and administrators</p>
               </div>
 
+              {submitError && (
+                <p className="text-red-500 text-xs font-bold">{submitError}</p>
+              )}
+
               <button
                 type="submit"
-                disabled={submitLoading || uploading || !photoUrl}
+                disabled={uploading || !photoUrl}
                 className="w-full bg-green-500 hover:bg-green-600 text-white font-black py-4 rounded-xl transition shadow-lg text-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitLoading ? "Submitting..." : uploading ? "Waiting for photo upload..." : "Submit Report"}
+                {uploading ? "Waiting for photo analysis..." : "Review Report"}
               </button>
             </form>
           </div>
         )}
       </main>
+
+      {showConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm px-4">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+            <h2 className="text-xl font-black text-[#1a237e] mb-1">Confirm Your Report</h2>
+            <p className="text-gray-400 text-sm mb-6">Please review before submitting — this report stays private, visible only to you and admin</p>
+
+            <div className="bg-gray-50 rounded-2xl p-4 space-y-2 text-sm mb-6">
+              <p><span className="font-bold text-gray-700">Item:</span> <span className="text-gray-600">{itemName}</span></p>
+              <p><span className="font-bold text-gray-700">Category:</span> <span className="text-gray-600">{category === "Others" ? othersSpecify : category}</span></p>
+              <p><span className="font-bold text-gray-700">Description:</span> <span className="text-gray-600">{description}</span></p>
+              <p><span className="font-bold text-gray-700">Location:</span> <span className="text-gray-600">{location}</span> {time && <span className="text-gray-600">at {time}</span>}</p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 border-2 border-gray-200 text-gray-500 font-bold py-3 rounded-2xl hover:bg-gray-50 transition"
+              >
+                Go Back
+              </button>
+              <button
+                onClick={handleFinalSubmit}
+                disabled={submitLoading}
+                className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-2xl transition disabled:opacity-50"
+              >
+                {submitLoading ? "Submitting..." : "Confirm & Submit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
