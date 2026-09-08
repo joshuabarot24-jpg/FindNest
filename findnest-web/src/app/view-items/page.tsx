@@ -2,21 +2,21 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 
-interface FoundItem {
+interface LostReport {
   id: number;
   item_name: string;
   category: string;
-  location_found: string;
-  date_found: string;
+  location_lost: string;
+  date_lost: string;
   photo_url: string | null;
   status: string;
 }
 
 const categories = ["All", "Electronics", "Personal Belongings", "Accessories", "ID/Cards", "Keys", "School Supplies"];
 
-export default function ViewFoundItems() {
+export default function ViewItems() {
   const [userInitial, setUserInitial] = useState("");
-  const [foundItems, setFoundItems] = useState<FoundItem[]>([]);
+  const [lostReports, setLostReports] = useState<LostReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
@@ -32,10 +32,10 @@ export default function ViewFoundItems() {
   useEffect(() => {
     const fetchItems = async () => {
       try {
-        const response = await api.get("/found-items", { params: { status: "unclaimed" } });
-        setFoundItems(response.data.records || []);
+        const response = await api.get("/lost-items", { params: { status: "searching" } });
+        setLostReports(response.data.reports || []);
       } catch (err) {
-        console.error("Error fetching found items:", err);
+        console.error("Error fetching lost reports:", err);
       } finally {
         setLoading(false);
       }
@@ -43,7 +43,7 @@ export default function ViewFoundItems() {
     fetchItems();
   }, []);
 
-  const filtered = foundItems.filter((item) => {
+  const filtered = lostReports.filter((item) => {
     const matchesSearch = item.item_name.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = activeCategory === "All" || item.category === activeCategory;
     return matchesSearch && matchesCategory;
@@ -58,7 +58,7 @@ export default function ViewFoundItems() {
 
         <div className="flex items-center gap-8">
           <a href="/student-home" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Home</a>
-          <a href="/view-found-items" className="text-[#1a237e] font-bold text-sm border-b-2 border-[#1a237e] pb-1">View Found Items</a>
+          <a href="/view-items" className="text-[#1a237e] font-bold text-sm border-b-2 border-[#1a237e] pb-1">View Items</a>
           <a href="/claim-status" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Claim Status</a>
           <a href="/support" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Support</a>
         </div>
@@ -78,19 +78,19 @@ export default function ViewFoundItems() {
       <main className="px-8 py-10 max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-black text-[#1a237e]">Browse Found Items</h1>
-            <p className="text-gray-400 text-sm mt-1">Items currently held by the school office</p>
+            <h1 className="text-2xl font-black text-[#1a237e]">Browse Lost Item Reports</h1>
+            <p className="text-gray-400 text-sm mt-1">Items reported lost by fellow students — help reunite them if you've seen one</p>
           </div>
           <div className="bg-white rounded-2xl px-5 py-3 shadow-sm border border-gray-100">
-            <span className="text-2xl font-black text-[#1a237e]">{foundItems.length}</span>
-            <span className="text-gray-400 text-sm ml-2">items found</span>
+            <span className="text-2xl font-black text-[#1a237e]">{lostReports.length}</span>
+            <span className="text-gray-400 text-sm ml-2">active reports</span>
           </div>
         </div>
 
         <div className="relative mb-5">
           <input
             type="text"
-            placeholder="Search found items..."
+            placeholder="Search lost item reports..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full px-5 py-3.5 border border-gray-200 rounded-2xl focus:outline-none focus:border-[#1a237e] text-gray-700 bg-white shadow-sm"
@@ -114,7 +114,7 @@ export default function ViewFoundItems() {
         </div>
 
         {loading ? (
-          <div className="text-center py-20 text-gray-400 text-sm">Loading found items...</div>
+          <div className="text-center py-20 text-gray-400 text-sm">Loading lost item reports...</div>
         ) : (
           <>
             <div className="grid grid-cols-5 gap-5">
@@ -142,16 +142,16 @@ export default function ViewFoundItems() {
 
                   <div className="p-4">
                     <p className="font-bold text-gray-700 text-sm leading-tight mb-2">{item.item_name}</p>
-                    <p className="text-gray-400 text-xs mb-1">Location: {item.location_found}</p>
+                    <p className="text-gray-400 text-xs mb-1">Last seen: {item.location_lost}</p>
                     <p className="text-gray-400 text-xs">
-                      Found: {new Date(item.date_found).toLocaleDateString()}
+                      Lost: {new Date(item.date_lost).toLocaleDateString()}
                     </p>
 
                     <a
-                      href="/report-lost"
+                      href="/report-found"
                       className="block w-full mt-3 bg-gray-50 group-hover:bg-[#1a237e] text-gray-500 group-hover:text-white text-xs font-bold py-2.5 rounded-xl transition text-center"
                     >
-                      Is this yours?
+                      I found this!
                     </a>
                   </div>
                 </div>
@@ -160,7 +160,7 @@ export default function ViewFoundItems() {
 
             {filtered.length === 0 && (
               <div className="text-center py-20 text-gray-400">
-                <p className="font-bold text-lg">No items found</p>
+                <p className="font-bold text-lg">No active lost reports</p>
                 <p className="text-sm mt-1">Try a different search or category</p>
               </div>
             )}

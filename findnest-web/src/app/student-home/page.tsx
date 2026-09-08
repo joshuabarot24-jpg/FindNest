@@ -97,7 +97,7 @@ export default function StudentHome() {
 
         <div className="flex items-center gap-8">
           <a href="/student-home" className="text-[#1a237e] font-bold text-sm border-b-2 border-[#1a237e] pb-1">Home</a>
-          <a href="/view-found-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">View Found Items</a>
+          <a href="/view-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">View Items</a>
           <a href="/claim-status" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Claim Status</a>
           <a href="/support" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Support</a>
         </div>
@@ -125,7 +125,7 @@ export default function StudentHome() {
               <p className="text-green-600 text-sm">{matchNotification.message}</p>
             </div>
             <div className="flex items-center gap-2">
-              <a href="/view-found-items" className="bg-green-500 hover:bg-green-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition">
+              <a href="/view-found-items" className="text-sm font-bold text-[#1a237e] hover:underline">
                 View Match
               </a>
               <button
@@ -212,7 +212,7 @@ export default function StudentHome() {
             <div className="flex gap-4 overflow-x-auto pb-2">
               {foundItems.map((item) => (
                 <a
-                  href="/view-found-items"
+                  href="/view-items"
                   key={item.id}
                   className="flex-shrink-0 w-40 bg-gray-50 hover:bg-gray-100 rounded-2xl p-4 text-center transition cursor-pointer"
                 >
