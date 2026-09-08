@@ -14,6 +14,7 @@ class LostItemReport extends Model
         'date_lost',
         'photo_url',
         'status',
+        'ai_description',
     ];
 
     public function user()

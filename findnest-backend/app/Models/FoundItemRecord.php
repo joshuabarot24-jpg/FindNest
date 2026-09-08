@@ -15,6 +15,7 @@ class FoundItemRecord extends Model
         'photo_url',
         'storage_location',
         'status',
+        'ai_description',
     ];
 
     public function admin()
