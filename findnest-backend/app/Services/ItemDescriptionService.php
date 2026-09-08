@@ -20,7 +20,7 @@ class ItemDescriptionService
             $imageContent = file_get_contents($imageUrl);
             $base64Image = base64_encode($imageContent);
 
-            $response = Http::timeout(30)->post($this->apiUrl . '?key=' . $this->apiKey, [
+            $response = Http::timeout(20)->retry(2, 500)->post($this->apiUrl . '?key=' . $this->apiKey, [
                 'contents' => [
                     [
                         'parts' => [
