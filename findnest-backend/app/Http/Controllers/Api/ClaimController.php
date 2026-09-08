@@ -106,6 +106,64 @@ class ClaimController extends Controller
         ], 201);
     }
 
+        public function markCollected(Request $request, $id)
+    {
+        $claim = Claim::findOrFail($id);
+
+        $claim->update(['collected_at' => Carbon::now()]);
+
+        $match = AiMatch::find($claim->match_id);
+        if ($match) {
+            FoundItemRecord::find($match->found_id)?->update(['status' => 'claimed']);
+        }
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'Item Collected',
+            'target_type' => 'claims',
+            'target_id' => $claim->id,
+            'details' => 'Admin confirmed item was physically collected by the student',
+            'performed_by' => 'Admin: ' . $request->user()->name,
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['message' => 'Item marked as collected', 'claim' => $claim]);
+    }
+
+    public function submitAppeal(Request $request, $id)
+    {
+        $claim = Claim::where('id', $id)
+            ->where('student_id', $request->user()->id)
+            ->where('claim_status', 'rejected')
+            ->firstOrFail();
+
+        $validator = Validator::make($request->all(), [
+            'appeal_message' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $claim->update([
+            'appeal_message' => $request->appeal_message,
+            'appeal_status' => 'pending',
+            'appeal_submitted_at' => Carbon::now(),
+        ]);
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'Claim Appeal Submitted',
+            'target_type' => 'claims',
+            'target_id' => $claim->id,
+            'details' => 'Student appealed rejected claim, escalated to super-admin review',
+            'performed_by' => 'Student: ' . $request->user()->name,
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['message' => 'Appeal submitted for super-admin review', 'claim' => $claim]);
+    }
+
     public function getQuestions(Request $request, $id)
     {
         $claim = Claim::where('id', $id)
@@ -201,6 +259,7 @@ class ClaimController extends Controller
             'admin_id' => $request->user()->id,
             'admin_notes' => $request->admin_notes,
             'claimed_at' => Carbon::now(),
+            'pickup_deadline' => Carbon::now()->addDays(2),
         ]);
 
         $match = AiMatch::find($claim->match_id);
