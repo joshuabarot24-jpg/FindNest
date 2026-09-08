@@ -28,6 +28,9 @@ class User extends Authenticatable
         'is_restricted',
         'restriction_reason',
         'restricted_until',
+        'password_change_requested',
+        'password_change_reason',
+        'password_last_changed_at',
     ];
 
     protected $hidden = [
@@ -44,6 +47,8 @@ class User extends Authenticatable
         'privileges' => 'array',
         'is_restricted' => 'boolean',
         'restricted_until' => 'date',
+        'password_change_requested' => 'boolean',
+        'password_last_changed_at' => 'datetime',
     ];
 
     public function lostReports()
