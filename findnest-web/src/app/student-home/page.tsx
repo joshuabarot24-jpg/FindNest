@@ -10,13 +10,6 @@ interface LostReport {
   photo_url: string | null;
 }
 
-interface FoundItem {
-  id: number;
-  item_name: string;
-  location_found: string;
-  photo_url: string | null;
-}
-
 interface NotificationItem {
   id: number;
   title: string;
@@ -31,9 +24,6 @@ export default function StudentHome() {
 
   const [myReports, setMyReports] = useState<LostReport[]>([]);
   const [reportsLoading, setReportsLoading] = useState(true);
-
-  const [foundItems, setFoundItems] = useState<FoundItem[]>([]);
-  const [foundLoading, setFoundLoading] = useState(true);
 
   const [matchNotification, setMatchNotification] = useState<NotificationItem | null>(null);
   const [showNotification, setShowNotification] = useState(true);
@@ -57,17 +47,6 @@ export default function StudentHome() {
       }
     };
 
-    const fetchFoundItems = async () => {
-      try {
-        const response = await api.get("/found-items", { params: { status: "unclaimed" } });
-        setFoundItems((response.data.records || []).slice(0, 6));
-      } catch (err) {
-        console.error("Error fetching found items:", err);
-      } finally {
-        setFoundLoading(false);
-      }
-    };
-
     const fetchNotifications = async () => {
       try {
         const response = await api.get("/notifications");
@@ -82,7 +61,6 @@ export default function StudentHome() {
     };
 
     fetchMyReports();
-    fetchFoundItems();
     fetchNotifications();
   }, []);
 
@@ -97,7 +75,6 @@ export default function StudentHome() {
 
         <div className="flex items-center gap-8">
           <a href="/student-home" className="text-[#1a237e] font-bold text-sm border-b-2 border-[#1a237e] pb-1">Home</a>
-          <a href="/view-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">View Items</a>
           <a href="/claim-status" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Claim Status</a>
           <a href="/support" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Support</a>
         </div>
@@ -125,7 +102,7 @@ export default function StudentHome() {
               <p className="text-green-600 text-sm">{matchNotification.message}</p>
             </div>
             <div className="flex items-center gap-2">
-              <a href="/view-found-items" className="text-sm font-bold text-[#1a237e] hover:underline">
+              <a href="/claim-status" className="text-sm font-bold text-[#1a237e] hover:underline">
                 View Match
               </a>
               <button
@@ -139,7 +116,7 @@ export default function StudentHome() {
         )}
 
         <div className="grid grid-cols-3 gap-4 mb-8">
-          
+
           <a
             href="/report-lost"
             className="bg-red-500 hover:bg-red-600 rounded-2xl p-6 text-white transition shadow-lg hover:-translate-y-1 transform flex items-center gap-4"
@@ -191,46 +168,6 @@ export default function StudentHome() {
               </div>
             )}
           </div>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="font-black text-gray-700 text-lg">Recently Found Items</h2>
-              <p className="text-gray-400 text-sm mt-0.5">Items currently held by the school office</p>
-            </div>
-            <a href="/view-found-items" className="text-sm font-bold text-[#1a237e] hover:underline">
-              View All
-            </a>
-          </div>
-
-          {foundLoading ? (
-            <p className="text-gray-400 text-sm">Loading found items...</p>
-          ) : foundItems.length === 0 ? (
-            <p className="text-gray-400 text-sm">No found items available right now.</p>
-          ) : (
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {foundItems.map((item) => (
-                <a
-                  href="/view-items"
-                  key={item.id}
-                  className="flex-shrink-0 w-40 bg-gray-50 hover:bg-gray-100 rounded-2xl p-4 text-center transition cursor-pointer"
-                >
-                  <div className="w-16 h-16 bg-white rounded-xl overflow-hidden mx-auto mb-3 shadow-sm">
-                    {item.photo_url ? (
-                      <img src={item.photo_url} alt={item.item_name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300 text-[10px] font-bold">
-                        No Photo
-                      </div>
-                    )}
-                  </div>
-                  <p className="font-bold text-gray-700 text-sm">{item.item_name}</p>
-                  <p className="text-gray-400 text-xs mt-1">Found near {item.location_found}</p>
-                </a>
-              ))}
-            </div>
-          )}
         </div>
       </main>
     </div>
