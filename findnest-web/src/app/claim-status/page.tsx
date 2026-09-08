@@ -9,17 +9,13 @@ interface Claim {
   admin_notes: string | null;
   created_at: string;
   claimed_at: string | null;
+  pickup_deadline: string | null;
+  collected_at: string | null;
+  appeal_message: string | null;
+  appeal_status: string | null;
   match: {
-    lost_report: {
-      item_name: string;
-      photo_url: string | null;
-      location_lost: string;
-    } | null;
-    found_record: {
-      item_name: string;
-      photo_url: string | null;
-      location_found: string;
-    } | null;
+    lost_report: { item_name: string; location_lost: string } | null;
+    found_record: { item_name: string; location_found: string } | null;
   } | null;
 }
 
@@ -35,15 +31,25 @@ interface PendingMatch {
   };
 }
 
-function statusStep(status: string) {
+const TIMELINE_STEPS = [
+  "Submitted",
+  "Under AI Review",
+  "Matched",
+  "Claim Submitted",
+  "Pending Verification",
+  "Approved",
+  "Returned",
+];
+
+function currentStepIndex(status: string): number {
   switch (status) {
     case "approved":
-      return 3;
-    case "rejected":
-      return -1;
+      return 5;
+    case "returned":
+      return 6;
     case "pending":
     default:
-      return 2;
+      return 4;
   }
 }
 
@@ -53,6 +59,8 @@ function statusLabel(status: string) {
       return "Approved";
     case "rejected":
       return "Rejected";
+    case "abandoned":
+      return "Abandoned";
     default:
       return "Under Review";
   }
@@ -64,6 +72,8 @@ function statusColor(status: string) {
       return "text-green-600 bg-green-50 border-green-100";
     case "rejected":
       return "text-red-600 bg-red-50 border-red-100";
+    case "abandoned":
+      return "text-gray-600 bg-gray-100 border-gray-200";
     default:
       return "text-yellow-600 bg-yellow-50 border-yellow-100";
   }
@@ -75,6 +85,12 @@ function formatDate(dateStr: string) {
     month: "short",
     day: "numeric",
   });
+}
+
+function daysRemaining(deadline: string): number {
+  const now = new Date();
+  const end = new Date(deadline);
+  return Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 export default function ClaimStatusPage() {
@@ -89,6 +105,11 @@ export default function ClaimStatusPage() {
   const [proofDescription, setProofDescription] = useState("");
   const [claimSubmitting, setClaimSubmitting] = useState(false);
   const [claimError, setClaimError] = useState("");
+
+  const [appealingClaim, setAppealingClaim] = useState<Claim | null>(null);
+  const [appealMessage, setAppealMessage] = useState("");
+  const [appealSubmitting, setAppealSubmitting] = useState(false);
+  const [appealError, setAppealError] = useState("");
 
   useEffect(() => {
     const stored = localStorage.getItem("findnest_user");
@@ -154,6 +175,29 @@ export default function ClaimStatusPage() {
     }
   };
 
+  const handleSubmitAppeal = async () => {
+    if (!appealingClaim) return;
+    if (!appealMessage.trim()) {
+      setAppealError("Please provide additional evidence or explanation for your appeal.");
+      return;
+    }
+
+    setAppealError("");
+    setAppealSubmitting(true);
+    try {
+      await api.post(`/claims/${appealingClaim.id}/appeal`, {
+        appeal_message: appealMessage.trim(),
+      });
+      setAppealingClaim(null);
+      setAppealMessage("");
+      fetchClaims();
+    } catch (err: any) {
+      setAppealError(err.response?.data?.message || "Failed to submit appeal. Please try again.");
+    } finally {
+      setAppealSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f8f9fc]">
       <nav className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
@@ -163,7 +207,6 @@ export default function ClaimStatusPage() {
 
         <div className="flex items-center gap-8">
           <a href="/student-home" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Home</a>
-          <a href="/view-found-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">View Found Items</a>
           <a href="/claim-status" className="text-[#1a237e] font-bold text-sm border-b-2 border-[#1a237e] pb-1">Claim Status</a>
           <a href="/support" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Support</a>
         </div>
@@ -226,22 +269,14 @@ export default function ClaimStatusPage() {
             {claims.map((claim) => {
               const item = claim.match?.found_record || claim.match?.lost_report;
               const itemName = item?.item_name || "Unknown Item";
-              const photoUrl = claim.claim_status === "approved" ? item?.photo_url : null;
-              const step = statusStep(claim.claim_status);
+              const step = currentStepIndex(claim.claim_status);
+              const isTerminal = ["rejected", "abandoned"].includes(claim.claim_status);
+              const canAppeal = claim.claim_status === "rejected" && !claim.appeal_status;
 
               return (
                 <div key={claim.id} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                   <div className="p-6">
                     <div className="flex items-start gap-4 mb-5">
-                      <div className="w-16 h-16 bg-gray-50 rounded-2xl overflow-hidden flex-shrink-0">
-                        {photoUrl ? (
-                          <img src={photoUrl} alt={itemName} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300 text-[10px] font-bold text-center px-1">
-                            {claim.claim_status === "approved" ? "No Photo" : "Pending"}
-                          </div>
-                        )}
-                      </div>
                       <div className="flex-1">
                         <p className="font-black text-gray-700 text-lg">{itemName}</p>
                         <p className="text-gray-400 text-xs mt-1">Claim submitted {formatDate(claim.created_at)}</p>
@@ -251,52 +286,78 @@ export default function ClaimStatusPage() {
                       </span>
                     </div>
 
-                    {claim.claim_status !== "rejected" ? (
-                      <div className="flex items-center gap-2 mb-5">
-                        {["Submitted", "Under Review", "Approved"].map((label, idx) => {
+                    {!isTerminal ? (
+                      <div className="flex items-center gap-1 mb-5 overflow-x-auto pb-2">
+                        {TIMELINE_STEPS.map((label, idx) => {
                           const stepNum = idx + 1;
                           const isActive = stepNum <= step;
                           return (
-                            <div key={label} className="flex-1 flex items-center">
+                            <div key={label} className="flex-1 flex items-center min-w-[70px]">
                               <div className="flex flex-col items-center gap-1 flex-shrink-0">
                                 <div
-                                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${
                                     isActive ? "bg-[#1a237e] text-white" : "bg-gray-100 text-gray-400"
                                   }`}
                                 >
                                   {stepNum}
                                 </div>
-                                <span className={`text-[10px] font-bold ${isActive ? "text-[#1a237e]" : "text-gray-400"}`}>
+                                <span className={`text-[9px] font-bold text-center leading-tight ${isActive ? "text-[#1a237e]" : "text-gray-400"}`}>
                                   {label}
                                 </span>
                               </div>
-                              {idx < 2 && (
+                              {idx < TIMELINE_STEPS.length - 1 && (
                                 <div className={`flex-1 h-0.5 mx-1 ${stepNum < step ? "bg-[#1a237e]" : "bg-gray-100"}`} />
                               )}
                             </div>
                           );
                         })}
                       </div>
-                    ) : (
+                    ) : claim.claim_status === "rejected" ? (
                       <div className="bg-red-50 border border-red-100 rounded-2xl p-4 mb-5">
                         <p className="text-red-600 text-sm font-bold">Claim Rejected</p>
                         {claim.admin_notes && (
                           <p className="text-red-500 text-sm mt-1">Reason: {claim.admin_notes}</p>
                         )}
+                        {claim.appeal_status === "pending" && (
+                          <p className="text-orange-600 text-xs mt-2 font-semibold">Your appeal is under super-admin review.</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-gray-100 border border-gray-200 rounded-2xl p-4 mb-5">
+                        <p className="text-gray-600 text-sm font-bold">Claim Abandoned</p>
+                        <p className="text-gray-500 text-xs mt-1">Pickup window expired without collection. The item returned to unclaimed status.</p>
                       </div>
                     )}
 
-                    {claim.claim_status === "approved" && (
-                      <div className="bg-green-50 border border-green-100 rounded-2xl p-4">
+                    {claim.claim_status === "approved" && !claim.collected_at && claim.pickup_deadline && (
+                      <div className="bg-green-50 border border-green-100 rounded-2xl p-4 mb-5">
                         <p className="text-green-700 text-sm font-bold">Item Ready for Pickup</p>
                         <p className="text-green-600 text-xs mt-1">
-                          Visit the Guidance Office to collect your item
-                          {claim.claimed_at && ` — approved ${formatDate(claim.claimed_at)}`}
+                          Visit the Guidance Office to collect your item by <strong>{formatDate(claim.pickup_deadline)}</strong>
+                          {daysRemaining(claim.pickup_deadline) >= 0
+                            ? ` (${daysRemaining(claim.pickup_deadline)} day${daysRemaining(claim.pickup_deadline) === 1 ? "" : "s"} left)`
+                            : " — deadline passed"}
                         </p>
                       </div>
                     )}
 
-                    <div className="mt-5 pt-5 border-t border-gray-100">
+                    {claim.collected_at && (
+                      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-5">
+                        <p className="text-blue-700 text-sm font-bold">Item Returned</p>
+                        <p className="text-blue-600 text-xs mt-1">Collected on {formatDate(claim.collected_at)}</p>
+                      </div>
+                    )}
+
+                    {canAppeal && (
+                      <button
+                        onClick={() => { setAppealingClaim(claim); setAppealMessage(""); setAppealError(""); }}
+                        className="w-full bg-orange-50 hover:bg-orange-100 text-orange-600 font-bold py-2.5 rounded-xl transition text-sm mb-5"
+                      >
+                        Appeal This Decision
+                      </button>
+                    )}
+
+                    <div className="pt-5 border-t border-gray-100">
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Your Description</p>
                       <p className="text-gray-600 text-sm">{claim.proof_description}</p>
                     </div>
@@ -348,6 +409,45 @@ export default function ClaimStatusPage() {
               className="w-full bg-[#1a237e] hover:bg-[#283593] text-white font-black py-3.5 rounded-xl transition disabled:opacity-50"
             >
               {claimSubmitting ? "Submitting..." : "Submit Claim"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {appealingClaim && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm px-4">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+            <button
+              onClick={() => setAppealingClaim(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none"
+            >
+              &times;
+            </button>
+
+            <h2 className="text-xl font-black text-[#1a237e] mb-1">Appeal Rejected Claim</h2>
+            <p className="text-gray-400 text-sm mb-6">
+              This will be escalated to the Super Admin for final review
+            </p>
+
+            <label className="block text-sm font-bold text-gray-600 mb-2">Additional Evidence or Explanation</label>
+            <textarea
+              value={appealMessage}
+              onChange={(e) => setAppealMessage(e.target.value)}
+              placeholder="Provide new evidence or explain why you believe this decision should be reconsidered..."
+              rows={4}
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#1a237e] focus:outline-none transition text-gray-700 resize-none mb-4"
+            />
+
+            {appealError && (
+              <p className="text-red-500 text-xs font-semibold mb-4">{appealError}</p>
+            )}
+
+            <button
+              onClick={handleSubmitAppeal}
+              disabled={appealSubmitting}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-3.5 rounded-xl transition disabled:opacity-50"
+            >
+              {appealSubmitting ? "Submitting..." : "Submit Appeal"}
             </button>
           </div>
         </div>
