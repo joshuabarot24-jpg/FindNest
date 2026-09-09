@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -15,6 +16,14 @@ class ProfileController extends Controller
 
     public function update(Request $request)
     {
+        $user = $request->user();
+
+        if ($user->role === 'student') {
+            return response()->json([
+                'message' => 'Your personal information is managed by the school. Contact the Guidance Office to request changes.',
+            ], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'name'       => 'sometimes|string|max:255',
             'school_id'  => 'sometimes|nullable|string|max:50',
@@ -26,7 +35,6 @@ class ProfileController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user = $request->user();
         $user->update($request->only(['name', 'school_id', 'course', 'year_level']));
 
         return response()->json([
@@ -37,6 +45,14 @@ class ProfileController extends Controller
 
     public function changePassword(Request $request)
     {
+        $user = $request->user();
+
+        if ($user->role === 'student') {
+            return response()->json([
+                'message' => 'Students cannot change their password directly. Please submit a password change request instead.',
+            ], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'current_password' => 'required|string',
             'new_password'     => 'required|string|min:8|confirmed',
@@ -46,8 +62,6 @@ class ProfileController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user = $request->user();
-
         if (!Hash::check($request->current_password, $user->password)) {
             return response()->json(['message' => 'Current password is incorrect.'], 422);
         }
@@ -55,5 +69,39 @@ class ProfileController extends Controller
         $user->update(['password' => Hash::make($request->new_password)]);
 
         return response()->json(['message' => 'Password changed successfully']);
+    }
+
+    public function requestPasswordChange(Request $request)
+    {
+        $user = $request->user();
+
+        $validator = Validator::make($request->all(), [
+            'reason' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        if ($user->password_change_requested) {
+            return response()->json(['message' => 'You already have a pending password change request.'], 409);
+        }
+
+        $user->update([
+            'password_change_requested' => true,
+            'password_change_reason' => $request->reason,
+        ]);
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'Password Change Requested',
+            'target_type' => 'users',
+            'target_id' => $user->id,
+            'details' => 'Student requested a password change: ' . $request->reason,
+            'performed_by' => 'Student: ' . $user->name,
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['message' => 'Your password change request has been sent to the Super Admin.']);
     }
 }

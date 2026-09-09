@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class UserManagementController extends Controller
     {
@@ -107,7 +108,21 @@ class UserManagementController extends Controller
         ]);
 
         if ($request->password) {
-            $user->update(['password' => Hash::make($request->password)]);
+            if ($user->role === 'student' && $user->password_last_changed_at) {
+                $daysSinceChange = Carbon::parse($user->password_last_changed_at)->diffInDays(now());
+                if ($daysSinceChange < 14) {
+                    return response()->json([
+                        'message' => 'This student\'s password was changed ' . $daysSinceChange . ' day(s) ago. Please wait ' . (14 - $daysSinceChange) . ' more day(s) before changing it again.',
+                    ], 422);
+                }
+            }
+
+            $user->update([
+                'password' => Hash::make($request->password),
+                'password_last_changed_at' => now(),
+                'password_change_requested' => false,
+                'password_change_reason' => null,
+            ]);
         }
 
         AuditLog::create([
