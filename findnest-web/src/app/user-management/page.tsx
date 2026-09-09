@@ -12,6 +12,10 @@ interface SystemUser {
   year_level: string | null;
   education_level: string | null;
   is_active: boolean;
+  trust_score: number;
+  password_change_requested: boolean;
+  password_change_reason: string | null;
+  password_last_changed_at: string | null;
 }
 
 const PAGE_SIZE = 5;
@@ -22,6 +26,12 @@ function getInitial(name: string) {
 
 function formatRole(role: string) {
   return role.replace("_", " ");
+}
+
+function daysSince(dateStr: string): number {
+  const then = new Date(dateStr);
+  const now = new Date();
+  return Math.floor((now.getTime() - then.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 export default function UserManagement() {
@@ -107,6 +117,7 @@ export default function UserManagement() {
 
   const activeCount = users.filter((u) => u.is_active).length;
   const inactiveCount = users.filter((u) => !u.is_active).length;
+  const pendingPasswordCount = users.filter((u) => u.password_change_requested).length;
 
   function resetForm() {
     setFormData({
@@ -202,6 +213,11 @@ export default function UserManagement() {
     }
   }
 
+  const editCooldownDaysLeft = editingUser?.password_last_changed_at
+    ? Math.max(0, 14 - daysSince(editingUser.password_last_changed_at))
+    : 0;
+  const editOnCooldown = editingUser?.role === "student" && editCooldownDaysLeft > 0;
+
   return (
     <div className="min-h-screen bg-[#f0f2f5] flex">
       {toast && (
@@ -291,7 +307,7 @@ export default function UserManagement() {
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <p className="text-gray-400 text-sm font-medium">Total Users</p>
             <p className="text-4xl font-black text-[#1a237e] mt-1">{users.length}</p>
@@ -305,6 +321,11 @@ export default function UserManagement() {
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <p className="text-gray-400 text-sm font-medium">Inactive Users</p>
             <p className="text-4xl font-black text-red-500 mt-1">{inactiveCount}</p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <p className="text-gray-400 text-sm font-medium">Password Requests</p>
+            <p className="text-4xl font-black text-orange-500 mt-1">{pendingPasswordCount}</p>
           </div>
         </div>
 
@@ -404,7 +425,14 @@ export default function UserManagement() {
                           {getInitial(user.name)}
                         </div>
                         <div>
-                          <p className="font-bold text-gray-700">{user.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-gray-700">{user.name}</p>
+                            {user.password_change_requested && (
+                              <span className="bg-orange-50 text-orange-600 text-[9px] font-bold px-2 py-0.5 rounded-full">
+                                PASSWORD REQUEST
+                              </span>
+                            )}
+                          </div>
                           <p className="text-gray-400 text-xs mt-0.5">
                             ID: USR-{String(user.id).padStart(3, "0")}
                           </p>
@@ -667,7 +695,7 @@ export default function UserManagement() {
 
       {editingUser && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 p-8">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 p-8 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setEditingUser(null)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none"
@@ -679,6 +707,24 @@ export default function UserManagement() {
             <p className="text-gray-400 text-sm mb-6">
               Update {editingUser.name}&apos;s account details
             </p>
+
+            {editingUser.role === "student" && (
+              <div className="bg-blue-50 rounded-2xl p-4 mb-5 flex items-center gap-4">
+                <div>
+                  <p className="text-xs font-bold text-gray-400 uppercase">Trust Score</p>
+                  <p className="text-2xl font-black text-[#1a237e]">{editingUser.trust_score}</p>
+                </div>
+              </div>
+            )}
+
+            {editingUser.password_change_requested && (
+              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-5">
+                <p className="text-orange-700 font-bold text-sm mb-1">Password Change Requested</p>
+                <p className="text-orange-600 text-xs">
+                  {editingUser.password_change_reason || "No reason provided."}
+                </p>
+              </div>
+            )}
 
             <div className="space-y-4">
               <div>
@@ -716,8 +762,16 @@ export default function UserManagement() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   autoComplete="new-password"
-                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                  disabled={editOnCooldown}
+                  className={`w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm ${
+                    editOnCooldown ? "bg-gray-50 text-gray-400 cursor-not-allowed" : ""
+                  }`}
                 />
+                {editOnCooldown && (
+                  <p className="text-orange-500 text-xs font-semibold mt-1">
+                    This student's password was changed recently. Wait {editCooldownDaysLeft} more day{editCooldownDaysLeft === 1 ? "" : "s"} before changing it again.
+                  </p>
+                )}
               </div>
 
               {editingUser.role === "student" && (
