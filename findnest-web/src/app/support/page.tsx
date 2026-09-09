@@ -86,9 +86,9 @@ export default function SupportPage() {
         </a>
         <div className="flex items-center gap-8">
           <a href="/student-home" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Home</a>
-          <a href="/view-found-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">View Found Items</a>
           <a href="/claim-status" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Claim Status</a>
           <a href="/support" className="text-[#1a237e] font-bold text-sm border-b-2 border-[#1a237e] pb-1">Support</a>
+          <a href="/report-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Report Items</a>
         </div>
         <div className="flex items-center gap-4">
           <a href="/notifications" className="relative w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-xl flex items-center justify-center transition">

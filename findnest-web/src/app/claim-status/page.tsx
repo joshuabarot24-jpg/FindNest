@@ -209,6 +209,7 @@ export default function ClaimStatusPage() {
           <a href="/student-home" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Home</a>
           <a href="/claim-status" className="text-[#1a237e] font-bold text-sm border-b-2 border-[#1a237e] pb-1">Claim Status</a>
           <a href="/support" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Support</a>
+          <a href="/report-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Report Items</a>
         </div>
 
         <div className="flex items-center gap-4">

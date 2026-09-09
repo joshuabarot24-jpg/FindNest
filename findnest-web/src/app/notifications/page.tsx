@@ -93,9 +93,9 @@ export default function NotificationsPage() {
 
         <div className="flex items-center gap-8">
           <a href="/student-home" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Home</a>
-          <a href="/view-found-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">View Found Items</a>
           <a href="/claim-status" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Claim Status</a>
           <a href="/support" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Support</a>
+          <a href="/report-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Report Items</a>
         </div>
 
         <div className="flex items-center gap-4">
