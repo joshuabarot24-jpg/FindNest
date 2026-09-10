@@ -31,6 +31,7 @@ function typeColor(type: string) {
   if (t.includes("match")) return "bg-green-50 border-green-100";
   if (t.includes("claim")) return "bg-blue-50 border-blue-100";
   if (t.includes("reject")) return "bg-red-50 border-red-100";
+  if (t.includes("support")) return "bg-purple-50 border-purple-100";
   return "bg-gray-50 border-gray-100";
 }
 
@@ -138,13 +139,21 @@ export default function NotificationsPage() {
         ) : (
           <div className="space-y-3">
             {notifications.map((n) => (
-              <button
-                key={n.id}
-                onClick={() => !n.is_read && handleMarkAsRead(n.id)}
-                className={`w-full text-left rounded-2xl border p-5 transition ${typeColor(n.type)} ${
-                  !n.is_read ? "shadow-sm" : "opacity-70"
-                }`}
-              >
+                <button
+                  key={n.id}
+                  onClick={() => {
+                    if (!n.is_read) handleMarkAsRead(n.id);
+                    const t = n.type.toLowerCase();
+                    if (t.includes("support")) {
+                      window.location.href = "/support";
+                    } else if (t.includes("match") || t.includes("status") || t.includes("reminder")) {
+                      window.location.href = "/claim-status";
+                    }
+                  }}
+                  className={`w-full text-left rounded-2xl border p-5 transition ${typeColor(n.type)} ${
+                    !n.is_read ? "shadow-sm" : "opacity-70"
+                  }`}
+                >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
