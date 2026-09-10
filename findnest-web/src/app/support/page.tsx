@@ -209,7 +209,7 @@ export default function SupportPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-bold text-gray-700 text-sm truncate">{msg.message}</p>
-                        {msg.status === "replied" && (
+                        {msg.status === "responded" && (
                           <span className="bg-green-50 text-green-700 text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0">REPLIED</span>
                         )}
                       </div>

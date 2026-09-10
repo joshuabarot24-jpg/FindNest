@@ -86,7 +86,7 @@ export default function SupportInbox() {
       await api.post(`/support/${id}/reply`, { message: replyText.trim() });
       setReplyText("");
       fetchThread(id);
-      setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, status: "replied" } : m)));
+      setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, status: "responded" } : m)));
     } catch (err) {
       console.error("Error sending reply:", err);
     } finally {
@@ -183,9 +183,9 @@ export default function SupportInbox() {
                         <div className="flex items-center gap-2">
                           <p className="font-bold text-gray-700 text-sm">{msg.name}</p>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            msg.status === "new" ? "bg-red-50 text-red-600" : msg.status === "replied" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
+                            msg.status === "new" ? "bg-red-50 text-red-600" : msg.status === "responded" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
                           }`}>
-                            {msg.status === "new" ? "NEW" : msg.status === "replied" ? "REPLIED" : "READ"}
+                            {msg.status === "new" ? "NEW" : msg.status === "responded" ? "REPLIED" : "READ"}
                           </span>
                         </div>
                         <p className="text-gray-400 text-xs mt-0.5">{msg.email}</p>
