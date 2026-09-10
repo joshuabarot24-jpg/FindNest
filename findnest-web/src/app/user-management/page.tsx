@@ -14,6 +14,7 @@ interface SystemUser {
   is_active: boolean;
   trust_score: number;
   password_change_requested: boolean;
+  password_change_approved: boolean;
   password_change_reason: string | null;
   password_last_changed_at: string | null;
 }
@@ -28,12 +29,6 @@ function formatRole(role: string) {
   return role.replace("_", " ");
 }
 
-function daysSince(dateStr: string): number {
-  const then = new Date(dateStr);
-  const now = new Date();
-  return Math.floor((now.getTime() - then.getTime()) / (1000 * 60 * 60 * 24));
-}
-
 export default function UserManagement() {
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +39,7 @@ export default function UserManagement() {
   const [studentSubTab, setStudentSubTab] = useState<"college" | "high_school">("college");
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [approvingPassword, setApprovingPassword] = useState(false);
   const [editingUser, setEditingUser] = useState<SystemUser | null>(null);
   const [revokingUser, setRevokingUser] = useState<SystemUser | null>(null);
 
@@ -212,11 +208,19 @@ export default function UserManagement() {
       setRevokingUser(null);
     }
   }
-
-  const editCooldownDaysLeft = editingUser?.password_last_changed_at
-    ? Math.max(0, 14 - daysSince(editingUser.password_last_changed_at))
-    : 0;
-  const editOnCooldown = editingUser?.role === "student" && editCooldownDaysLeft > 0;
+  async function handleApprovePasswordChange(user: SystemUser) {
+    setApprovingPassword(true);
+    try {
+      await api.post(`/users/${user.id}/approve-password-change`);
+      setToast(`Password change approved for ${user.name}.`);
+      setEditingUser(null);
+      fetchUsers();
+    } catch (err: any) {
+      setFormError(err.response?.data?.message || "Failed to approve password change.");
+    } finally {
+      setApprovingPassword(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] flex">
@@ -720,9 +724,20 @@ export default function UserManagement() {
             {editingUser.password_change_requested && (
               <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-5">
                 <p className="text-orange-700 font-bold text-sm mb-1">Password Change Requested</p>
-                <p className="text-orange-600 text-xs">
+                <p className="text-orange-600 text-xs mb-3">
                   {editingUser.password_change_reason || "No reason provided."}
                 </p>
+                {editingUser.password_change_approved ? (
+                  <p className="text-green-600 text-xs font-bold">Approved — waiting for student to set a new password.</p>
+                ) : (
+                  <button
+                    onClick={() => handleApprovePasswordChange(editingUser)}
+                    disabled={approvingPassword}
+                    className="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2.5 rounded-xl transition disabled:opacity-50"
+                  >
+                    {approvingPassword ? "Approving..." : "Approve Password Change"}
+                  </button>
+                )}
               </div>
             )}
 
@@ -753,26 +768,20 @@ export default function UserManagement() {
                 />
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  New Password (leave blank to keep current)
-                </label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  autoComplete="new-password"
-                  disabled={editOnCooldown}
-                  className={`w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm ${
-                    editOnCooldown ? "bg-gray-50 text-gray-400 cursor-not-allowed" : ""
-                  }`}
-                />
-                {editOnCooldown && (
-                  <p className="text-orange-500 text-xs font-semibold mt-1">
-                    This student's password was changed recently. Wait {editCooldownDaysLeft} more day{editCooldownDaysLeft === 1 ? "" : "s"} before changing it again.
-                  </p>
-                )}
-              </div>
+              {editingUser.role !== "student" && (
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                    New Password (leave blank to keep current)
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    autoComplete="new-password"
+                    className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                  />
+                </div>
+              )}
 
               {editingUser.role === "student" && (
                 <>
