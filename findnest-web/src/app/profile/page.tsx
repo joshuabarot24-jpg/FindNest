@@ -13,6 +13,7 @@ interface User {
   trust_score: number;
   is_active: boolean;
   password_change_requested: boolean;
+  password_change_approved: boolean;
   password_change_reason: string | null;
   created_at: string;
 }
@@ -26,6 +27,11 @@ export default function ProfilePage() {
   const [requestError, setRequestError] = useState("");
   const [requestSuccess, setRequestSuccess] = useState("");
 
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [setPasswordLoading, setSetPasswordLoading] = useState(false);
+  const [setPasswordError, setSetPasswordError] = useState("");
+
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,17 +40,18 @@ export default function ProfilePage() {
     return () => clearTimeout(t);
   }, [toast]);
 
+  const fetchProfile = async () => {
+    try {
+      const res = await api.get("/profile");
+      setUser(res.data.user);
+    } catch (err) {
+      console.error("Error fetching profile:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await api.get("/profile");
-        setUser(res.data.user);
-      } catch (err) {
-        console.error("Error fetching profile:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchProfile();
   }, []);
 
@@ -62,12 +69,47 @@ export default function ProfilePage() {
       setRequestSuccess("Your request has been sent to the Super Admin.");
       setToast("Password change request sent.");
       setReason("");
-      const res = await api.get("/profile");
-      setUser(res.data.user);
+      fetchProfile();
     } catch (err: any) {
       setRequestError(err.response?.data?.message || "Failed to send request.");
     } finally {
       setRequestLoading(false);
+    }
+  };
+
+  const handleSetNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || !confirmPassword) {
+      setSetPasswordError("Please fill in both fields.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setSetPasswordError("Password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setSetPasswordError("Passwords do not match.");
+      return;
+    }
+    setSetPasswordError("");
+    setSetPasswordLoading(true);
+    try {
+      await api.post("/profile/set-new-password", {
+        new_password: newPassword,
+        new_password_confirmation: confirmPassword,
+      });
+      setToast("Password changed successfully.");
+      setNewPassword("");
+      setConfirmPassword("");
+      fetchProfile();
+    } catch (err: any) {
+      setSetPasswordError(
+        err.response?.data?.message ||
+          Object.values(err.response?.data?.errors || {}).flat().join(", ") ||
+          "Failed to change password."
+      );
+    } finally {
+      setSetPasswordLoading(false);
     }
   };
 
@@ -109,9 +151,9 @@ export default function ProfilePage() {
         </a>
         <div className="flex items-center gap-8">
           <a href="/student-home" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Home</a>
+          <a href="/report-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Report Items</a>
           <a href="/claim-status" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Claim Status</a>
           <a href="/support" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Support</a>
-          <a href="/report-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Report Items</a>
         </div>
         <div className="flex items-center gap-4">
           <a href="/notifications" className="relative w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-xl flex items-center justify-center transition">
@@ -185,11 +227,51 @@ export default function ProfilePage() {
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-4">
               <div className="px-8 pt-6">
                 <h2 className="text-lg font-black text-[#1a237e]">Password</h2>
-                <p className="text-gray-400 text-sm mt-1">You can able to changed your password after your request is reviewed</p>
+                <p className="text-gray-400 text-sm mt-1">
+                  {user?.password_change_approved
+                    ? "Your request was approved — set your new password below"
+                    : "You can request a password change, which the Super Admin will review"}
+                </p>
               </div>
 
               <div className="p-8">
-                {user?.password_change_requested ? (
+                {user?.password_change_approved ? (
+                  <form onSubmit={handleSetNewPassword} className="space-y-4">
+                    <div className="bg-green-50 border border-green-100 rounded-2xl p-4 mb-2">
+                      <p className="text-green-700 text-xs font-semibold">
+                        Your Super Admin approved your request. Set a new password only you will know.
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">New Password</label>
+                      <input
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="At least 8 characters"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#1a237e] focus:outline-none transition text-gray-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Confirm New Password</label>
+                      <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Re-enter new password"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#1a237e] focus:outline-none transition text-gray-700"
+                      />
+                    </div>
+                    {setPasswordError && <p className="text-red-500 text-xs font-semibold">{setPasswordError}</p>}
+                    <button
+                      type="submit"
+                      disabled={setPasswordLoading}
+                      className="w-full bg-[#1a237e] hover:bg-[#283593] text-white font-black py-4 rounded-xl transition shadow-lg disabled:opacity-50"
+                    >
+                      {setPasswordLoading ? "Saving..." : "Set New Password"}
+                    </button>
+                  </form>
+                ) : user?.password_change_requested ? (
                   <div className="bg-yellow-50 border border-yellow-100 rounded-2xl p-5 text-center">
                     <p className="text-yellow-700 font-bold text-sm">Request Pending</p>
                     <p className="text-yellow-600 text-xs mt-1">
