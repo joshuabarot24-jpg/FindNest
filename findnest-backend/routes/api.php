@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/', [ProfileController::class, 'update']);
         Route::post('/change-password', [ProfileController::class, 'changePassword']);
         Route::post('/request-password-change', [ProfileController::class, 'requestPasswordChange']);
+        Route::post('/set-new-password', [ProfileController::class, 'setNewPassword']);
     });
 
     Route::prefix('lost-items')->group(function () {
@@ -109,6 +110,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{id}', [UserManagementController::class, 'update']);
         Route::post('/{id}/revoke', [UserManagementController::class, 'revoke']);
         Route::post('/{id}/restore', [UserManagementController::class, 'restore']);
+        Route::post('/{id}/approve-password-change', [UserManagementController::class, 'approvePasswordChange']);
     });
 
     Route::prefix('case-trail')->group(function () {

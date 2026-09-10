@@ -107,22 +107,8 @@ class UserManagementController extends Controller
             'restricted_until' => $request->restricted_until,
         ]);
 
-        if ($request->password) {
-            if ($user->role === 'student' && $user->password_last_changed_at) {
-                $daysSinceChange = Carbon::parse($user->password_last_changed_at)->diffInDays(now());
-                if ($daysSinceChange < 14) {
-                    return response()->json([
-                        'message' => 'This student\'s password was changed ' . $daysSinceChange . ' day(s) ago. Please wait ' . (14 - $daysSinceChange) . ' more day(s) before changing it again.',
-                    ], 422);
-                }
-            }
-
-            $user->update([
-                'password' => Hash::make($request->password),
-                'password_last_changed_at' => now(),
-                'password_change_requested' => false,
-                'password_change_reason' => null,
-            ]);
+        if ($request->password && $user->role !== 'student') {
+            $user->update(['password' => Hash::make($request->password)]);
         }
 
         AuditLog::create([
@@ -176,4 +162,30 @@ class UserManagementController extends Controller
 
         return response()->json(['message' => 'User restored successfully', 'user' => $user]);
     }
+
+    public function approvePasswordChange(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        if (!$user->password_change_requested) {
+            return response()->json(['message' => 'This student has no pending password change request.'], 422);
+        }
+
+        $user->update([
+            'password_change_approved' => true,
+        ]);
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'Password Change Approved',
+            'target_type' => 'users',
+            'target_id' => $user->id,
+            'details' => 'Super Admin approved password change request for ' . $user->name,
+            'performed_by' => 'Super Admin: ' . $request->user()->name,
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['message' => 'Password change approved. The student can now set a new password.', 'user' => $user]);
+    }
+
 }

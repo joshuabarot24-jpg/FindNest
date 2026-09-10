@@ -104,4 +104,40 @@ class ProfileController extends Controller
 
         return response()->json(['message' => 'Your password change request has been sent to the Super Admin.']);
     }
+    public function setNewPassword(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user->password_change_approved) {
+            return response()->json(['message' => 'Your password change has not been approved yet.'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'new_password' => 'required|string|min:8|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->new_password),
+            'password_last_changed_at' => now(),
+            'password_change_requested' => false,
+            'password_change_approved' => false,
+            'password_change_reason' => null,
+        ]);
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'Password Changed',
+            'target_type' => 'users',
+            'target_id' => $user->id,
+            'details' => 'Student set a new password after Super Admin approval',
+            'performed_by' => 'Student: ' . $user->name,
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['message' => 'Password changed successfully']);
+    }
 }
