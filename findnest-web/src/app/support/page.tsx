@@ -3,39 +3,33 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 
 const faqs = [
-  {
-    question: "How do I report a lost item?",
-    answer: "Go to the Home page and click 'Report Lost Items'. Fill in the details and upload a clear photo of your item. Our AI will automatically search for potential matches among found items.",
-  },
-  {
-    question: "How do I report a found item?",
-    answer: "Click 'Report Found Item' on the Home page. Fill in the details of where you found it and upload a photo. The item will be reviewed by the Guidance Counselor before being posted publicly.",
-  },
-  {
-    question: "How does the AI matching work?",
-    answer: "Our AI uses image recognition to compare photos of lost and found items. When a potential match is found, both the student who lost the item and the admin are notified automatically.",
-  },
-  {
-    question: "How do I claim a found item?",
-    answer: "If the AI finds a match for your lost report, you will receive a notification. You can then submit a claim by providing a written description of identifying features and a supporting photo. The admin will verify your claim through a 5-layer process.",
-  },
-  {
-    question: "What is a Trust Score?",
-    answer: "Your Trust Score reflects your reliability in the FindNest system. It decreases when a claim you submitted is rejected. A low trust score may restrict your ability to submit new claims. Visit the school office if your account is restricted.",
-  },
-  {
-    question: "How long does the admin take to approve a found item?",
-    answer: "The Guidance Counselor reviews found item reports as soon as the physical item is surrendered to the office. Once approved, the item will appear publicly in the found items list.",
-  },
-  {
-    question: "What happens if my claim is rejected?",
-    answer: "If your claim is rejected, your Trust Score will decrease and you will be notified with the reason. You may appeal with new evidence. Repeated false claims may result in account restrictions.",
-  },
-  {
-    question: "How do I contact the Guidance Office?",
-    answer: "You can visit the Guidance Office at SJDM Cornerstone College Inc. during school hours, or send an email to the contact below.",
-  },
+  { question: "How do I report a lost item?", answer: "Go to the Home page and click 'Report Lost Items'. Fill in the details and upload a clear photo of your item. Our AI will automatically search for potential matches among found items." },
+  { question: "How do I report a found item?", answer: "Click 'Report Found Item' on the Home page. Fill in the details of where you found it and upload a photo. The item will be reviewed by the Guidance Counselor before being posted publicly." },
+  { question: "How does the AI matching work?", answer: "Our AI uses image recognition to compare photos of lost and found items. When a potential match is found, both the student who lost the item and the admin are notified automatically." },
+  { question: "How do I claim a found item?", answer: "If the AI finds a match for your lost report, you will receive a notification. You can then submit a claim by providing a written description of identifying features and a supporting photo. The admin will verify your claim through a 5-layer process." },
+  { question: "What is a Trust Score?", answer: "Your Trust Score reflects your reliability in the FindNest system. It decreases when a claim you submitted is rejected. A low trust score may restrict your ability to submit new claims. Visit the school office if your account is restricted." },
+  { question: "How long does the admin take to approve a found item?", answer: "The Guidance Counselor reviews found item reports as soon as the physical item is surrendered to the office. Once approved, the item will appear publicly in the found items list." },
+  { question: "What happens if my claim is rejected?", answer: "If your claim is rejected, your Trust Score will decrease and you will be notified with the reason. You may appeal with new evidence. Repeated false claims may result in account restrictions." },
+  { question: "How do I contact the Guidance Office?", answer: "You can visit the Guidance Office at SJDM Cornerstone College Inc. during school hours, or send an email to the contact below." },
 ];
+
+interface SupportMessage {
+  id: number;
+  message: string;
+  status: string;
+  created_at: string;
+}
+
+interface SupportReplyItem {
+  id: number;
+  sender_type: "student" | "admin";
+  message: string;
+  created_at: string;
+}
+
+function formatTime(dateStr: string) {
+  return new Date(dateStr).toLocaleString();
+}
 
 export default function SupportPage() {
   const [userInitial, setUserInitial] = useState("");
@@ -47,6 +41,14 @@ export default function SupportPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [myMessages, setMyMessages] = useState<SupportMessage[]>([]);
+  const [conversationsLoading, setConversationsLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [replies, setReplies] = useState<SupportReplyItem[]>([]);
+  const [threadLoading, setThreadLoading] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [replySending, setReplySending] = useState(false);
+
   useEffect(() => {
     const stored = localStorage.getItem("findnest_user");
     if (stored) {
@@ -54,6 +56,57 @@ export default function SupportPage() {
       setUserInitial(currentUser?.name?.charAt(0).toUpperCase() || "");
     }
   }, []);
+
+  const fetchMyMessages = async () => {
+    try {
+      const res = await api.get("/support/my-messages");
+      setMyMessages(res.data.messages || []);
+    } catch (err) {
+      console.error("Error fetching my messages:", err);
+    } finally {
+      setConversationsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMyMessages();
+  }, []);
+
+  const fetchThread = async (id: number) => {
+    setThreadLoading(true);
+    try {
+      const res = await api.get(`/support/${id}/thread`);
+      setReplies(res.data.replies || []);
+    } catch (err) {
+      console.error("Error fetching thread:", err);
+    } finally {
+      setThreadLoading(false);
+    }
+  };
+
+  const handleExpand = (msg: SupportMessage) => {
+    if (expandedId === msg.id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(msg.id);
+    setReplyText("");
+    fetchThread(msg.id);
+  };
+
+  const handleSendReply = async (id: number) => {
+    if (!replyText.trim()) return;
+    setReplySending(true);
+    try {
+      await api.post(`/support/${id}/reply`, { message: replyText.trim() });
+      setReplyText("");
+      fetchThread(id);
+    } catch (err) {
+      console.error("Error sending reply:", err);
+    } finally {
+      setReplySending(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +119,7 @@ export default function SupportPage() {
         message: message.trim(),
       });
       setSubmitted(true);
+      fetchMyMessages();
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
@@ -86,9 +140,9 @@ export default function SupportPage() {
         </a>
         <div className="flex items-center gap-8">
           <a href="/student-home" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Home</a>
+          <a href="/report-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Report Items</a>
           <a href="/claim-status" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Claim Status</a>
           <a href="/support" className="text-[#1a237e] font-bold text-sm border-b-2 border-[#1a237e] pb-1">Support</a>
-          <a href="/report-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Report Items</a>
         </div>
         <div className="flex items-center gap-4">
           <a href="/notifications" className="relative w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-xl flex items-center justify-center transition">
@@ -139,6 +193,76 @@ export default function SupportPage() {
             <p className="text-gray-400 text-xs mt-2 leading-relaxed">Monday to Friday<br />8:00 AM — 5:00 PM</p>
           </div>
         </div>
+
+        {!conversationsLoading && myMessages.length > 0 && (
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 mb-6">
+            <h2 className="text-xl font-black text-[#1a237e] mb-2">Your Conversations</h2>
+            <p className="text-gray-400 text-sm mb-6">Messages you've sent and replies from the Guidance Office</p>
+
+            <div className="space-y-3">
+              {myMessages.map((msg) => (
+                <div key={msg.id} className="border border-gray-100 rounded-2xl overflow-hidden">
+                  <button
+                    onClick={() => handleExpand(msg)}
+                    className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-gray-700 text-sm truncate">{msg.message}</p>
+                        {msg.status === "replied" && (
+                          <span className="bg-green-50 text-green-700 text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0">REPLIED</span>
+                        )}
+                      </div>
+                      <p className="text-gray-400 text-xs mt-1">{formatTime(msg.created_at)}</p>
+                    </div>
+                  </button>
+
+                  {expandedId === msg.id && (
+                    <div className="px-6 pb-5 space-y-3">
+                      <div className="bg-gray-50 rounded-xl p-4">
+                        <p className="text-gray-700 text-sm leading-relaxed">{msg.message}</p>
+                      </div>
+
+                      {threadLoading ? (
+                        <p className="text-gray-400 text-xs">Loading conversation...</p>
+                      ) : (
+                        replies.map((r) => (
+                          <div
+                            key={r.id}
+                            className={`rounded-xl p-4 ${r.sender_type === "admin" ? "bg-blue-50 mr-8" : "bg-gray-50 ml-8"}`}
+                          >
+                            <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">
+                              {r.sender_type === "admin" ? "Guidance Office" : "You"} &middot; {formatTime(r.created_at)}
+                            </p>
+                            <p className="text-gray-700 text-sm">{r.message}</p>
+                          </div>
+                        ))
+                      )}
+
+                      <div className="flex gap-2 pt-1">
+                        <input
+                          type="text"
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          placeholder="Type your reply..."
+                          className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-sm text-gray-800"
+                          onKeyDown={(e) => { if (e.key === "Enter") handleSendReply(msg.id); }}
+                        />
+                        <button
+                          onClick={() => handleSendReply(msg.id)}
+                          disabled={replySending || !replyText.trim()}
+                          className="bg-[#1a237e] hover:bg-[#283593] text-white text-sm font-bold px-5 py-2.5 rounded-xl transition disabled:opacity-50"
+                        >
+                          {replySending ? "Sending..." : "Reply"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 mb-6">
           <h2 className="text-xl font-black text-[#1a237e] mb-6">Frequently Asked Questions</h2>
