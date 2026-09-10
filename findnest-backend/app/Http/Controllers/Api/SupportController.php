@@ -112,7 +112,7 @@ class SupportController extends Controller
                 'is_read' => false,
                 'sent_at' => Carbon::now(),
             ]);
-            $message->update(['status' => 'replied']);
+            $message->update(['status' => 'responded']);
         }
 
         return response()->json(['message' => 'Reply sent successfully', 'data' => $reply], 201);
