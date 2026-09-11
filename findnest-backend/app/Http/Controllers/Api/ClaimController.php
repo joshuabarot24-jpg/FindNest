@@ -20,7 +20,7 @@ class ClaimController extends Controller
 {
     public function index()
     {
-        $claims = Claim::with(['student', 'admin', 'match.lostReport', 'match.foundRecord'])
+        $claims = Claim::with(['student', 'admin', 'match.lostReport', 'match.foundRecord', 'ownershipQuestions'])
             ->orderBy('created_at', 'desc')
             ->get();
 

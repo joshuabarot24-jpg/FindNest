@@ -14,10 +14,20 @@ class Claim extends Model
         'claim_status',
         'admin_notes',
         'claimed_at',
+        'pickup_deadline',
+        'collected_at',
+        'reminder_sent',
+        'appeal_message',
+        'appeal_status',
+        'appeal_submitted_at',
     ];
 
     protected $casts = [
         'claimed_at' => 'datetime',
+        'pickup_deadline' => 'date',
+        'collected_at' => 'datetime',
+        'reminder_sent' => 'boolean',
+        'appeal_submitted_at' => 'datetime',
     ];
 
     public function match()
@@ -33,5 +43,10 @@ class Claim extends Model
     public function admin()
     {
         return $this->belongsTo(User::class, 'admin_id');
+    }
+
+    public function ownershipQuestions()
+    {
+        return $this->hasMany(OwnershipQuestion::class, 'claim_id');
     }
 }
