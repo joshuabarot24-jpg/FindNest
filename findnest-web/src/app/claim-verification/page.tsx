@@ -2,14 +2,26 @@
 import { useState, useEffect, useMemo } from "react";
 import api from "@/lib/api";
 
+interface OwnershipQuestion {
+  id: number;
+  question_text: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  correct_option: string;
+  student_answer: string | null;
+}
+
 interface Claim {
   id: number;
-  claim_status: "pending" | "approved" | "rejected";
+  claim_status: "pending" | "approved" | "rejected" | "abandoned";
   proof_description: string | null;
   proof_photo_url: string | null;
   admin_notes: string | null;
   claimed_at: string | null;
   created_at: string;
+  ownership_questions: OwnershipQuestion[];
   student: {
     id: number;
     name: string;
@@ -50,9 +62,18 @@ function statusStyles(status: string) {
       return { dot: "bg-green-500", badge: "bg-green-50 text-green-700", label: "Approved" };
     case "rejected":
       return { dot: "bg-red-500", badge: "bg-red-50 text-red-600", label: "Rejected" };
+    case "abandoned":
+      return { dot: "bg-gray-400", badge: "bg-gray-100 text-gray-600", label: "Abandoned" };
     default:
       return { dot: "bg-yellow-400", badge: "bg-yellow-50 text-yellow-700", label: "Pending" };
   }
+}
+
+function questionScore(questions: OwnershipQuestion[]) {
+  const answered = questions.filter((q) => q.student_answer !== null);
+  if (answered.length === 0) return null;
+  const correct = answered.filter((q) => q.student_answer === q.correct_option).length;
+  return { correct, total: answered.length };
 }
 
 export default function ClaimVerification() {
@@ -411,10 +432,61 @@ export default function ClaimVerification() {
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <span className="text-sm text-gray-600 font-medium">Layer 5 &mdash; Secret Questions</span>
-                  <span className="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded-lg">Pending AI</span>
+                  {(() => {
+                    const score = questionScore(viewingClaim.ownership_questions || []);
+                    if (viewingClaim.ownership_questions?.length === 0) {
+                      return <span className="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded-lg">No Questions Generated</span>;
+                    }
+                    if (!score) {
+                      return <span className="text-xs font-bold bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg">Awaiting Student Answers</span>;
+                    }
+                    return (
+                      <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
+                        score.correct >= 2 ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
+                      }`}>
+                        {score.correct}/{score.total} Correct
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
+
+            {viewingClaim.ownership_questions && viewingClaim.ownership_questions.length > 0 && (
+              <div className="bg-gray-50 rounded-2xl p-4 mb-4">
+                <p className="text-xs font-bold text-gray-400 uppercase mb-3">Secret Question Details</p>
+                <div className="space-y-3">
+                  {viewingClaim.ownership_questions.map((q, idx) => {
+                    const options: Record<string, string> = {
+                      a: q.option_a,
+                      b: q.option_b,
+                      c: q.option_c,
+                      d: q.option_d,
+                    };
+                    const isCorrect = q.student_answer === q.correct_option;
+                    return (
+                      <div key={q.id} className="bg-white rounded-xl p-3 border border-gray-100">
+                        <p className="font-bold text-gray-700 text-sm mb-2">Q{idx + 1}. {q.question_text}</p>
+                        <div className="flex items-center gap-2 flex-wrap text-xs">
+                          <span className="text-gray-400">Correct answer:</span>
+                          <span className="font-bold text-green-600">{options[q.correct_option]}</span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap text-xs mt-1">
+                          <span className="text-gray-400">Student answered:</span>
+                          {q.student_answer ? (
+                            <span className={`font-bold ${isCorrect ? "text-green-600" : "text-red-500"}`}>
+                              {options[q.student_answer]} {isCorrect ? "✓" : "✗"}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 italic">Not answered yet</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {viewingClaim.proof_description && (
               <div className="bg-gray-50 rounded-2xl p-4 mb-4">
