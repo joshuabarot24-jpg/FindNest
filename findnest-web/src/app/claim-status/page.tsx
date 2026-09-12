@@ -31,6 +31,16 @@ interface PendingMatch {
   };
 }
 
+interface Question {
+  id: number;
+  question: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  student_answer: string | null;
+}
+
 const TIMELINE_STEPS = [
   "Submitted",
   "Under AI Review",
@@ -110,6 +120,14 @@ export default function ClaimStatusPage() {
   const [appealMessage, setAppealMessage] = useState("");
   const [appealSubmitting, setAppealSubmitting] = useState(false);
   const [appealError, setAppealError] = useState("");
+
+  const [answeringClaim, setAnsweringClaim] = useState<Claim | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [answersSubmitting, setAnswersSubmitting] = useState(false);
+  const [answersError, setAnswersError] = useState("");
+  const [answersResult, setAnswersResult] = useState<{ correct: number; total: number; passed: boolean } | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("findnest_user");
@@ -195,6 +213,62 @@ export default function ClaimStatusPage() {
       setAppealError(err.response?.data?.message || "Failed to submit appeal. Please try again.");
     } finally {
       setAppealSubmitting(false);
+    }
+  };
+
+  const openAnswerModal = async (claim: Claim) => {
+    setAnsweringClaim(claim);
+    setAnswers({});
+    setAnswersError("");
+    setAnswersResult(null);
+    setQuestionsLoading(true);
+    try {
+      const res = await api.get(`/claims/${claim.id}/questions`);
+      const fetchedQuestions: Question[] = res.data.questions || [];
+      setQuestions(fetchedQuestions);
+
+      const alreadyAnswered = fetchedQuestions.every((q) => q.student_answer !== null);
+      if (alreadyAnswered && fetchedQuestions.length > 0) {
+        const correct = fetchedQuestions.filter((q) => q.student_answer !== null).length;
+        setAnswersResult({ correct, total: fetchedQuestions.length, passed: true });
+      }
+    } catch (err) {
+      console.error("Error fetching questions:", err);
+    } finally {
+      setQuestionsLoading(false);
+    }
+  };
+
+  const handleSelectAnswer = (questionId: number, option: string) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: option }));
+  };
+
+  const handleSubmitAnswers = async () => {
+    if (!answeringClaim) return;
+    if (Object.keys(answers).length < questions.length) {
+      setAnswersError("Please answer all questions before submitting.");
+      return;
+    }
+
+    setAnswersError("");
+    setAnswersSubmitting(true);
+    try {
+      const payload = {
+        answers: questions.map((q) => ({
+          question_id: q.id,
+          answer: answers[q.id],
+        })),
+      };
+      const res = await api.post(`/claims/${answeringClaim.id}/answers`, payload);
+      setAnswersResult({
+        correct: res.data.correct_count,
+        total: res.data.total_count,
+        passed: res.data.passed,
+      });
+    } catch (err: any) {
+      setAnswersError(err.response?.data?.message || "Failed to submit answers. Please try again.");
+    } finally {
+      setAnswersSubmitting(false);
     }
   };
 
@@ -330,6 +404,15 @@ export default function ClaimStatusPage() {
                       </div>
                     )}
 
+                    {claim.claim_status === "pending" && (
+                      <button
+                        onClick={() => openAnswerModal(claim)}
+                        className="w-full bg-blue-50 hover:bg-[#1a237e] hover:text-white text-[#1a237e] font-bold py-2.5 rounded-xl transition text-sm mb-5"
+                      >
+                        Answer Verification Questions
+                      </button>
+                    )}
+
                     {claim.claim_status === "approved" && !claim.collected_at && claim.pickup_deadline && (
                       <div className="bg-green-50 border border-green-100 rounded-2xl p-4 mb-5">
                         <p className="text-green-700 text-sm font-bold">Item Ready for Pickup</p>
@@ -450,6 +533,86 @@ export default function ClaimStatusPage() {
             >
               {appealSubmitting ? "Submitting..." : "Submit Appeal"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {answeringClaim && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm px-4">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setAnsweringClaim(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none"
+            >
+              &times;
+            </button>
+
+            <h2 className="text-xl font-black text-[#1a237e] mb-1">Ownership Verification</h2>
+            <p className="text-gray-400 text-sm mb-6">
+              Answer these questions to help confirm you're the true owner
+            </p>
+
+            {questionsLoading ? (
+              <div className="text-center py-10 text-gray-400 text-sm">Loading questions...</div>
+            ) : questions.length === 0 ? (
+              <div className="text-center py-10 text-gray-400 text-sm">No verification questions were generated for this claim.</div>
+            ) : answersResult ? (
+              <div className={`rounded-2xl p-6 text-center ${answersResult.correct >= 2 ? "bg-green-50 border border-green-100" : "bg-yellow-50 border border-yellow-100"}`}>
+                <p className={`text-2xl font-black ${answersResult.correct >= 2 ? "text-green-700" : "text-yellow-700"}`}>
+                  {answersResult.correct}/{answersResult.total} Correct
+                </p>
+                <p className="text-gray-600 text-sm mt-2">
+                  {answersResult.correct >= 2
+                    ? "Your answers have been recorded. The admin will review your full claim."
+                    : "Your answers have been recorded, but were not all correct. The admin will still review your full claim."}
+                </p>
+                <button
+                  onClick={() => setAnsweringClaim(null)}
+                  className="mt-5 bg-[#1a237e] hover:bg-[#283593] text-white font-bold px-6 py-3 rounded-xl transition"
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {questions.map((q, idx) => (
+                  <div key={q.id} className="bg-gray-50 rounded-2xl p-4">
+                    <p className="font-bold text-gray-700 text-sm mb-3">Q{idx + 1}. {q.question}</p>
+                    <div className="space-y-2">
+                      {(["a", "b", "c", "d"] as const).map((opt) => {
+                        const optionText = { a: q.option_a, b: q.option_b, c: q.option_c, d: q.option_d }[opt];
+                        const isSelected = answers[q.id] === opt;
+                        return (
+                          <button
+                            key={opt}
+                            onClick={() => handleSelectAnswer(q.id, opt)}
+                            className={`w-full text-left px-4 py-2.5 rounded-xl border-2 text-sm transition ${
+                              isSelected
+                                ? "border-[#1a237e] bg-blue-50 text-[#1a237e] font-bold"
+                                : "border-gray-200 text-gray-600 hover:border-gray-300"
+                            }`}
+                          >
+                            {optionText}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+
+                {answersError && (
+                  <p className="text-red-500 text-xs font-semibold">{answersError}</p>
+                )}
+
+                <button
+                  onClick={handleSubmitAnswers}
+                  disabled={answersSubmitting}
+                  className="w-full bg-[#1a237e] hover:bg-[#283593] text-white font-black py-3.5 rounded-xl transition disabled:opacity-50"
+                >
+                  {answersSubmitting ? "Submitting..." : "Submit Answers"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
