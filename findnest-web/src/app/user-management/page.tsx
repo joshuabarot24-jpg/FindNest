@@ -25,17 +25,12 @@ function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || "?";
 }
 
-function formatRole(role: string) {
-  return role.replace("_", " ");
-}
-
 export default function UserManagement() {
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const [mainTab, setMainTab] = useState<"admins" | "students">("admins");
   const [studentSubTab, setStudentSubTab] = useState<"college" | "high_school">("college");
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -47,7 +42,7 @@ export default function UserManagement() {
     name: "",
     email: "",
     password: "",
-    role: "admin",
+    role: "student",
     school_id: "",
     course: "",
     year_level: "",
@@ -68,7 +63,7 @@ export default function UserManagement() {
     try {
       const response = await api.get("/users");
       const allUsers: SystemUser[] = response.data.users || [];
-      setUsers(allUsers.filter((u) => u.role !== "super_admin"));
+      setUsers(allUsers.filter((u) => u.role === "student"));
     } catch (err) {
       console.error("Error fetching users:", err);
     } finally {
@@ -81,13 +76,8 @@ export default function UserManagement() {
   }, []);
 
   const baseFiltered = useMemo(() => {
-    if (mainTab === "admins") {
-      return users.filter((u) => u.role === "admin");
-    }
-    return users.filter(
-      (u) => u.role === "student" && u.education_level === studentSubTab
-    );
-  }, [users, mainTab, studentSubTab]);
+    return users.filter((u) => u.education_level === studentSubTab);
+  }, [users, studentSubTab]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -103,7 +93,7 @@ export default function UserManagement() {
 
   useEffect(() => {
     setPage(1);
-  }, [mainTab, studentSubTab, search]);
+  }, [studentSubTab, search]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -120,7 +110,7 @@ export default function UserManagement() {
       name: "",
       email: "",
       password: "",
-      role: mainTab === "admins" ? "admin" : "student",
+      role: "student",
       school_id: "",
       course: "",
       year_level: "",
@@ -300,30 +290,30 @@ export default function UserManagement() {
           <div>
             <h1 className="text-3xl font-black text-[#1a237e]">User Management</h1>
             <p className="text-gray-400 text-sm mt-1">
-              Manage all system users and their access credentials
+              Manage student accounts for College and High School
             </p>
           </div>
           <button
             onClick={openCreateModal}
             className="flex items-center gap-2 bg-[#1a237e] hover:bg-[#283593] text-white font-bold px-6 py-3 rounded-2xl transition shadow-lg hover:-translate-y-0.5 transform"
           >
-            <span>+</span> Create New User
+            <span>+</span> Create New Student
           </button>
         </div>
 
         <div className="grid grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <p className="text-gray-400 text-sm font-medium">Total Users</p>
+            <p className="text-gray-400 text-sm font-medium">Total Students</p>
             <p className="text-4xl font-black text-[#1a237e] mt-1">{users.length}</p>
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <p className="text-gray-400 text-sm font-medium">Active Users</p>
+            <p className="text-gray-400 text-sm font-medium">Active Students</p>
             <p className="text-4xl font-black text-green-600 mt-1">{activeCount}</p>
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <p className="text-gray-400 text-sm font-medium">Inactive Users</p>
+            <p className="text-gray-400 text-sm font-medium">Inactive Students</p>
             <p className="text-4xl font-black text-red-500 mt-1">{inactiveCount}</p>
           </div>
 
@@ -335,56 +325,31 @@ export default function UserManagement() {
 
         <div className="flex items-center gap-2 mb-6">
           <button
-            onClick={() => setMainTab("admins")}
+            onClick={() => setStudentSubTab("college")}
             className={`px-5 py-2.5 rounded-xl text-sm font-bold transition ${
-              mainTab === "admins"
+              studentSubTab === "college"
                 ? "bg-[#1a237e] text-white shadow-md"
                 : "bg-white text-gray-500 border border-gray-200 hover:border-[#1a237e] hover:text-[#1a237e]"
             }`}
           >
-            Admins
+            College
           </button>
           <button
-            onClick={() => setMainTab("students")}
+            onClick={() => setStudentSubTab("high_school")}
             className={`px-5 py-2.5 rounded-xl text-sm font-bold transition ${
-              mainTab === "students"
+              studentSubTab === "high_school"
                 ? "bg-[#1a237e] text-white shadow-md"
                 : "bg-white text-gray-500 border border-gray-200 hover:border-[#1a237e] hover:text-[#1a237e]"
             }`}
           >
-            Students
+            High School
           </button>
-
-          {mainTab === "students" && (
-            <div className="flex items-center gap-2 ml-4 pl-4 border-l border-gray-200">
-              <button
-                onClick={() => setStudentSubTab("college")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
-                  studentSubTab === "college"
-                    ? "bg-blue-50 text-[#1a237e] border border-blue-200"
-                    : "bg-white text-gray-400 border border-gray-200 hover:text-gray-600"
-                }`}
-              >
-                College
-              </button>
-              <button
-                onClick={() => setStudentSubTab("high_school")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
-                  studentSubTab === "high_school"
-                    ? "bg-blue-50 text-[#1a237e] border border-blue-200"
-                    : "bg-white text-gray-400 border border-gray-200 hover:text-gray-600"
-                }`}
-              >
-                High School
-              </button>
-            </div>
-          )}
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <h2 className="font-black text-gray-700 text-lg">
-              {mainTab === "admins" ? "All Admins" : studentSubTab === "college" ? "College Students" : "High School Students"}
+              {studentSubTab === "college" ? "College Students" : "High School Students"}
             </h2>
             <input
               type="text"
@@ -397,27 +362,17 @@ export default function UserManagement() {
 
           {loading ? (
             <div className="text-center py-16 text-gray-400">
-              <p className="font-bold">Loading users...</p>
+              <p className="font-bold">Loading students...</p>
             </div>
           ) : (
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    User
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    {mainTab === "admins" ? "Role" : "School ID"}
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">User</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">School ID</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Email</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -444,13 +399,7 @@ export default function UserManagement() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      {mainTab === "admins" ? (
-                        <span className="bg-blue-50 text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg capitalize">
-                          {formatRole(user.role)}
-                        </span>
-                      ) : (
-                        <p className="text-gray-600 text-sm font-semibold">{user.school_id || "—"}</p>
-                      )}
+                      <p className="text-gray-600 text-sm font-semibold">{user.school_id || "—"}</p>
                     </td>
                     <td className="px-6 py-4">
                       <p className="text-gray-500 text-sm">{user.email}</p>
@@ -501,7 +450,7 @@ export default function UserManagement() {
 
           {!loading && filtered.length === 0 && (
             <div className="text-center py-16 text-gray-400">
-              <p className="font-bold text-lg">No users found</p>
+              <p className="font-bold text-lg">No students found</p>
               <p className="text-sm mt-1">Try searching with a different keyword</p>
             </div>
           )}
@@ -509,7 +458,7 @@ export default function UserManagement() {
           <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
             <p className="text-gray-400 text-sm">
               Showing {filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}
-              &ndash;{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} users
+              &ndash;{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} students
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -556,9 +505,9 @@ export default function UserManagement() {
               &times;
             </button>
 
-            <h2 className="text-2xl font-black text-[#1a237e] mb-1">Create New User</h2>
+            <h2 className="text-2xl font-black text-[#1a237e] mb-1">Create New Student</h2>
             <p className="text-gray-400 text-sm mb-6">
-              Add a new user account to the system
+              Add a new student account to the system
             </p>
 
             <div className="space-y-4">
@@ -606,72 +555,54 @@ export default function UserManagement() {
 
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  Role
+                  Education Level
                 </label>
                 <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm capitalize"
+                  value={formData.education_level}
+                  onChange={(e) => setFormData({ ...formData, education_level: e.target.value })}
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 >
-                  <option value="admin">Admin</option>
-                  <option value="student">Student</option>
+                  <option value="college">College</option>
+                  <option value="high_school">High School</option>
                 </select>
               </div>
-
-              {formData.role === "student" && (
-                <>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                      Education Level
-                    </label>
-                    <select
-                      value={formData.education_level}
-                      onChange={(e) => setFormData({ ...formData, education_level: e.target.value })}
-                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                    >
-                      <option value="college">College</option>
-                      <option value="high_school">High School</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                      School ID
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.school_id}
-                      onChange={(e) => setFormData({ ...formData, school_id: e.target.value })}
-                      placeholder="e.g. 2022-10043"
-                      autoComplete="off"
-                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                      {formData.education_level === "college" ? "Course" : "Section"}
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.course}
-                      onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-                      placeholder={formData.education_level === "college" ? "e.g. BSIT" : "e.g. Newton"}
-                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                      {formData.education_level === "college" ? "Year Level" : "Grade Level"}
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.year_level}
-                      onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
-                      placeholder={formData.education_level === "college" ? "e.g. 3rd Year" : "e.g. Grade 8"}
-                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                    />
-                  </div>
-                </>
-              )}
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  School ID
+                </label>
+                <input
+                  type="text"
+                  value={formData.school_id}
+                  onChange={(e) => setFormData({ ...formData, school_id: e.target.value })}
+                  placeholder="e.g. 2022-10043"
+                  autoComplete="off"
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  {formData.education_level === "college" ? "Course" : "Section"}
+                </label>
+                <input
+                  type="text"
+                  value={formData.course}
+                  onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                  placeholder={formData.education_level === "college" ? "e.g. BSIT" : "e.g. Newton"}
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  {formData.education_level === "college" ? "Year Level" : "Grade Level"}
+                </label>
+                <input
+                  type="text"
+                  value={formData.year_level}
+                  onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
+                  placeholder={formData.education_level === "college" ? "e.g. 3rd Year" : "e.g. Grade 8"}
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                />
+              </div>
 
               {formError && (
                 <p className="text-red-500 text-xs font-semibold">{formError}</p>
@@ -690,7 +621,7 @@ export default function UserManagement() {
                 disabled={formLoading}
                 className="flex-1 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition disabled:opacity-50"
               >
-                {formLoading ? "Creating..." : "Create User"}
+                {formLoading ? "Creating..." : "Create Student"}
               </button>
             </div>
           </div>
@@ -707,19 +638,17 @@ export default function UserManagement() {
               &times;
             </button>
 
-            <h2 className="text-2xl font-black text-[#1a237e] mb-1">Edit User</h2>
+            <h2 className="text-2xl font-black text-[#1a237e] mb-1">Edit Student</h2>
             <p className="text-gray-400 text-sm mb-6">
               Update {editingUser.name}&apos;s account details
             </p>
 
-            {editingUser.role === "student" && (
-              <div className="bg-blue-50 rounded-2xl p-4 mb-5 flex items-center gap-4">
-                <div>
-                  <p className="text-xs font-bold text-gray-400 uppercase">Trust Score</p>
-                  <p className="text-2xl font-black text-[#1a237e]">{editingUser.trust_score}</p>
-                </div>
+            <div className="bg-blue-50 rounded-2xl p-4 mb-5 flex items-center gap-4">
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase">Trust Score</p>
+                <p className="text-2xl font-black text-[#1a237e]">{editingUser.trust_score}</p>
               </div>
-            )}
+            </div>
 
             {editingUser.password_change_requested && (
               <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-5">
@@ -768,72 +697,53 @@ export default function UserManagement() {
                 />
               </div>
 
-              {editingUser.role !== "student" && (
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                    New Password (leave blank to keep current)
-                  </label>
-                  <input
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    autoComplete="new-password"
-                    className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                  />
-                </div>
-              )}
-
-              {editingUser.role === "student" && (
-                <>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                      Education Level
-                    </label>
-                    <select
-                      value={formData.education_level}
-                      onChange={(e) => setFormData({ ...formData, education_level: e.target.value })}
-                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                    >
-                      <option value="college">College</option>
-                      <option value="high_school">High School</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                      School ID
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.school_id}
-                      onChange={(e) => setFormData({ ...formData, school_id: e.target.value })}
-                      autoComplete="off"
-                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                      {formData.education_level === "college" ? "Course" : "Section"}
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.course}
-                      onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                      {formData.education_level === "college" ? "Year Level" : "Grade Level"}
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.year_level}
-                      onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
-                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                    />
-                  </div>
-                </>
-              )}
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  Education Level
+                </label>
+                <select
+                  value={formData.education_level}
+                  onChange={(e) => setFormData({ ...formData, education_level: e.target.value })}
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                >
+                  <option value="college">College</option>
+                  <option value="high_school">High School</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  School ID
+                </label>
+                <input
+                  type="text"
+                  value={formData.school_id}
+                  onChange={(e) => setFormData({ ...formData, school_id: e.target.value })}
+                  autoComplete="off"
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  {formData.education_level === "college" ? "Course" : "Section"}
+                </label>
+                <input
+                  type="text"
+                  value={formData.course}
+                  onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  {formData.education_level === "college" ? "Year Level" : "Grade Level"}
+                </label>
+                <input
+                  type="text"
+                  value={formData.year_level}
+                  onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                />
+              </div>
 
               {formError && (
                 <p className="text-red-500 text-xs font-semibold">{formError}</p>
