@@ -11,9 +11,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../lib/api";
 
-interface FoundItem {
+interface LostReport {
   id: number;
   item_name: string;
+  status: string;
   photo_url: string | null;
 }
 
@@ -28,19 +29,19 @@ interface NotificationItem {
 const NAVY = "#1a237e";
 
 export default function HomeScreen({ navigation }: any) {
-  const [foundItems, setFoundItems] = useState<FoundItem[]>([]);
-  const [foundLoading, setFoundLoading] = useState(true);
+  const [myReports, setMyReports] = useState<LostReport[]>([]);
+  const [reportsLoading, setReportsLoading] = useState(true);
   const [matchNotification, setMatchNotification] = useState<NotificationItem | null>(null);
 
   useEffect(() => {
-    const fetchFoundItems = async () => {
+    const fetchMyReports = async () => {
       try {
-        const response = await api.get("/found-items", { params: { status: "unclaimed" } });
-        setFoundItems((response.data.records || []).slice(0, 6));
+        const response = await api.get("/lost-items/my-reports");
+        setMyReports(response.data.reports || []);
       } catch (err) {
-        console.error("Error fetching found items:", err);
+        console.error("Error fetching my reports:", err);
       } finally {
-        setFoundLoading(false);
+        setReportsLoading(false);
       }
     };
 
@@ -57,9 +58,11 @@ export default function HomeScreen({ navigation }: any) {
       }
     };
 
-    fetchFoundItems();
+    fetchMyReports();
     fetchNotifications();
   }, []);
+
+  const activeReports = myReports.filter((r) => r.status === "searching");
 
   return (
     <SafeAreaView style={styles.container}>
@@ -116,40 +119,34 @@ export default function HomeScreen({ navigation }: any) {
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recently Found Items</Text>
-          <TouchableOpacity onPress={() => navigation.navigate("Browse")} style={styles.seeAllButton}>
-            <Text style={styles.seeAll}>See All</Text>
-            <Ionicons name="chevron-forward" size={14} color={NAVY} />
-          </TouchableOpacity>
+          <Text style={styles.sectionTitle}>Active Lost Item Reports</Text>
         </View>
 
-        {foundLoading ? (
-          <Text style={styles.loadingText}>Loading found items...</Text>
-        ) : foundItems.length === 0 ? (
+        {reportsLoading ? (
+          <Text style={styles.loadingText}>Loading your reports...</Text>
+        ) : activeReports.length === 0 ? (
           <View style={styles.emptyBox}>
-            <Ionicons name="cube-outline" size={28} color="#d1d5db" />
-            <Text style={styles.loadingText}>No found items available right now.</Text>
+            <Ionicons name="document-text-outline" size={28} color="#d1d5db" />
+            <Text style={styles.loadingText}>No active reports</Text>
           </View>
         ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.itemsScroll}>
-            {foundItems.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.itemCard}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate("Browse")}
-              >
+          <View style={styles.reportsList}>
+            {activeReports.slice(0, 2).map((report) => (
+              <View key={report.id} style={styles.reportCard}>
                 <View style={styles.itemIconBox}>
-                  {item.photo_url ? (
-                    <Image source={{ uri: item.photo_url }} style={styles.itemImage} />
+                  {report.photo_url ? (
+                    <Image source={{ uri: report.photo_url }} style={styles.itemImage} />
                   ) : (
-                    <Ionicons name="image-outline" size={22} color="#9ca3af" />
+                    <Ionicons name="image-outline" size={20} color="#9ca3af" />
                   )}
                 </View>
-                <Text style={styles.itemName} numberOfLines={1}>{item.item_name}</Text>
-              </TouchableOpacity>
+                <View style={styles.reportTextBox}>
+                  <Text style={styles.reportName}>{report.item_name}</Text>
+                  <Text style={styles.reportStatus}>Searching for match...</Text>
+                </View>
+              </View>
             ))}
-          </ScrollView>
+          </View>
         )}
       </ScrollView>
 
@@ -268,8 +265,6 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   sectionTitle: { fontSize: 16, fontWeight: "900", color: "#1f2937" },
-  seeAllButton: { flexDirection: "row", alignItems: "center", gap: 2 },
-  seeAll: { fontSize: 12, fontWeight: "700", color: NAVY },
   loadingText: { color: "#9ca3af", fontSize: 13, marginTop: 8 },
   emptyBox: {
     alignItems: "center",
@@ -280,29 +275,30 @@ const styles = StyleSheet.create({
     borderColor: "#f0f0f0",
     gap: 6,
   },
-  itemsScroll: { marginBottom: 10 },
-  itemCard: {
-    width: 92,
-    backgroundColor: "white",
-    borderRadius: 18,
-    padding: 12,
-    marginRight: 12,
+  reportsList: { gap: 10 },
+  reportCard: {
+    flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: "#f0f0f0",
   },
   itemIconBox: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 46,
+    height: 46,
+    borderRadius: 12,
     backgroundColor: "#f3f4f6",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 8,
+    marginRight: 12,
     overflow: "hidden",
   },
   itemImage: { width: "100%", height: "100%" },
-  itemName: { fontSize: 11, fontWeight: "700", color: "#374151", textAlign: "center" },
+  reportTextBox: { flex: 1 },
+  reportName: { fontSize: 13.5, fontWeight: "800", color: "#374151" },
+  reportStatus: { fontSize: 11, color: "#9ca3af", marginTop: 2 },
   bottomNav: {
     flexDirection: "row",
     backgroundColor: "white",
