@@ -5,11 +5,11 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Image,
-  ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import api from "../lib/api";
 import { setAuth } from "../lib/auth";
 
@@ -31,7 +31,6 @@ export default function StudentLoginScreen({ navigation }: any) {
 
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
-  const [forgotMessage, setForgotMessage] = useState("");
   const [forgotError, setForgotError] = useState("");
 
   const [resetToken, setResetToken] = useState("");
@@ -118,8 +117,7 @@ export default function StudentLoginScreen({ navigation }: any) {
     setForgotError("");
     setForgotLoading(true);
     try {
-      const response = await api.post("/auth/forgot-password", { email: forgotEmail.trim() });
-      setForgotMessage(response.data.message);
+      await api.post("/auth/forgot-password", { email: forgotEmail.trim() });
       setStep("reset");
     } catch (err: any) {
       setForgotError(err.response?.data?.message || "Something went wrong. Please try again.");
@@ -162,7 +160,6 @@ export default function StudentLoginScreen({ navigation }: any) {
   const backToLogin = () => {
     setStep("login");
     setForgotEmail("");
-    setForgotMessage("");
     setForgotError("");
     setResetToken("");
     setNewPassword("");
@@ -173,7 +170,13 @@ export default function StudentLoginScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid={true}
+        extraScrollHeight={30}
+      >
         <View style={styles.card}>
 
           <View style={styles.logoBox}>
@@ -383,7 +386,7 @@ export default function StudentLoginScreen({ navigation }: any) {
             )
           )}
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }
