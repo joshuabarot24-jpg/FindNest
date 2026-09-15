@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  ScrollView,
   Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import api from "../lib/api";
 
 const categories = ["Electronics", "Personal Belongings", "ID/Cards", "Keys", "School Supplies", "Accessories", "Others"];
@@ -21,8 +21,11 @@ const NAVY = "#1a237e";
 export default function ReportFoundScreen({ navigation }: any) {
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState("Electronics");
-  const [location, setLocation] = useState("");
+  const [othersSpecify, setOthersSpecify] = useState("");
   const [description, setDescription] = useState("");
+  const [aiFilled, setAiFilled] = useState(false);
+  const [location, setLocation] = useState("");
+  const [time, setTime] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -30,12 +33,15 @@ export default function ReportFoundScreen({ navigation }: any) {
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [photoError, setPhotoError] = useState(false);
+  const [photoErrorMessage, setPhotoErrorMessage] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const uploadPhoto = async (uri: string) => {
     setPhotoPreview(uri);
     setPhotoError(false);
+    setPhotoErrorMessage("");
     setPhotoUrl(null);
     setUploading(true);
 
@@ -48,10 +54,21 @@ export default function ReportFoundScreen({ navigation }: any) {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setPhotoUrl(res.data.url);
-    } catch (err) {
+
+      if (res.data.ai_category && categories.includes(res.data.ai_category)) {
+        setCategory(res.data.ai_category);
+      }
+      if (res.data.ai_description) {
+        setDescription(res.data.ai_description);
+        setAiFilled(true);
+      } else {
+        setAiFilled(false);
+      }
+    } catch (err: any) {
       console.error("Photo upload failed:", err);
       setPhotoPreview(null);
       setPhotoError(true);
+      setPhotoErrorMessage(err.response?.data?.message || "Photo upload failed. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -79,26 +96,35 @@ export default function ReportFoundScreen({ navigation }: any) {
     if (!result.canceled) uploadPhoto(result.assets[0].uri);
   };
 
-  const handleSubmit = async () => {
+  const handleReview = () => {
     if (!itemName.trim()) return;
     if (!photoUrl) {
       setPhotoError(true);
       return;
     }
-
+    if (!description.trim()) {
+      setSubmitError("Description is required. Since AI couldn't auto-fill it, please describe the item manually.");
+      return;
+    }
     setSubmitError("");
+    setShowConfirm(true);
+  };
+
+  const handleFinalSubmit = async () => {
     setSubmitLoading(true);
     try {
       await api.post("/found-items", {
         item_name: itemName.trim(),
-        category: category,
-        description: description.trim(),
+        category: category === "Others" ? othersSpecify.trim() : category,
+        description: description,
         location_found: location.trim(),
         date_found: new Date().toISOString().split("T")[0],
         photo_url: photoUrl,
       });
+      setShowConfirm(false);
       setSubmitted(true);
     } catch (err: any) {
+      setShowConfirm(false);
       setSubmitError(err.response?.data?.message || "Failed to submit report. Please try again.");
     } finally {
       setSubmitLoading(false);
@@ -119,22 +145,26 @@ export default function ReportFoundScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid={true}
+        extraScrollHeight={30}
+      >
         {submitted ? (
           <View style={styles.successCard}>
-            <Ionicons name="happy-outline" size={40} color="#22c55e" style={{ marginBottom: 10 }} />
+            <Ionicons name="checkmark-circle" size={40} color="#22c55e" style={{ marginBottom: 10 }} />
             <Text style={styles.successTitle}>Thank You!</Text>
             <Text style={styles.successMessage}>
-              Please surrender the item to the school office to complete the process.
+              Your found item report has been submitted. Please surrender the item to the school office.
             </Text>
-
             <View style={styles.reminderBox}>
+              <Text style={styles.reminderTitle}>Important Reminder!</Text>
               <Text style={styles.reminderText}>
-                Surrender this item to Ms. Shelly S. Durban within 2 school days, or the post will be automatically rejected.
+                Surrender this item to Ms. Shelly S. Durban at the Guidance Office within 2 school days, or the post will be automatically rejected.
               </Text>
             </View>
-
             <TouchableOpacity style={styles.successButton} onPress={() => navigation.navigate("Home")}>
               <Text style={styles.successButtonText}>Back to Home</Text>
             </TouchableOpacity>
@@ -153,11 +183,11 @@ export default function ReportFoundScreen({ navigation }: any) {
               disabled={uploading}
             >
               {uploading ? (
-                <Text style={styles.uploadText}>Uploading to cloud...</Text>
+                <Text style={styles.uploadText}>Analyzing photo with AI...</Text>
               ) : photoPreview ? (
                 <>
                   <Image source={{ uri: photoPreview }} style={styles.previewImage} />
-                  {photoUrl && <Text style={styles.uploadedText}>Photo uploaded successfully</Text>}
+                  {photoUrl && <Text style={styles.uploadedText}>Photo uploaded and analyzed</Text>}
                 </>
               ) : (
                 <>
@@ -167,7 +197,9 @@ export default function ReportFoundScreen({ navigation }: any) {
                 </>
               )}
             </TouchableOpacity>
-            {photoError && <Text style={styles.errorText}>A photo is required before you can submit this report.</Text>}
+            {photoError && (
+              <Text style={styles.errorText}>{photoErrorMessage || "A photo is required before you can submit this report."}</Text>
+            )}
 
             <Text style={styles.label}>Item Name</Text>
             <TextInput
@@ -178,11 +210,44 @@ export default function ReportFoundScreen({ navigation }: any) {
               onChangeText={setItemName}
             />
 
-            <Text style={styles.label}>Category</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Category</Text>
+              {photoUrl && <Text style={styles.autoTag}>auto-detected, editable</Text>}
+            </View>
             <TouchableOpacity style={styles.selectBox} onPress={() => setShowCategoryPicker(true)}>
               <Text style={styles.selectText}>{category}</Text>
               <Ionicons name="chevron-down" size={18} color="#9ca3af" />
             </TouchableOpacity>
+
+            {category === "Others" && (
+              <>
+                <Text style={styles.label}>Please Specify</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Tell us what kind of item this is"
+                  placeholderTextColor="#9ca3af"
+                  value={othersSpecify}
+                  onChangeText={setOthersSpecify}
+                />
+              </>
+            )}
+
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>
+                Description {!aiFilled && <Text style={styles.requiredMark}>*</Text>}
+              </Text>
+              {aiFilled && <Text style={styles.autoTag}>auto-filled by AI, editable</Text>}
+            </View>
+            <TextInput
+              style={[styles.textArea, !aiFilled && !description.trim() && styles.uploadBoxError]}
+              placeholder={aiFilled ? "" : "Our AI could not auto-fill this. Please describe the item manually — any details that might help identify the owner."}
+              placeholderTextColor="#9ca3af"
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
 
             <Text style={styles.label}>Location Found</Text>
             <TextInput
@@ -193,34 +258,38 @@ export default function ReportFoundScreen({ navigation }: any) {
               onChangeText={setLocation}
             />
 
-            <Text style={styles.label}>Description (Optional)</Text>
+            <Text style={styles.label}>Approx. Time Found</Text>
             <TextInput
-              style={styles.textArea}
-              placeholder="Any details that might help identify the owner"
+              style={styles.input}
+              placeholder="e.g. 2:30 PM"
               placeholderTextColor="#9ca3af"
-              multiline
-              numberOfLines={4}
-              value={description}
-              onChangeText={setDescription}
-              textAlignVertical="top"
+              value={time}
+              onChangeText={setTime}
             />
 
+            <View style={styles.surrenderNote}>
+              <Text style={styles.surrenderNoteTitle}>Surrender Reminder!</Text>
+              <Text style={styles.surrenderNoteText}>
+                You must surrender this item to Ms. Shelly S. Durban at the Guidance Office within 2 school days. Failure to do so will result in automatic post rejection.
+              </Text>
+            </View>
+
             <View style={styles.privacyNote}>
-              <Text style={styles.privacyText}>This report is private and visible only to you and administrators!</Text>
+              <Text style={styles.privacyNoteText}>This report is private and visible only to you and administrators</Text>
             </View>
 
             {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
             <TouchableOpacity
-              style={[styles.submitButton, (!itemName.trim() || !photoUrl || submitLoading) && styles.submitButtonDisabled]}
-              onPress={handleSubmit}
-              disabled={!itemName.trim() || !photoUrl || submitLoading}
+              style={[styles.submitButton, (!itemName.trim() || !photoUrl || uploading) && styles.submitButtonDisabled]}
+              onPress={handleReview}
+              disabled={!itemName.trim() || !photoUrl || uploading}
             >
-              <Text style={styles.submitButtonText}>{submitLoading ? "Submitting..." : "Submit Report"}</Text>
+              <Text style={styles.submitButtonText}>{uploading ? "Waiting for photo analysis..." : "Review Report"}</Text>
             </TouchableOpacity>
           </>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       <Modal visible={showPhotoOptions} animationType="slide" transparent onRequestClose={() => setShowPhotoOptions(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowPhotoOptions(false)}>
@@ -266,6 +335,35 @@ export default function ReportFoundScreen({ navigation }: any) {
         </TouchableOpacity>
       </Modal>
 
+      <Modal visible={showConfirm} animationType="slide" transparent onRequestClose={() => setShowConfirm(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmCard}>
+            <Text style={styles.modalTitle}>Confirm Your Report</Text>
+            <Text style={styles.confirmSubtitle}>Please review before submitting — this report stays private, visible only to you and admin</Text>
+
+            <View style={styles.confirmBox}>
+              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Item: </Text>{itemName}</Text>
+              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Category: </Text>{category === "Others" ? othersSpecify : category}</Text>
+              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Description: </Text>{description}</Text>
+              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Location: </Text>{location} {time ? `at ${time}` : ""}</Text>
+            </View>
+
+            <View style={styles.confirmButtonRow}>
+              <TouchableOpacity style={styles.confirmCancelButton} onPress={() => setShowConfirm(false)}>
+                <Text style={styles.confirmCancelText}>Go Back</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmSubmitButtonGreen}
+                onPress={handleFinalSubmit}
+                disabled={submitLoading}
+              >
+                <Text style={styles.confirmSubmitText}>{submitLoading ? "Submitting..." : "Confirm & Submit"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
           <Ionicons name="home-outline" size={22} color="#9ca3af" />
@@ -299,9 +397,15 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 20, paddingBottom: 30 },
   pageTitle: { fontSize: 20, fontWeight: "900", color: NAVY, marginBottom: 4 },
   pageSubtitle: { fontSize: 12.5, color: "#9ca3af", marginBottom: 22 },
-  label: { fontSize: 12.5, fontWeight: "800", color: "#374151", marginBottom: 8 },
+  labelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  label: { fontSize: 12.5, fontWeight: "800", color: "#374151" },
+  autoTag: { fontSize: 10.5, fontWeight: "700", color: "#22c55e" },
   requiredMark: { color: "#ef4444" },
-  uploadBox: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderStyle: "dashed", borderRadius: 16, paddingVertical: 26, alignItems: "center", marginBottom: 8 },
+  input: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13, fontSize: 13.5, color: "#374151", marginBottom: 16 },
+  textArea: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, fontSize: 13.5, color: "#374151", minHeight: 100, marginBottom: 16 },
+  selectBox: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 16 },
+  selectText: { fontSize: 13.5, color: "#374151", fontWeight: "600" },
+  uploadBox: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderStyle: "dashed", borderRadius: 16, paddingVertical: 30, alignItems: "center", marginBottom: 8 },
   uploadBoxError: { borderColor: "#ef4444", backgroundColor: "#fef2f2" },
   uploadText: { fontSize: 13.5, fontWeight: "700", color: "#374151" },
   uploadTextError: { color: "#ef4444" },
@@ -309,20 +413,20 @@ const styles = StyleSheet.create({
   uploadSubtext: { fontSize: 11, color: "#9ca3af", marginTop: 3 },
   uploadSubtextError: { color: "#f87171" },
   errorText: { fontSize: 11.5, fontWeight: "800", color: "#ef4444", marginBottom: 14 },
-  previewImage: { width: "100%", height: 150, borderRadius: 12, resizeMode: "cover" },
-  input: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13, fontSize: 13.5, color: "#374151", marginBottom: 16 },
-  selectBox: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 16 },
-  selectText: { fontSize: 13.5, color: "#374151", fontWeight: "600" },
-  textArea: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, fontSize: 13.5, color: "#374151", minHeight: 100, marginBottom: 16 },
+  previewImage: { width: "100%", height: 160, borderRadius: 12, resizeMode: "cover" },
+  surrenderNote: { backgroundColor: "#fff7ed", borderRadius: 14, padding: 14, marginBottom: 12 },
+  surrenderNoteTitle: { fontSize: 12.5, fontWeight: "800", color: "#c2410c", marginBottom: 4 },
+  surrenderNoteText: { fontSize: 11, color: "#c2410c", lineHeight: 16 },
   privacyNote: { backgroundColor: "#f5f3ff", borderRadius: 12, padding: 12, marginBottom: 20 },
-  privacyText: { fontSize: 11, color: "#6d28d9", lineHeight: 16 },
+  privacyNoteText: { fontSize: 11, color: "#6d28d9", lineHeight: 16 },
   submitButton: { backgroundColor: "#22c55e", borderRadius: 16, paddingVertical: 16, alignItems: "center" },
   submitButtonDisabled: { backgroundColor: "#bbf7d0" },
   submitButtonText: { color: "white", fontWeight: "900", fontSize: 15 },
   successCard: { backgroundColor: "white", borderRadius: 20, padding: 28, alignItems: "center", marginTop: 40 },
   successTitle: { fontSize: 18, fontWeight: "900", color: NAVY, marginBottom: 6 },
   successMessage: { fontSize: 13, color: "#9ca3af", textAlign: "center", marginBottom: 18 },
-  reminderBox: { backgroundColor: "#fff7ed", borderRadius: 14, padding: 14, marginBottom: 20 },
+  reminderBox: { backgroundColor: "#fff7ed", borderRadius: 14, padding: 14, marginBottom: 20, width: "100%" },
+  reminderTitle: { fontSize: 12.5, fontWeight: "800", color: "#c2410c", marginBottom: 4 },
   reminderText: { fontSize: 11.5, color: "#c2410c", lineHeight: 16 },
   successButton: { backgroundColor: NAVY, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, width: "100%", alignItems: "center" },
   successButtonText: { color: "white", fontWeight: "800", fontSize: 13 },
@@ -337,6 +441,16 @@ const styles = StyleSheet.create({
   categoryOption: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#f3f4f6" },
   categoryOptionText: { fontSize: 14, color: "#374151", fontWeight: "600" },
   categoryOptionTextActive: { color: NAVY, fontWeight: "800" },
+  confirmCard: { backgroundColor: "white", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 36 },
+  confirmSubtitle: { fontSize: 12, color: "#9ca3af", textAlign: "center", marginBottom: 16 },
+  confirmBox: { backgroundColor: "#f8f9fc", borderRadius: 16, padding: 16, marginBottom: 20, gap: 8 },
+  confirmRow: { fontSize: 13, color: "#6b7280" },
+  confirmLabel: { fontWeight: "800", color: "#374151" },
+  confirmButtonRow: { flexDirection: "row", gap: 12 },
+  confirmCancelButton: { flex: 1, borderWidth: 2, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 14, alignItems: "center" },
+  confirmCancelText: { color: "#9ca3af", fontWeight: "800", fontSize: 13 },
+  confirmSubmitButtonGreen: { flex: 1, backgroundColor: "#22c55e", borderRadius: 14, paddingVertical: 14, alignItems: "center" },
+  confirmSubmitText: { color: "white", fontWeight: "800", fontSize: 13 },
   bottomNav: { flexDirection: "row", backgroundColor: "white", borderTopWidth: 1, borderTopColor: "#f0f0f0", paddingVertical: 10, paddingBottom: 16 },
   navItem: { flex: 1, alignItems: "center", gap: 3 },
   navLabel: { fontSize: 10, color: "#9ca3af", fontWeight: "600" },
