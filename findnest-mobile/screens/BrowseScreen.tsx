@@ -13,19 +13,25 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../lib/api";
 
-interface FoundItem {
+interface LostReportPublic {
   id: number;
   item_name: string;
-  location_found: string;
+  category: string;
+  location_lost: string;
+  date_lost: string;
   photo_url: string | null;
 }
 
-interface LostReport {
+interface MyReport {
   id: number;
   item_name: string;
   status: string;
   created_at: string;
 }
+
+const CATEGORIES = ["All", "Electronics", "Personal Belongings", "Accessories", "ID/Cards", "Keys", "School Supplies"];
+
+const NAVY = "#1a237e";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString(undefined, {
@@ -35,39 +41,38 @@ function formatDate(dateStr: string) {
   });
 }
 
-function statusLabel(status: string) {
+function statusStyles(status: string) {
   switch (status) {
     case "returned":
-      return "Returned";
+      return { label: "Returned", badge: "#22c55e", bg: "#ecfdf5" };
     case "matched":
-      return "Match Found";
+      return { label: "Match Found", badge: "#7c3aed", bg: "#f5f3ff" };
     default:
-      return "Searching";
+      return { label: "Searching", badge: NAVY, bg: "#eef2ff" };
   }
 }
 
-const NAVY = "#1a237e";
-
 export default function BrowseScreen({ navigation }: any) {
-  const [activeTab, setActiveTab] = useState<"browse" | "history">("browse");
+  const [activeTab, setActiveTab] = useState<"reports" | "mine">("reports");
   const [search, setSearch] = useState("");
-  const [selectedItem, setSelectedItem] = useState<FoundItem | null>(null);
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [selectedItem, setSelectedItem] = useState<LostReportPublic | null>(null);
 
-  const [foundItems, setFoundItems] = useState<FoundItem[]>([]);
-  const [foundLoading, setFoundLoading] = useState(true);
+  const [publicReports, setPublicReports] = useState<LostReportPublic[]>([]);
+  const [publicLoading, setPublicLoading] = useState(true);
 
-  const [myReports, setMyReports] = useState<LostReport[]>([]);
-  const [reportsLoading, setReportsLoading] = useState(true);
+  const [myReports, setMyReports] = useState<MyReport[]>([]);
+  const [myReportsLoading, setMyReportsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchItems = async () => {
+    const fetchPublicReports = async () => {
       try {
-        const response = await api.get("/found-items", { params: { status: "unclaimed" } });
-        setFoundItems(response.data.records || []);
+        const response = await api.get("/lost-items", { params: { status: "searching" } });
+        setPublicReports(response.data.reports || []);
       } catch (err) {
-        console.error("Error fetching found items:", err);
+        console.error("Error fetching lost item reports:", err);
       } finally {
-        setFoundLoading(false);
+        setPublicLoading(false);
       }
     };
 
@@ -78,17 +83,19 @@ export default function BrowseScreen({ navigation }: any) {
       } catch (err) {
         console.error("Error fetching my reports:", err);
       } finally {
-        setReportsLoading(false);
+        setMyReportsLoading(false);
       }
     };
 
-    fetchItems();
+    fetchPublicReports();
     fetchMyReports();
   }, []);
 
-  const filtered = foundItems.filter((item) =>
-    item.item_name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = publicReports.filter((item) => {
+    const matchesSearch = item.item_name.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = activeCategory === "All" || item.category === activeCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <SafeAreaView style={styles.container}>
@@ -106,40 +113,63 @@ export default function BrowseScreen({ navigation }: any) {
 
       <View style={styles.tabRow}>
         <TouchableOpacity
-          style={[styles.tabButton, activeTab === "browse" && styles.tabButtonActive]}
-          onPress={() => setActiveTab("browse")}
+          style={[styles.tabButton, activeTab === "reports" && styles.tabButtonActive]}
+          onPress={() => setActiveTab("reports")}
         >
-          <Text style={[styles.tabText, activeTab === "browse" && styles.tabTextActive]}>
-            My Found Items
+          <Text style={[styles.tabText, activeTab === "reports" && styles.tabTextActive]}>
+            Report Items
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tabButton, activeTab === "history" && styles.tabButtonActive]}
-          onPress={() => setActiveTab("history")}
+          style={[styles.tabButton, activeTab === "mine" && styles.tabButtonActive]}
+          onPress={() => setActiveTab("mine")}
         >
-          <Text style={[styles.tabText, activeTab === "history" && styles.tabTextActive]}>
+          <Text style={[styles.tabText, activeTab === "mine" && styles.tabTextActive]}>
             My Lost Reports
           </Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
-        {activeTab === "browse" ? (
+        {activeTab === "reports" ? (
           <>
+            <View style={styles.statBanner}>
+              <View>
+                <Text style={styles.statNumber}>{publicReports.length}</Text>
+                <Text style={styles.statLabel}>active lost reports</Text>
+              </View>
+              <View style={styles.statIconCircle}>
+                <Ionicons name="megaphone-outline" size={20} color="white" />
+              </View>
+            </View>
+
             <View style={styles.searchBox}>
               <Ionicons name="search-outline" size={18} color="#9ca3af" style={{ marginRight: 8 }} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search found items..."
+                placeholder="Search lost item reports..."
                 placeholderTextColor="#9ca3af"
                 value={search}
                 onChangeText={setSearch}
               />
             </View>
 
-            {foundLoading ? (
-              <Text style={styles.loadingText}>Loading found items...</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+              {CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => setActiveCategory(cat)}
+                  style={[styles.categoryChip, activeCategory === cat && styles.categoryChipActive]}
+                >
+                  <Text style={[styles.categoryChipText, activeCategory === cat && styles.categoryChipTextActive]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {publicLoading ? (
+              <Text style={styles.loadingText}>Loading reports...</Text>
             ) : (
               <>
                 {filtered.map((item) => (
@@ -160,17 +190,19 @@ export default function BrowseScreen({ navigation }: any) {
                       <Text style={styles.itemName}>{item.item_name}</Text>
                       <View style={styles.itemLocationRow}>
                         <Ionicons name="location-outline" size={12} color="#9ca3af" />
-                        <Text style={styles.itemLocation}>{item.location_found}</Text>
+                        <Text style={styles.itemLocation}>{item.location_lost}</Text>
                       </View>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color="#d1d5db" />
+                    <View style={styles.categoryTag}>
+                      <Text style={styles.categoryTagText}>{item.category}</Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
 
                 {filtered.length === 0 && (
                   <View style={styles.emptyState}>
                     <Ionicons name="cube-outline" size={32} color="#d1d5db" />
-                    <Text style={styles.emptyText}>No items found</Text>
+                    <Text style={styles.emptyText}>No active lost reports</Text>
                   </View>
                 )}
               </>
@@ -179,11 +211,9 @@ export default function BrowseScreen({ navigation }: any) {
         ) : (
           <>
             <Text style={styles.historyHeading}>My Lost Reports</Text>
-            <Text style={styles.historySubheading}>
-              Items you have reported as lost
-            </Text>
+            <Text style={styles.historySubheading}>Items you have reported as lost</Text>
 
-            {reportsLoading ? (
+            {myReportsLoading ? (
               <Text style={styles.loadingText}>Loading your reports...</Text>
             ) : myReports.length === 0 ? (
               <View style={styles.emptyState}>
@@ -191,15 +221,20 @@ export default function BrowseScreen({ navigation }: any) {
                 <Text style={styles.emptyText}>You haven't reported any lost items yet</Text>
               </View>
             ) : (
-              myReports.map((report) => (
-                <View key={report.id} style={styles.historyCard}>
-                  <View style={styles.historyTextBox}>
-                    <Text style={styles.historyItem}>{report.item_name}</Text>
-                    <Text style={styles.historyDate}>Reported {formatDate(report.created_at)}</Text>
+              myReports.map((report) => {
+                const styles2 = statusStyles(report.status);
+                return (
+                  <View key={report.id} style={styles.historyCard}>
+                    <View style={styles.historyTextBox}>
+                      <Text style={styles.historyItem}>{report.item_name}</Text>
+                      <Text style={styles.historyDate}>Reported {formatDate(report.created_at)}</Text>
+                    </View>
+                    <View style={[styles.historyStatusPill, { backgroundColor: styles2.bg }]}>
+                      <Text style={[styles.historyStatusText, { color: styles2.badge }]}>{styles2.label}</Text>
+                    </View>
                   </View>
-                  <Text style={styles.historyStatus}>{statusLabel(report.status)}</Text>
-                </View>
-              ))
+                );
+              })
             )}
           </>
         )}
@@ -230,30 +265,20 @@ export default function BrowseScreen({ navigation }: any) {
                 </View>
                 <Text style={styles.modalItemName}>{selectedItem.item_name}</Text>
                 <Text style={styles.modalItemLocation}>
-                  Found at: {selectedItem.location_found}
+                  Last seen: {selectedItem.location_lost}
+                </Text>
+                <Text style={styles.modalItemDate}>
+                  {formatDate(selectedItem.date_lost)}
                 </Text>
 
                 <View style={styles.modalNote}>
+                  <Ionicons name="information-circle-outline" size={16} color="#1e40af" style={{ marginBottom: 4 }} />
                   <Text style={styles.modalNoteText}>
-                    If this is your item, submit a claim so an administrator can verify ownership.
+                    Recognize this item? Report it as found from the Home screen — our AI will automatically check for a match.
                   </Text>
                 </View>
 
-                <TouchableOpacity
-                  style={styles.claimButton}
-                  onPress={() => {
-                    const itemToClaim = selectedItem;
-                    setSelectedItem(null);
-                    navigation.navigate("ReportLost", {
-                      claimItemName: itemToClaim.item_name,
-                      claimItemLocation: itemToClaim.location_found,
-                    });
-                  }}
-                >
-                  <Text style={styles.claimButtonText}>Submit Claim</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => setSelectedItem(null)}>
+                <TouchableOpacity onPress={() => setSelectedItem(null)} style={styles.modalCloseButton}>
                   <Text style={styles.modalCloseText}>Close</Text>
                 </TouchableOpacity>
               </>
@@ -286,34 +311,37 @@ export default function BrowseScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f8f9fc" },
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
+  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingVertical: 14, backgroundColor: "white", borderBottomWidth: 1, borderBottomColor: "#f0f0f0" },
   topBarLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   logoSmall: { width: 30, height: 30, resizeMode: "contain" },
   brandText: { fontSize: 16, fontWeight: "900", color: NAVY },
   brandAccent: { color: "#c99700" },
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: "#f3f4f6",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  iconButton: { width: 38, height: 38, borderRadius: 12, backgroundColor: "#f3f4f6", justifyContent: "center", alignItems: "center" },
   tabRow: { flexDirection: "row", backgroundColor: "white", paddingHorizontal: 16, paddingTop: 10, gap: 8 },
   tabButton: { flex: 1, paddingVertical: 10, alignItems: "center", borderBottomWidth: 2, borderBottomColor: "transparent" },
   tabButtonActive: { borderBottomColor: NAVY },
   tabText: { fontSize: 12.5, fontWeight: "700", color: "#9ca3af" },
   tabTextActive: { color: NAVY },
   scrollContent: { padding: 20, paddingBottom: 30 },
+  statBanner: {
+    backgroundColor: NAVY,
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  statNumber: { fontSize: 26, fontWeight: "900", color: "white" },
+  statLabel: { fontSize: 11.5, color: "#b8c0e8", marginTop: 2 },
+  statIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   searchBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -322,14 +350,22 @@ const styles = StyleSheet.create({
     borderColor: "#e5e7eb",
     borderRadius: 14,
     paddingHorizontal: 16,
-    marginBottom: 14,
+    marginBottom: 12,
   },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 13,
-    fontSize: 13.5,
-    color: "#374151",
+  searchInput: { flex: 1, paddingVertical: 13, fontSize: 13.5, color: "#374151" },
+  categoryScroll: { marginBottom: 16 },
+  categoryChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    marginRight: 8,
   },
+  categoryChipActive: { backgroundColor: NAVY, borderColor: NAVY },
+  categoryChipText: { fontSize: 11.5, fontWeight: "700", color: "#9ca3af" },
+  categoryChipTextActive: { color: "white" },
   loadingText: { color: "#9ca3af", fontSize: 13, textAlign: "center", marginTop: 20 },
   itemRow: {
     flexDirection: "row",
@@ -356,6 +392,8 @@ const styles = StyleSheet.create({
   itemName: { fontSize: 13.5, fontWeight: "800", color: "#374151" },
   itemLocationRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 },
   itemLocation: { fontSize: 11.5, color: "#9ca3af" },
+  categoryTag: { backgroundColor: "#eef2ff", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 },
+  categoryTagText: { fontSize: 9.5, fontWeight: "800", color: NAVY },
   emptyState: { alignItems: "center", paddingVertical: 60, gap: 8 },
   emptyText: { color: "#9ca3af", fontWeight: "700" },
   historyHeading: { fontSize: 18, fontWeight: "900", color: NAVY, marginBottom: 4 },
@@ -374,7 +412,8 @@ const styles = StyleSheet.create({
   historyTextBox: { flex: 1 },
   historyItem: { fontSize: 14, fontWeight: "800", color: "#374151" },
   historyDate: { fontSize: 11.5, color: "#9ca3af", marginTop: 3 },
-  historyStatus: { fontSize: 11, fontWeight: "800", color: NAVY },
+  historyStatusPill: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
+  historyStatusText: { fontSize: 10.5, fontWeight: "800" },
   modalOverlay: { flex: 1, backgroundColor: "rgba(13,19,63,0.6)", justifyContent: "flex-end" },
   modalCard: {
     backgroundColor: "white",
@@ -397,11 +436,11 @@ const styles = StyleSheet.create({
   },
   modalImage: { width: "100%", height: "100%" },
   modalItemName: { fontSize: 17, fontWeight: "900", color: NAVY, marginBottom: 4 },
-  modalItemLocation: { fontSize: 13, color: "#9ca3af", marginBottom: 18 },
-  modalNote: { backgroundColor: "#eff6ff", borderRadius: 14, padding: 14, marginBottom: 20, width: "100%" },
+  modalItemLocation: { fontSize: 13, color: "#9ca3af" },
+  modalItemDate: { fontSize: 11.5, color: "#c1c7d6", marginBottom: 18, marginTop: 2 },
+  modalNote: { backgroundColor: "#eff6ff", borderRadius: 14, padding: 14, marginBottom: 20, width: "100%", alignItems: "center" },
   modalNoteText: { fontSize: 12, color: "#1e40af", lineHeight: 17, textAlign: "center" },
-  claimButton: { backgroundColor: NAVY, borderRadius: 16, paddingVertical: 16, width: "100%", alignItems: "center", marginBottom: 14 },
-  claimButtonText: { color: "white", fontWeight: "900", fontSize: 14 },
+  modalCloseButton: { paddingVertical: 6 },
   modalCloseText: { color: "#9ca3af", fontWeight: "700", fontSize: 13 },
   bottomNav: {
     flexDirection: "row",
