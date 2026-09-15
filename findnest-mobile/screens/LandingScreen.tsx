@@ -17,7 +17,7 @@ const FEATURES = [
   {
     icon: "camera-outline" as const,
     title: "Snap a Photo",
-    description: "Our AI reads item details automatically — no long forms to fill out.",
+    description: "AI reads item details automatically — no long forms to fill out.",
   },
   {
     icon: "flash-outline" as const,
@@ -54,7 +54,7 @@ export default function LandingScreen({ navigation }: any) {
         </Text>
 
         <View style={styles.featureList}>
-          {FEATURES.map((feature, index) => (
+          {FEATURES.map((feature) => (
             <View key={feature.title} style={styles.featureRow}>
               <View style={styles.featureIconBox}>
                 <Ionicons name={feature.icon} size={20} color={NAVY} />
@@ -72,7 +72,7 @@ export default function LandingScreen({ navigation }: any) {
           activeOpacity={0.9}
           onPress={() => navigation.navigate("StudentLogin")}
         >
-          <Text style={styles.loginButtonText}>Get Started</Text>
+          <Text style={styles.loginButtonText}>Login</Text>
           <Ionicons name="arrow-forward" size={18} color="white" />
         </TouchableOpacity>
 
