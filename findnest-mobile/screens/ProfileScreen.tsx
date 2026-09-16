@@ -6,69 +6,107 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import api from "../lib/api";
-import { getAuth, setAuth, clearAuth } from "../lib/auth";
+import { clearAuth } from "../lib/auth";
 
 const NAVY = "#1a237e";
 
-export default function ProfileScreen({ navigation }: any) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  school_id: string | null;
+  course: string | null;
+  year_level: string | null;
+  trust_score: number;
+  password_change_requested: boolean;
+  password_change_approved: boolean;
+  password_change_reason: string | null;
+}
 
-  const [name, setName] = useState("");
-  const [course, setCourse] = useState("");
-  const [yearLevel, setYearLevel] = useState("");
-  const [schoolId, setSchoolId] = useState("");
-  const [trustScore, setTrustScore] = useState(0);
+export default function ProfileScreen({ navigation }: any) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const [reason, setReason] = useState("");
+  const [requestLoading, setRequestLoading] = useState(false);
+  const [requestError, setRequestError] = useState("");
+  const [requestSuccess, setRequestSuccess] = useState("");
+
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [setPasswordLoading, setSetPasswordLoading] = useState(false);
+  const [setPasswordError, setSetPasswordError] = useState("");
+
+  const fetchProfile = async () => {
+    try {
+      const res = await api.get("/profile");
+      setUser(res.data.user);
+    } catch (err) {
+      console.error("Error fetching profile:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await api.get("/auth/me");
-        const user = response.data.user;
-        setName(user.name || "");
-        setCourse(user.course || "");
-        setYearLevel(user.year_level || "");
-        setSchoolId(user.school_id || "");
-        setTrustScore(user.trust_score || 0);
-      } catch (err) {
-        console.error("Error fetching profile:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchProfile();
   }, []);
 
-  const handleEditToggle = async () => {
-    if (!isEditing) {
-      setIsEditing(true);
+  const handleRequestPasswordChange = async () => {
+    if (!reason.trim()) {
+      setRequestError("Please tell us why you need a password change.");
       return;
     }
-
-    setError("");
-    setSaving(true);
+    setRequestError("");
+    setRequestSuccess("");
+    setRequestLoading(true);
     try {
-      const response = await api.put("/profile", {
-        name: name.trim(),
-        school_id: schoolId.trim() || null,
-        course: course.trim() || null,
-        year_level: yearLevel.trim() || null,
-      });
-      const updatedUser = response.data.user;
-      const { token } = await getAuth();
-      if (token) await setAuth(token, updatedUser);
-      setIsEditing(false);
+      await api.post("/profile/request-password-change", { reason: reason.trim() });
+      setRequestSuccess("Your request has been sent to the Super Admin.");
+      setReason("");
+      fetchProfile();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to update profile.");
+      setRequestError(err.response?.data?.message || "Failed to send request.");
     } finally {
-      setSaving(false);
+      setRequestLoading(false);
+    }
+  };
+
+  const handleSetNewPassword = async () => {
+    if (!newPassword || !confirmPassword) {
+      setSetPasswordError("Please fill in both fields.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setSetPasswordError("Password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setSetPasswordError("Passwords do not match.");
+      return;
+    }
+    setSetPasswordError("");
+    setSetPasswordLoading(true);
+    try {
+      await api.post("/profile/set-new-password", {
+        new_password: newPassword,
+        new_password_confirmation: confirmPassword,
+      });
+      setNewPassword("");
+      setConfirmPassword("");
+      fetchProfile();
+    } catch (err: any) {
+      setSetPasswordError(
+        err.response?.data?.message || "Failed to change password."
+      );
+    } finally {
+      setSetPasswordLoading(false);
     }
   };
 
@@ -82,6 +120,24 @@ export default function ProfileScreen({ navigation }: any) {
       navigation.reset({ index: 0, routes: [{ name: "Landing" }] });
     }
   };
+
+  function trustScoreColor(score: number) {
+    if (score >= 70) return "#16a34a";
+    if (score >= 40) return "#ca8a04";
+    return "#dc2626";
+  }
+
+  function trustScoreBg(score: number) {
+    if (score >= 70) return "#f0fdf4";
+    if (score >= 40) return "#fefce8";
+    return "#fef2f2";
+  }
+
+  function trustScoreLabel(score: number) {
+    if (score >= 70) return "Good Standing";
+    if (score >= 40) return "Moderate";
+    return "Restricted";
+  }
 
   if (loading) {
     return (
@@ -102,96 +158,143 @@ export default function ProfileScreen({ navigation }: any) {
             FIND<Text style={styles.brandAccent}>NEST</Text>
           </Text>
         </View>
-        <View style={styles.topBarIcons}>
-          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Notifications")}>
-            <Ionicons name="notifications-outline" size={20} color="#374151" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Support")}>
-            <Ionicons name="help-circle-outline" size={20} color="#374151" />
-          </TouchableOpacity>
-        </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid={true}
+        extraScrollHeight={30}
+      >
         <View style={styles.profileCard}>
           <View style={styles.avatarBox}>
-            <Text style={styles.avatarInitial}>{name.charAt(0).toUpperCase() || "?"}</Text>
+            <Text style={styles.avatarInitial}>{user?.name?.charAt(0).toUpperCase() || "?"}</Text>
           </View>
-          <Text style={styles.studentName}>{name}</Text>
-          <Text style={styles.studentInfo}>{course} | {schoolId}</Text>
+          <Text style={styles.studentName}>{user?.name}</Text>
+          <Text style={styles.studentInfo}>{user?.email}</Text>
 
-          <View style={styles.trustBox}>
-            <View style={styles.trustRing}>
-              <Text style={styles.trustScore}>{trustScore}</Text>
-            </View>
-            <Text style={styles.trustLabel}>TRUST SCORE</Text>
+          <View style={[styles.trustBox, { backgroundColor: trustScoreBg(user?.trust_score ?? 100) }]}>
+            <Text style={[styles.trustScore, { color: trustScoreColor(user?.trust_score ?? 100) }]}>
+              {user?.trust_score ?? 100}
+            </Text>
+            <Text style={[styles.trustLabel, { color: trustScoreColor(user?.trust_score ?? 100) }]}>
+              {trustScoreLabel(user?.trust_score ?? 100)}
+            </Text>
           </View>
         </View>
 
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Account Details</Text>
+          <Text style={styles.sectionTitle}>Personal Information</Text>
+          <Text style={styles.sectionSubtitle}>Managed by the school — contact the Guidance Office to request changes</Text>
 
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Student ID</Text>
-            <Text style={styles.detailValue}>{schoolId}</Text>
+            <Text style={styles.detailLabel}>Full Name</Text>
+            <Text style={styles.detailValue}>{user?.name}</Text>
           </View>
           <View style={styles.detailDivider} />
-
-          {isEditing ? (
-            <>
-              <View style={styles.editFieldRow}>
-                <Text style={styles.editFieldLabel}>Full Name</Text>
-                <TextInput style={styles.editInput} value={name} onChangeText={setName} placeholder="Full Name" placeholderTextColor="#9ca3af" />
-              </View>
-              <View style={styles.editFieldRow}>
-                <Text style={styles.editFieldLabel}>Course</Text>
-                <TextInput style={styles.editInput} value={course} onChangeText={setCourse} placeholder="Course" placeholderTextColor="#9ca3af" />
-              </View>
-              <View style={styles.editFieldRow}>
-                <Text style={styles.editFieldLabel}>Year Level</Text>
-                <TextInput style={styles.editInput} value={yearLevel} onChangeText={setYearLevel} placeholder="Year Level" placeholderTextColor="#9ca3af" />
-              </View>
-            </>
-          ) : (
-            <>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Course</Text>
-                <Text style={styles.detailValue}>{course}</Text>
-              </View>
-              <View style={styles.detailDivider} />
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Year Level</Text>
-                <Text style={styles.detailValue}>{yearLevel}</Text>
-              </View>
-            </>
-          )}
-
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Email</Text>
+            <Text style={styles.detailValue}>{user?.email}</Text>
+          </View>
           <View style={styles.detailDivider} />
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Status</Text>
-            <Text style={styles.detailValueGreen}>Active</Text>
+            <Text style={styles.detailLabel}>School ID</Text>
+            <Text style={styles.detailValue}>{user?.school_id || "—"}</Text>
+          </View>
+          <View style={styles.detailDivider} />
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Course</Text>
+            <Text style={styles.detailValue}>{user?.course || "—"}</Text>
+          </View>
+          <View style={styles.detailDivider} />
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Year Level</Text>
+            <Text style={styles.detailValue}>{user?.year_level || "—"}</Text>
           </View>
         </View>
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Password</Text>
+          <Text style={styles.sectionSubtitle}>
+            {user?.password_change_approved
+              ? "Your request was approved — set your new password below"
+              : "Passwords are changed by the Super Admin after your request is reviewed"}
+          </Text>
 
-        {isEditing && (
-          <TouchableOpacity style={styles.cancelButton} onPress={() => setIsEditing(false)}>
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity style={styles.editButton} onPress={handleEditToggle} disabled={saving}>
-          <Ionicons name={isEditing ? "checkmark-outline" : "create-outline"} size={16} color="white" style={{ marginRight: 6 }} />
-          <Text style={styles.editButtonText}>{saving ? "Saving..." : isEditing ? "Save Changes" : "Edit Profile"}</Text>
-        </TouchableOpacity>
+          {user?.password_change_approved ? (
+            <>
+              <View style={styles.approvedNote}>
+                <Text style={styles.approvedNoteText}>
+                  Your Super Admin approved your request. Set a new password only you will know.
+                </Text>
+              </View>
+              <Text style={styles.fieldLabel}>New Password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="At least 8 characters"
+                placeholderTextColor="#9ca3af"
+                secureTextEntry
+                value={newPassword}
+                onChangeText={setNewPassword}
+              />
+              <Text style={styles.fieldLabel}>Confirm New Password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Re-enter new password"
+                placeholderTextColor="#9ca3af"
+                secureTextEntry
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
+              {setPasswordError ? <Text style={styles.errorText}>{setPasswordError}</Text> : null}
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleSetNewPassword}
+                disabled={setPasswordLoading}
+              >
+                <Text style={styles.actionButtonText}>{setPasswordLoading ? "Saving..." : "Set New Password"}</Text>
+              </TouchableOpacity>
+            </>
+          ) : user?.password_change_requested ? (
+            <View style={styles.pendingNote}>
+              <Text style={styles.pendingNoteTitle}>Request Pending</Text>
+              <Text style={styles.pendingNoteText}>
+                Your password change request is awaiting Super Admin approval.
+                {user.password_change_reason ? `\n"${user.password_change_reason}"` : ""}
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.fieldLabel}>Why do you need a password change?</Text>
+              <TextInput
+                style={styles.textArea}
+                placeholder="e.g. I forgot my password, or want to update it for security"
+                placeholderTextColor="#9ca3af"
+                value={reason}
+                onChangeText={setReason}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+              {requestError ? <Text style={styles.errorText}>{requestError}</Text> : null}
+              {requestSuccess ? <Text style={styles.successText}>{requestSuccess}</Text> : null}
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleRequestPasswordChange}
+                disabled={requestLoading}
+              >
+                <Text style={styles.actionButtonText}>{requestLoading ? "Sending..." : "Request Password Change"}</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={16} color="#6b7280" style={{ marginRight: 6 }} />
+          <Ionicons name="log-out-outline" size={16} color="#dc2626" style={{ marginRight: 6 }} />
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
@@ -224,35 +327,36 @@ const styles = StyleSheet.create({
   logoSmall: { width: 30, height: 30, resizeMode: "contain" },
   brandText: { fontSize: 16, fontWeight: "900", color: NAVY },
   brandAccent: { color: "#c99700" },
-  topBarIcons: { flexDirection: "row", gap: 10 },
-  iconButton: { width: 38, height: 38, borderRadius: 12, backgroundColor: "#f3f4f6", justifyContent: "center", alignItems: "center" },
   scrollContent: { padding: 20, paddingBottom: 30 },
   profileCard: { backgroundColor: "white", borderRadius: 20, padding: 24, alignItems: "center", marginBottom: 16, borderWidth: 1, borderColor: "#f0f0f0" },
-  avatarBox: { width: 80, height: 80, borderRadius: 24, backgroundColor: NAVY, justifyContent: "center", alignItems: "center", marginBottom: 14 },
-  avatarInitial: { fontSize: 32, fontWeight: "900", color: "white" },
-  studentName: { fontSize: 17, fontWeight: "900", color: NAVY, textAlign: "center" },
-  studentInfo: { fontSize: 12, color: "#9ca3af", marginTop: 4, marginBottom: 16 },
-  trustBox: { alignItems: "center" },
-  trustRing: { width: 70, height: 70, borderRadius: 35, borderWidth: 6, borderColor: "#22c55e", justifyContent: "center", alignItems: "center" },
-  trustScore: { fontSize: 20, fontWeight: "900", color: "#16a34a" },
-  trustLabel: { fontSize: 9, fontWeight: "800", color: "#9ca3af", marginTop: 6, letterSpacing: 1 },
-  sectionCard: { backgroundColor: "white", borderRadius: 18, padding: 18, marginBottom: 20, borderWidth: 1, borderColor: "#f0f0f0" },
-  sectionTitle: { fontSize: 14, fontWeight: "900", color: "#374151", marginBottom: 12 },
+  avatarBox: { width: 72, height: 72, borderRadius: 22, backgroundColor: NAVY, justifyContent: "center", alignItems: "center", marginBottom: 12 },
+  avatarInitial: { fontSize: 28, fontWeight: "900", color: "white" },
+  studentName: { fontSize: 16, fontWeight: "900", color: NAVY, textAlign: "center" },
+  studentInfo: { fontSize: 12, color: "#9ca3af", marginTop: 4, marginBottom: 14 },
+  trustBox: { borderRadius: 14, paddingHorizontal: 20, paddingVertical: 10, alignItems: "center" },
+  trustScore: { fontSize: 20, fontWeight: "900" },
+  trustLabel: { fontSize: 10, fontWeight: "800", marginTop: 2 },
+  sectionCard: { backgroundColor: "white", borderRadius: 18, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: "#f0f0f0" },
+  sectionTitle: { fontSize: 14, fontWeight: "900", color: "#374151" },
+  sectionSubtitle: { fontSize: 11, color: "#9ca3af", marginTop: 3, marginBottom: 14, lineHeight: 15 },
   detailRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 10 },
   detailLabel: { fontSize: 12.5, color: "#9ca3af", fontWeight: "600" },
   detailValue: { fontSize: 12.5, color: "#374151", fontWeight: "700" },
-  detailValueGreen: { fontSize: 12.5, color: "#16a34a", fontWeight: "800" },
   detailDivider: { height: 1, backgroundColor: "#f3f4f6" },
-  editFieldRow: { paddingVertical: 8 },
-  editFieldLabel: { fontSize: 11, color: "#9ca3af", fontWeight: "700", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
-  editInput: { backgroundColor: "#f8f9fc", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 13, color: "#374151" },
-  errorText: { color: "#ef4444", fontSize: 12, fontWeight: "700", marginBottom: 10, textAlign: "center" },
-  editButton: { flexDirection: "row", backgroundColor: NAVY, borderRadius: 16, paddingVertical: 15, alignItems: "center", justifyContent: "center", marginBottom: 10 },
-  editButtonText: { color: "white", fontWeight: "800", fontSize: 14 },
-  cancelButton: { backgroundColor: "white", borderRadius: 16, paddingVertical: 15, alignItems: "center", marginBottom: 10, borderWidth: 1.5, borderColor: "#e5e7eb" },
-  cancelButtonText: { color: "#9ca3af", fontWeight: "800", fontSize: 14 },
-  logoutButton: { flexDirection: "row", backgroundColor: "#f3f4f6", borderRadius: 16, paddingVertical: 15, alignItems: "center", justifyContent: "center" },
-  logoutButtonText: { color: "#6b7280", fontWeight: "800", fontSize: 14 },
+  fieldLabel: { fontSize: 11.5, fontWeight: "800", color: "#374151", marginBottom: 6 },
+  input: { backgroundColor: "#f8f9fc", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 13, color: "#374151", marginBottom: 14 },
+  textArea: { backgroundColor: "#f8f9fc", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 12, padding: 14, fontSize: 13, color: "#374151", minHeight: 80, marginBottom: 12 },
+  errorText: { color: "#ef4444", fontSize: 11.5, fontWeight: "700", marginBottom: 10 },
+  successText: { color: "#16a34a", fontSize: 11.5, fontWeight: "700", marginBottom: 10 },
+  actionButton: { backgroundColor: NAVY, borderRadius: 14, paddingVertical: 14, alignItems: "center" },
+  actionButtonText: { color: "white", fontWeight: "800", fontSize: 13.5 },
+  pendingNote: { backgroundColor: "#fefce8", borderRadius: 14, padding: 16, alignItems: "center" },
+  pendingNoteTitle: { color: "#a16207", fontWeight: "800", fontSize: 13, marginBottom: 4 },
+  pendingNoteText: { color: "#ca8a04", fontSize: 11.5, textAlign: "center", lineHeight: 16, fontStyle: "italic" },
+  approvedNote: { backgroundColor: "#f0fdf4", borderRadius: 12, padding: 12, marginBottom: 14 },
+  approvedNoteText: { color: "#15803d", fontSize: 11, lineHeight: 15 },
+  logoutButton: { flexDirection: "row", backgroundColor: "#fef2f2", borderRadius: 16, paddingVertical: 15, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#fecaca" },
+  logoutButtonText: { color: "#dc2626", fontWeight: "800", fontSize: 14 },
   bottomNav: { flexDirection: "row", backgroundColor: "white", borderTopWidth: 1, borderTopColor: "#f0f0f0", paddingVertical: 10, paddingBottom: 16 },
   navItem: { flex: 1, alignItems: "center", gap: 3 },
   navLabel: { fontSize: 10, color: "#9ca3af", fontWeight: "600" },
