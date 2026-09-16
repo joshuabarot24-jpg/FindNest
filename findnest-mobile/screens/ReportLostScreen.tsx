@@ -234,7 +234,7 @@ export default function ReportLostScreen({ navigation }: any) {
             </View>
             <TextInput
               style={[styles.textArea, !aiFilled && !description.trim() && styles.uploadBoxError]}
-              placeholder={aiFilled ? "" : "Our AI could not auto-fill this. Please describe your item manually (color, brand, markings)."}
+              placeholder={aiFilled ? "" : "If our AI could not auto-fill this. Please describe your item manually (color, brand, markings)."}
               placeholderTextColor="#9ca3af"
               value={description}
               onChangeText={setDescription}

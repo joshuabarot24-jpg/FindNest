@@ -240,7 +240,7 @@ export default function ReportFoundScreen({ navigation }: any) {
             </View>
             <TextInput
               style={[styles.textArea, !aiFilled && !description.trim() && styles.uploadBoxError]}
-              placeholder={aiFilled ? "" : "Our AI could not auto-fill this. Please describe the item manually — any details that might help identify the owner."}
+              placeholder={aiFilled ? "" : "If our AI could not auto-fill this. Please describe the item manually — any details that might help identify the owner."}
               placeholderTextColor="#9ca3af"
               value={description}
               onChangeText={setDescription}
