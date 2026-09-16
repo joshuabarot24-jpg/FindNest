@@ -41,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/change-password', [ProfileController::class, 'changePassword']);
         Route::post('/request-password-change', [ProfileController::class, 'requestPasswordChange']);
         Route::post('/set-new-password', [ProfileController::class, 'setNewPassword']);
+        Route::post('/verify-id', [ProfileController::class, 'verifyId']);
     });
 
     Route::prefix('lost-items')->group(function () {

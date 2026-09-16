@@ -32,6 +32,11 @@ class User extends Authenticatable
         'password_change_reason',
         'password_last_changed_at',
         'password_change_approved',
+        'id_verified',
+        'id_photo_url',
+        'id_extracted_name',
+        'id_extracted_school_id',
+        'identity_verification_status',
     ];
 
     protected $hidden = [
@@ -51,6 +56,7 @@ class User extends Authenticatable
         'password_change_requested' => 'boolean',
         'password_last_changed_at' => 'datetime',
         'password_change_approved' => 'boolean',
+        'id_verified' => 'boolean',
     ];
 
     public function lostReports()

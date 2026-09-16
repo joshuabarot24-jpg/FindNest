@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
+
 class ProfileController extends Controller
 {
     public function show(Request $request)
@@ -139,5 +140,47 @@ class ProfileController extends Controller
         ]);
 
         return response()->json(['message' => 'Password changed successfully']);
+    }
+
+        public function verifyId(Request $request)
+    {
+        $user = $request->user();
+
+        $validator = Validator::make($request->all(), [
+            'id_photo_url' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $idService = new \App\Services\IdVerificationService();
+        $extraction = $idService->extractIdInfo($request->id_photo_url);
+
+        if (!$extraction['success']) {
+            return response()->json(['message' => $extraction['message']], 422);
+        }
+
+        $status = $idService->compareToAccount(
+            $extraction['name'],
+            $extraction['school_id'],
+            $user->name,
+            $user->school_id
+        );
+
+        $user->update([
+            'id_verified' => true,
+            'id_photo_url' => $request->id_photo_url,
+            'id_extracted_name' => $extraction['name'],
+            'id_extracted_school_id' => $extraction['school_id'],
+            'identity_verification_status' => $status,
+        ]);
+
+        return response()->json([
+            'message' => $status === 'matched'
+                ? 'Your ID has been verified successfully.'
+                : 'Your ID was uploaded, but some details did not fully match your account. This has been flagged for admin review.',
+            'status' => $status,
+        ]);
     }
 }
