@@ -38,8 +38,18 @@ function iconFor(type: string) {
   const t = type?.toLowerCase() || "";
   if (t.includes("match")) return "checkmark-circle-outline";
   if (t.includes("reject")) return "close-circle-outline";
+  if (t.includes("support")) return "chatbubble-ellipses-outline";
   if (t.includes("status") || t.includes("claim")) return "document-text-outline";
   return "notifications-outline";
+}
+
+function cardStyleFor(type: string) {
+  const t = type?.toLowerCase() || "";
+  if (t.includes("match")) return { bg: "#f0fdf4", border: "#bbf7d0" };
+  if (t.includes("reject")) return { bg: "#fef2f2", border: "#fecaca" };
+  if (t.includes("support")) return { bg: "#f5f3ff", border: "#ddd6fe" };
+  if (t.includes("status") || t.includes("claim")) return { bg: "#eff6ff", border: "#bfdbfe" };
+  return { bg: "#f8f9fc", border: "#f0f0f0" };
 }
 
 const NAVY = "#1a237e";
@@ -86,14 +96,15 @@ export default function NotificationsScreen({ navigation }: any) {
   const handleNotifPress = (notif: NotificationItem) => {
     if (!notif.is_read) markAsRead(notif.id);
     const t = notif.type?.toLowerCase() || "";
-    if (t.includes("match") || t.includes("status") || t.includes("reminder")) {
+    if (t.includes("support")) {
+      navigation.navigate("Support");
+    } else if (t.includes("match") || t.includes("status") || t.includes("reminder") || t.includes("claim")) {
       navigation.navigate("ClaimStatus");
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-
       <View style={styles.topBar}>
         <View style={styles.topBarLeft}>
           <Image source={require("../assets/icon.png")} style={styles.logoSmall} />
@@ -131,26 +142,32 @@ export default function NotificationsScreen({ navigation }: any) {
             <Text style={styles.emptyText}>No notifications</Text>
           </View>
         ) : (
-          items.map((notif) => (
-            <TouchableOpacity
-              key={notif.id}
-              style={[styles.notifCard, !notif.is_read && styles.notifCardUnread]}
-              onPress={() => handleNotifPress(notif)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.notifIconBox}>
-                <Ionicons name={iconFor(notif.type) as any} size={20} color={NAVY} />
-              </View>
-              <View style={styles.notifTextBox}>
-                <View style={styles.notifTitleRow}>
-                  <Text style={styles.notifTitle}>{notif.title}</Text>
-                  {!notif.is_read && <View style={styles.unreadDot} />}
+          items.map((notif) => {
+            const cardStyle = cardStyleFor(notif.type);
+            return (
+              <TouchableOpacity
+                key={notif.id}
+                style={[
+                  styles.notifCard,
+                  { backgroundColor: notif.is_read ? "white" : cardStyle.bg, borderColor: notif.is_read ? "#f0f0f0" : cardStyle.border },
+                ]}
+                onPress={() => handleNotifPress(notif)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.notifIconBox}>
+                  <Ionicons name={iconFor(notif.type) as any} size={20} color={NAVY} />
                 </View>
-                <Text style={styles.notifMessage}>{notif.message}</Text>
-                <Text style={styles.notifTime}>{formatTime(notif.created_at)}</Text>
-              </View>
-            </TouchableOpacity>
-          ))
+                <View style={styles.notifTextBox}>
+                  <View style={styles.notifTitleRow}>
+                    <Text style={styles.notifTitle}>{notif.title}</Text>
+                    {!notif.is_read && <View style={styles.unreadDot} />}
+                  </View>
+                  <Text style={styles.notifMessage}>{notif.message}</Text>
+                  <Text style={styles.notifTime}>{formatTime(notif.created_at)}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })
         )}
       </ScrollView>
 
@@ -192,9 +209,8 @@ const styles = StyleSheet.create({
   markAllButton: { alignSelf: "flex-end", marginBottom: 14 },
   markAllText: { fontSize: 12, fontWeight: "800", color: NAVY },
   loadingText: { color: "#9ca3af", fontSize: 13, textAlign: "center", marginTop: 20 },
-  notifCard: { flexDirection: "row", backgroundColor: "white", borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: "#f0f0f0" },
-  notifCardUnread: { backgroundColor: "#f5f7ff", borderColor: "#e0e7ff" },
-  notifIconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: "#eef2ff", justifyContent: "center", alignItems: "center", marginRight: 12 },
+  notifCard: { flexDirection: "row", borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1 },
+  notifIconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(26,35,126,0.08)", justifyContent: "center", alignItems: "center", marginRight: 12 },
   notifTextBox: { flex: 1 },
   notifTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   notifTitle: { fontSize: 13.5, fontWeight: "800", color: "#374151" },
