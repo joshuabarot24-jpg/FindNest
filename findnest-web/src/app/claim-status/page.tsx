@@ -51,12 +51,11 @@ const TIMELINE_STEPS = [
   "Returned",
 ];
 
-function currentStepIndex(status: string): number {
+function currentStepIndex(status: string, collectedAt: string | null): number {
+  if (collectedAt) return 6;
   switch (status) {
     case "approved":
       return 5;
-    case "returned":
-      return 6;
     case "pending":
     default:
       return 4;
@@ -344,7 +343,7 @@ export default function ClaimStatusPage() {
             {claims.map((claim) => {
               const item = claim.match?.found_record || claim.match?.lost_report;
               const itemName = item?.item_name || "Unknown Item";
-              const step = currentStepIndex(claim.claim_status);
+              const step = currentStepIndex(claim.claim_status, claim.collected_at);
               const isTerminal = ["rejected", "abandoned"].includes(claim.claim_status);
               const canAppeal = claim.claim_status === "rejected" && !claim.appeal_status;
 
