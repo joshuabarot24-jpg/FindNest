@@ -20,6 +20,7 @@ interface Claim {
   proof_photo_url: string | null;
   admin_notes: string | null;
   claimed_at: string | null;
+  collected_at: string | null;
   created_at: string;
   ownership_questions: OwnershipQuestion[];
   student: {
@@ -137,6 +138,20 @@ export default function ClaimVerification() {
       fetchClaims();
     } catch (err) {
       console.error("Approve error:", err);
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleMarkCollected(claim: Claim) {
+    setActionLoading(true);
+    try {
+      await api.post(`/claims/${claim.id}/collected`);
+      setToast(`Item marked as collected by ${claim.student?.name || "student"}.`);
+      setViewingClaim(null);
+      fetchClaims();
+    } catch (err) {
+      console.error("Mark collected error:", err);
     } finally {
       setActionLoading(false);
     }
@@ -509,6 +524,13 @@ export default function ClaimVerification() {
               </div>
             )}
 
+            {viewingClaim.collected_at && (
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-4">
+                <p className="text-xs font-bold text-blue-400 uppercase mb-1">Item Collected</p>
+                <p className="text-blue-700 text-sm">Picked up on {new Date(viewingClaim.collected_at).toLocaleString()}</p>
+              </div>
+            )}
+
             {viewingClaim.claim_status === "pending" && (
               <div className="flex gap-3 mt-6">
                 <button
@@ -528,7 +550,19 @@ export default function ClaimVerification() {
               </div>
             )}
 
-            {viewingClaim.claim_status !== "pending" && (
+            {viewingClaim.claim_status === "approved" && !viewingClaim.collected_at && (
+              <button
+                onClick={() => handleMarkCollected(viewingClaim)}
+                disabled={actionLoading}
+                className="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-2xl transition disabled:opacity-50"
+              >
+                {actionLoading ? "Processing..." : "Mark as Collected"}
+              </button>
+            )}
+
+            {(viewingClaim.claim_status === "rejected" ||
+              viewingClaim.claim_status === "abandoned" ||
+              (viewingClaim.claim_status === "approved" && viewingClaim.collected_at)) && (
               <button onClick={() => setViewingClaim(null)} className="w-full mt-6 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 rounded-2xl transition">Close</button>
             )}
           </div>
