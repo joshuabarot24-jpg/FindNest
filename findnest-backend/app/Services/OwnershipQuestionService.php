@@ -33,7 +33,7 @@ class OwnershipQuestionService
         }
 
         try {
-            $response = Http::timeout(20)->post($this->apiUrl . '?key=' . $this->apiKey, [
+            $response = Http::timeout(20)->retry(3, 2000)->post($this->apiUrl . '?key=' . $this->apiKey, [
                 'contents' => [
                     [
                         'parts' => [
