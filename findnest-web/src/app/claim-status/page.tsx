@@ -52,7 +52,7 @@ const TIMELINE_STEPS = [
 ];
 
 function currentStepIndex(status: string, collectedAt: string | null): number {
-  if (collectedAt) return 6;
+  if (collectedAt) return 7;
   switch (status) {
     case "approved":
       return 5;
