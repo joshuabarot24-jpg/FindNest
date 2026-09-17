@@ -25,7 +25,7 @@ class IdVerificationService
                     [
                         'parts' => [
                             [
-                                'text' => 'Look at this school ID card image. Extract the following information exactly as printed: the student\'s full name, and their student ID number (usually formatted like numbers with dashes, e.g. 2022-10043). Respond with ONLY a JSON object in this exact format, no other text: {"id_detected": true or false, "name": "extracted full name or empty string", "school_id": "extracted ID number or empty string"}'
+                                'text' => 'Look at this school ID card image carefully, including small or less prominent text. Extract: (1) the student\'s full name as printed, and (2) any ID number, student number, or reference number printed anywhere on the card, in whatever format it appears (numbers, letters, dashes, or any combination). If there are multiple numbers on the card, choose the one that most likely represents the student\'s unique ID number. Respond with ONLY a JSON object in this exact format, no other text: {"id_detected": true or false, "name": "extracted full name or empty string", "school_id": "extracted ID number or empty string"}'
                             ],
                             [
                                 'inline_data' => [
