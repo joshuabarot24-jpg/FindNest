@@ -70,10 +70,23 @@ class IdVerificationService
 
     public function compareToAccount(string $extractedName, string $extractedSchoolId, string $accountName, ?string $accountSchoolId): string
     {
-        $normalize = fn($s) => strtolower(trim(preg_replace('/\s+/', ' ', $s)));
+        $normalizeWords = function ($s) {
+            $clean = strtolower(trim(preg_replace('/[^a-zA-Z\s]/', '', $s)));
+            $words = array_filter(explode(' ', $clean));
+            sort($words);
+            return $words;
+        };
 
-        $nameMatches = $normalize($extractedName) === $normalize($accountName);
-        $idMatches = $accountSchoolId && $normalize($extractedSchoolId) === $normalize($accountSchoolId);
+        $normalizeId = fn($s) => strtolower(trim(preg_replace('/\s+/', '', $s)));
+
+        $extractedWords = $normalizeWords($extractedName);
+        $accountWords = $normalizeWords($accountName);
+
+        $sameWordCount = count(array_intersect($extractedWords, $accountWords));
+        $totalUniqueWords = count(array_unique(array_merge($extractedWords, $accountWords)));
+
+        $nameMatches = $totalUniqueWords > 0 && ($sameWordCount / $totalUniqueWords) >= 0.6;
+        $idMatches = $accountSchoolId && $normalizeId($extractedSchoolId) === $normalizeId($accountSchoolId);
 
         if ($nameMatches && $idMatches) {
             return 'matched';
