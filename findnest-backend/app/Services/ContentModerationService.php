@@ -25,7 +25,7 @@ class ContentModerationService
                     [
                         'parts' => [
                             [
-                                'text' => 'Analyze this image and determine if it contains inappropriate content (nudity, violence, graphic content, offensive material, or anything unsuitable for a school lost-and-found system). Respond with ONLY a JSON object in this exact format, no other text: {"appropriate": true or false, "reason": "brief explanation if inappropriate, or empty string if appropriate"}'
+                                'text' => 'Analyze this image for two things. First, content appropriateness: does it contain nudity, violence, graphic content, offensive material, or anything unsuitable for a school lost-and-found system? Second, technical image quality: is it clear (not blurry), well-lit (not too dark or overexposed), and high enough resolution to make out real detail (not tiny, pixelated, or heavily compressed)? Respond with ONLY a JSON object in this exact format, no other text: {"appropriate": true or false, "appropriate_reason": "brief explanation if inappropriate, or empty string", "quality_ok": true or false, "quality_reason": "brief explanation of the specific quality issue if quality_ok is false, or empty string"}'
                             ],
                             [
                                 'inline_data' => [
@@ -54,7 +54,7 @@ class ContentModerationService
 
             $result = json_decode($cleanedText, true);
 
-            if (!is_array($result) || !isset($result['appropriate'])) {
+            if (!is_array($result) || !isset($result['appropriate']) || !isset($result['quality_ok'])) {
                 Log::error('Gemini content check returned unexpected format: ' . $textResult);
                 return [
                     'passed' => false,
@@ -62,11 +62,23 @@ class ContentModerationService
                 ];
             }
 
+            if ($result['appropriate'] !== true) {
+                return [
+                    'passed' => false,
+                    'message' => 'This image was flagged as inappropriate' . (!empty($result['appropriate_reason']) ? ': ' . $result['appropriate_reason'] : '') . '. Please upload a different photo.',
+                ];
+            }
+
+            if ($result['quality_ok'] !== true) {
+                return [
+                    'passed' => false,
+                    'message' => 'This photo doesn\'t look clear enough to use' . (!empty($result['quality_reason']) ? ': ' . $result['quality_reason'] : '') . '. Please upload a clearer, well-lit photo.',
+                ];
+            }
+
             return [
-                'passed' => $result['appropriate'] === true,
-                'message' => $result['appropriate'] === true
-                    ? 'Image passed content moderation.'
-                    : 'This image was flagged as inappropriate' . (!empty($result['reason']) ? ': ' . $result['reason'] : '') . '. Please upload a different photo.',
+                'passed' => true,
+                'message' => 'Image passed content and quality checks.',
             ];
         } catch (\Exception $e) {
             Log::error('Content moderation check failed: ' . $e->getMessage());
