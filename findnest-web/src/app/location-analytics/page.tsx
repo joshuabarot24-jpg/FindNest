@@ -101,6 +101,9 @@ export default function LocationAnalytics() {
           <a href="/location-analytics" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/20 text-white font-semibold border border-white/20">
             <span>Location Analytics</span>
           </a>
+          <a href="/admin-user-management" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
+            <span>User Management</span>
+          </a>
           <a href="/digital-records" className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium">
             <span>Digital Records</span>
           </a>
