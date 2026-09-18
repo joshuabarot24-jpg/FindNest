@@ -9,6 +9,7 @@ interface NotificationItem {
   type: string;
   is_read: boolean;
   created_at: string;
+  match_id: number | null;
 }
 
 function formatTime(dateStr: string) {
@@ -83,6 +84,18 @@ export default function NotificationsPage() {
     }
   };
 
+  const handleNotifPress = (n: NotificationItem) => {
+    if (!n.is_read) handleMarkAsRead(n.id);
+    const t = n.type.toLowerCase();
+    if (t.includes("support")) {
+      window.location.href = "/support";
+    } else if (t.includes("match") && n.match_id) {
+      window.location.href = `/matched-item?matchId=${n.match_id}`;
+    } else if (t.includes("status") || t.includes("reminder") || t.includes("claim")) {
+      window.location.href = "/claim-status";
+    }
+  };
+
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
@@ -139,21 +152,13 @@ export default function NotificationsPage() {
         ) : (
           <div className="space-y-3">
             {notifications.map((n) => (
-                <button
-                  key={n.id}
-                  onClick={() => {
-                    if (!n.is_read) handleMarkAsRead(n.id);
-                    const t = n.type.toLowerCase();
-                    if (t.includes("support")) {
-                      window.location.href = "/support";
-                    } else if (t.includes("match") || t.includes("status") || t.includes("reminder")) {
-                      window.location.href = "/claim-status";
-                    }
-                  }}
-                  className={`w-full text-left rounded-2xl border p-5 transition ${typeColor(n.type)} ${
-                    !n.is_read ? "shadow-sm" : "opacity-70"
-                  }`}
-                >
+              <button
+                key={n.id}
+                onClick={() => handleNotifPress(n)}
+                className={`w-full text-left rounded-2xl border p-5 transition ${typeColor(n.type)} ${
+                  !n.is_read ? "shadow-sm" : "opacity-70"
+                }`}
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">

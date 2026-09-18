@@ -16,6 +16,7 @@ interface NotificationItem {
   message: string;
   type: string;
   is_read: boolean;
+  match_id: number | null;
 }
 
 export default function StudentHome() {
@@ -103,7 +104,7 @@ export default function StudentHome() {
               <p className="text-green-600 text-sm">{matchNotification.message}</p>
             </div>
             <div className="flex items-center gap-2">
-              <a href="/claim-status" className="text-sm font-bold text-[#1a237e] hover:underline">
+              <a href={`/matched-item?matchId=${matchNotification.match_id}`} className="text-sm font-bold text-[#1a237e] hover:underline">
                 View Match
               </a>
               <button
