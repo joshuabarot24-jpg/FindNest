@@ -11,6 +11,7 @@ class Claim extends Model
         'admin_id',
         'proof_description',
         'proof_photo_url',
+        'photo_similarity_score',
         'claim_status',
         'admin_notes',
         'claimed_at',
