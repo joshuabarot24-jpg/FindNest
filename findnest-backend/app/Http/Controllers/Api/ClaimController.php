@@ -21,8 +21,18 @@ class ClaimController extends Controller
     public function index()
     {
         $claims = Claim::with(['student', 'admin', 'match.lostReport', 'match.foundRecord', 'ownershipQuestions'])
-            ->orderBy('created_at', 'desc')
+            ->orderByRaw('photo_similarity_score IS NULL, photo_similarity_score DESC')
+            ->orderBy('created_at', 'asc')
             ->get();
+
+        $foundIdCounts = $claims->filter(fn($c) => $c->claim_status === 'pending')
+            ->groupBy(fn($c) => $c->match?->found_id)
+            ->map(fn($group) => $group->count());
+
+        $claims->each(function ($claim) use ($foundIdCounts) {
+            $foundId = $claim->match?->found_id;
+            $claim->competing_claims_count = $foundId ? ($foundIdCounts[$foundId] ?? 1) : 1;
+        });
 
         return response()->json(['claims' => $claims]);
     }
