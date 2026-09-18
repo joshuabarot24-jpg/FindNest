@@ -130,5 +130,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/fcm/update-token', [FcmController::class, 'updateToken']);
     Route::get('/system-stats', [SystemStatsController::class, 'index']);
+    Route::get('/system-settings', [SystemStatsController::class, 'getSettings']);
+    Route::put('/system-settings', [SystemStatsController::class, 'updateSettings']);
 
 });

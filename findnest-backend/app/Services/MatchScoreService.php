@@ -64,7 +64,8 @@ class MatchScoreService
             ($temporalSpatialScore * 0.2)
         );
 
-        $matchStatus = $finalScore < 50 ? null : 'pending';
+        $threshold = (int) \App\Models\SystemSetting::get('match_confidence_threshold', 75);
+        $matchStatus = $finalScore < $threshold ? null : 'pending';
 
         if ($matchStatus === null) {
             return;
