@@ -71,6 +71,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/reject', [ClaimController::class, 'reject']);
         Route::post('/{id}/collected', [ClaimController::class, 'markCollected']);
         Route::post('/{id}/appeal', [ClaimController::class, 'submitAppeal']);
+        Route::get('/appeals', [ClaimController::class, 'pendingAppeals']);
+        Route::post('/{id}/resolve-appeal', [ClaimController::class, 'resolveAppeal']);
     });
 
     Route::prefix('notifications')->group(function () {

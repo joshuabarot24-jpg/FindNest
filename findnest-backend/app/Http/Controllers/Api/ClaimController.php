@@ -380,4 +380,88 @@ class ClaimController extends Controller
 
         return response()->json(['message' => 'Claim rejected', 'claim' => $claim]);
     }
+
+    public function pendingAppeals()
+    {
+        $claims = Claim::with(['student', 'match.lostReport', 'match.foundRecord'])
+            ->where('appeal_status', 'pending')
+            ->orderBy('appeal_submitted_at', 'asc')
+            ->get();
+
+        return response()->json(['claims' => $claims]);
+    }
+
+    public function resolveAppeal(Request $request, $id)
+    {
+        $claim = Claim::findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'decision' => 'required|in:uphold,overturn',
+            'resolution_notes' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        if ($request->decision === 'overturn') {
+            $claim->update([
+                'claim_status' => 'approved',
+                'admin_notes' => $request->resolution_notes ?? $claim->admin_notes,
+                'claimed_at' => Carbon::now(),
+                'pickup_deadline' => Carbon::now()->addDays(2),
+                'appeal_status' => 'resolved',
+            ]);
+
+            $match = AiMatch::find($claim->match_id);
+            if ($match) {
+                $match->update(['match_status' => 'confirmed']);
+                LostItemReport::find($match->report_id)?->update(['status' => 'returned']);
+                FoundItemRecord::find($match->found_id)?->update(['status' => 'claimed']);
+            }
+
+            $student = \App\Models\User::find($claim->student_id);
+            if ($student) {
+                $trustService = new TrustScoreService();
+                $trustService->adjustScore($student, 10, 'Appeal upheld, claim overturned to approved');
+            }
+
+            Notification::create([
+                'user_id' => $claim->student_id,
+                'match_id' => $claim->match_id,
+                'title' => 'Appeal Approved!',
+                'message' => 'Your appeal was reviewed and your claim has been approved. Visit the Guidance Office to collect your item.',
+                'type' => 'status',
+                'is_read' => false,
+                'sent_at' => Carbon::now(),
+            ]);
+        } else {
+            $claim->update([
+                'appeal_status' => 'resolved',
+                'admin_notes' => $request->resolution_notes ?? $claim->admin_notes,
+            ]);
+
+            Notification::create([
+                'user_id' => $claim->student_id,
+                'match_id' => $claim->match_id,
+                'title' => 'Appeal Reviewed',
+                'message' => 'Your appeal was reviewed by the Super Admin. The original rejection has been upheld.',
+                'type' => 'status',
+                'is_read' => false,
+                'sent_at' => Carbon::now(),
+            ]);
+        }
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'Claim Appeal Resolved',
+            'target_type' => 'claims',
+            'target_id' => $claim->id,
+            'details' => 'Super Admin ' . ($request->decision === 'overturn' ? 'overturned the rejection, claim approved' : 'upheld the original rejection') . '. Notes: ' . ($request->resolution_notes ?? 'None'),
+            'performed_by' => 'Super Admin: ' . $request->user()->name,
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['message' => 'Appeal resolved successfully', 'claim' => $claim]);
+    }
 }
