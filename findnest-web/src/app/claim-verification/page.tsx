@@ -18,6 +18,7 @@ interface Claim {
   claim_status: "pending" | "approved" | "rejected" | "abandoned";
   proof_description: string | null;
   proof_photo_url: string | null;
+  photo_similarity_score: number | null;
   admin_notes: string | null;
   claimed_at: string | null;
   collected_at: string | null;
@@ -436,13 +437,15 @@ export default function ClaimVerification() {
                 <div className="flex items-center justify-between py-2 border-b border-gray-200">
                   <span className="text-sm text-gray-600 font-medium">Layer 4 &mdash; AI Similarity Score</span>
                   <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
-                    viewingClaim.match?.confidence_score != null
-                      ? viewingClaim.match.confidence_score >= 80
+                    viewingClaim.photo_similarity_score != null
+                      ? viewingClaim.photo_similarity_score >= 80
                         ? "bg-green-50 text-green-700"
-                        : "bg-yellow-50 text-yellow-700"
+                        : viewingClaim.photo_similarity_score >= 60
+                        ? "bg-yellow-50 text-yellow-700"
+                        : "bg-red-50 text-red-600"
                       : "bg-gray-100 text-gray-500"
                   }`}>
-                    {viewingClaim.match?.confidence_score != null ? `${viewingClaim.match.confidence_score}%` : "Pending AI"}
+                    {viewingClaim.photo_similarity_score != null ? `${viewingClaim.photo_similarity_score}%` : "No Photo Submitted"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-2">
