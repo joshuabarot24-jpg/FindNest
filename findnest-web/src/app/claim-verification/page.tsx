@@ -19,6 +19,7 @@ interface Claim {
   proof_description: string | null;
   proof_photo_url: string | null;
   photo_similarity_score: number | null;
+  competing_claims_count?: number;
   admin_notes: string | null;
   claimed_at: string | null;
   collected_at: string | null;
@@ -299,9 +300,16 @@ export default function ClaimVerification() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="font-bold text-gray-700 text-sm">{claim.match?.foundItem?.item_name || "—"}</p>
-                        <p className="text-gray-400 text-xs mt-0.5">{claim.match?.foundItem?.category || ""}</p>
-                      </td>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-gray-700 text-sm">{claim.match?.foundItem?.item_name || "—"}</p>
+                          {claim.claim_status === "pending" && (claim.competing_claims_count ?? 1) > 1 && (
+                            <span className="bg-orange-50 text-orange-600 text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                              {claim.competing_claims_count} CLAIMANTS
+                            </span>
+                          )}
+                        </div>
+                      <p className="text-gray-400 text-xs mt-0.5">{claim.match?.foundItem?.category || ""}</p>
+                    </td>
                       <td className="px-6 py-4">
                         {claim.match?.confidence_score != null ? (
                           <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
@@ -402,6 +410,13 @@ export default function ClaimVerification() {
                 <p className="text-gray-400 text-xs mt-1">{viewingClaim.match?.foundItem?.category}</p>
                 <p className="text-gray-400 text-xs">Found at: {viewingClaim.match?.foundItem?.location_found}</p>
                 <p className="text-gray-400 text-xs">Storage: {viewingClaim.match?.foundItem?.storage_location || "—"}</p>
+                {viewingClaim.claim_status === "pending" && (viewingClaim.competing_claims_count ?? 1) > 1 && (
+                  <div className="mt-3 bg-orange-50 border border-orange-200 rounded-xl p-2.5">
+                    <p className="text-orange-700 text-xs font-bold">
+                      ⚠ {viewingClaim.competing_claims_count} students have submitted claims for this item — compare evidence carefully before deciding.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
