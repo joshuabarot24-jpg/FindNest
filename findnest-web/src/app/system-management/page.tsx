@@ -11,6 +11,10 @@ interface LogEntry {
 
 export default function SystemManagement() {
   const [sensitivity, setSensitivity] = useState(75);
+  const [savedSensitivity, setSavedSensitivity] = useState(75);
+  const [sensitivityLoading, setSensitivityLoading] = useState(true);
+  const [sensitivitySaving, setSensitivitySaving] = useState(false);
+
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [showMaintenanceConfirm, setShowMaintenanceConfirm] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
@@ -31,6 +35,19 @@ export default function SystemManagement() {
     const t = setTimeout(() => setToast(null), 2500);
     return () => clearTimeout(t);
   }, [toast]);
+
+  const fetchSettings = async () => {
+    try {
+      const response = await api.get("/system-settings");
+      const value = response.data.match_confidence_threshold ?? 75;
+      setSensitivity(value);
+      setSavedSensitivity(value);
+    } catch (err) {
+      console.error("Error fetching settings:", err);
+    } finally {
+      setSensitivityLoading(false);
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -56,9 +73,24 @@ export default function SystemManagement() {
   };
 
   useEffect(() => {
+    fetchSettings();
     fetchStats();
     fetchLogs();
   }, []);
+
+  async function handleSaveSensitivity() {
+    setSensitivitySaving(true);
+    try {
+      await api.put("/system-settings", { match_confidence_threshold: sensitivity });
+      setSavedSensitivity(sensitivity);
+      setToast(`Match confidence threshold updated to ${sensitivity}%.`);
+    } catch (err) {
+      console.error("Error saving settings:", err);
+      setToast("Failed to update threshold.");
+    } finally {
+      setSensitivitySaving(false);
+    }
+  }
 
   function handleBackupNow() {
     if (isBackingUp) return;
@@ -88,6 +120,8 @@ export default function SystemManagement() {
   function formatTime(dateStr: string) {
     return new Date(dateStr).toLocaleString();
   }
+
+  const hasUnsavedChange = sensitivity !== savedSensitivity;
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] flex">
@@ -197,40 +231,54 @@ export default function SystemManagement() {
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <div className="mb-6">
               <h2 className="font-black text-gray-700 text-lg">AI Matching Sensitivity</h2>
-              <p className="text-gray-400 text-sm">Control the threshold of image recognition similarity</p>
+              <p className="text-gray-400 text-sm">Minimum confidence score for the AI to create a lost-found match</p>
             </div>
 
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold text-gray-500">Flexible</span>
-                <span className="text-2xl font-black text-[#1a237e]">{sensitivity}%</span>
-                <span className="text-sm font-bold text-gray-500">Strict</span>
-              </div>
-              <input
-                type="range"
-                min={50}
-                max={100}
-                value={sensitivity}
-                onChange={(e) => setSensitivity(Number(e.target.value))}
-                className="w-full accent-[#1a237e]"
-              />
-            </div>
+            {sensitivityLoading ? (
+              <p className="text-gray-400 text-sm">Loading current threshold...</p>
+            ) : (
+              <>
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold text-gray-500">Flexible</span>
+                    <span className="text-2xl font-black text-[#1a237e]">{sensitivity}%</span>
+                    <span className="text-sm font-bold text-gray-500">Strict</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={50}
+                    max={100}
+                    value={sensitivity}
+                    onChange={(e) => setSensitivity(Number(e.target.value))}
+                    className="w-full accent-[#1a237e]"
+                  />
+                </div>
 
-            <div
-              className={`mt-4 px-4 py-3 rounded-xl text-sm font-semibold ${
-                sensitivity >= 80
-                  ? "bg-green-50 text-green-700"
-                  : sensitivity >= 65
-                  ? "bg-yellow-50 text-yellow-700"
-                  : "bg-red-50 text-red-600"
-              }`}
-            >
-              {sensitivity >= 80
-                ? "High accuracy — fewer false matches"
-                : sensitivity >= 65
-                ? "Moderate — balanced matching"
-                : "Low — may produce false matches"}
-            </div>
+                <div
+                  className={`mb-4 px-4 py-3 rounded-xl text-sm font-semibold ${
+                    sensitivity >= 80
+                      ? "bg-green-50 text-green-700"
+                      : sensitivity >= 65
+                      ? "bg-yellow-50 text-yellow-700"
+                      : "bg-red-50 text-red-600"
+                  }`}
+                >
+                  {sensitivity >= 80
+                    ? "High accuracy — fewer false matches"
+                    : sensitivity >= 65
+                    ? "Moderate — balanced matching"
+                    : "Low — may produce false matches"}
+                </div>
+
+                <button
+                  onClick={handleSaveSensitivity}
+                  disabled={sensitivitySaving || !hasUnsavedChange}
+                  className="w-full bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {sensitivitySaving ? "Saving..." : hasUnsavedChange ? "Save Changes" : "Saved"}
+                </button>
+              </>
+            )}
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
