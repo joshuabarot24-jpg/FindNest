@@ -94,6 +94,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [AiMatchController::class, 'store']);
         Route::post('/{id}/confirm', [AiMatchController::class, 'confirm']);
         Route::post('/{id}/reject', [AiMatchController::class, 'reject']);
+        Route::get('/{id}/reveal', [AiMatchController::class, 'myMatchedItem']);
     });
 
     Route::prefix('locations')->group(function () {

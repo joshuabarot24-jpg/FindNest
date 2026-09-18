@@ -179,4 +179,40 @@ class AiMatchController extends Controller
         return response()->json(['message' => 'Match rejected', 'match' => $match]);
     }
 
+    public function myMatchedItem(Request $request, $id)
+    {
+        $match = AiMatch::with(['lostReport', 'foundRecord'])->findOrFail($id);
+
+        if ($match->lostReport->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'You are not authorized to view this match.'], 403);
+        }
+
+        if ($match->claim) {
+            return response()->json(['message' => 'This match already has a claim submitted.'], 403);
+        }
+
+        return response()->json([
+            'match' => [
+                'id' => $match->id,
+                'confidence_score' => $match->confidence_score,
+                'matched_at' => $match->matched_at,
+                'lost_item' => [
+                    'item_name' => $match->lostReport->item_name,
+                    'category' => $match->lostReport->category,
+                    'location_lost' => $match->lostReport->location_lost,
+                    'date_lost' => $match->lostReport->date_lost,
+                ],
+                'found_item' => [
+                    'item_name' => $match->foundRecord->item_name,
+                    'category' => $match->foundRecord->category,
+                    'location_found' => $match->foundRecord->location_found,
+                    'storage_location' => $match->foundRecord->storage_location,
+                    'photo_url' => $match->foundRecord->photo_url,
+                    'ai_description' => $match->foundRecord->ai_description,
+                    'date_found' => $match->foundRecord->date_found,
+                ],
+            ],
+        ]);
+    }
+
 }
