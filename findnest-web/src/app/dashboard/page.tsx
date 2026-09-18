@@ -8,6 +8,7 @@ interface ActivityItem {
   time: string;
   type: "found" | "lost";
   photo_url: string | null;
+  reported_by: string;
 }
 
 export default function Dashboard() {
@@ -42,6 +43,7 @@ export default function Dashboard() {
             time: new Date(i.created_at).toLocaleString(),
             type: "found" as const,
             photo_url: i.photo_url || null,
+            reported_by: i.admin?.name || "Unknown Admin",
           })),
           ...lostItems.slice(0, 5).map((i: any) => ({
             item: i.item_name,
@@ -49,6 +51,7 @@ export default function Dashboard() {
             time: new Date(i.created_at).toLocaleString(),
             type: "lost" as const,
             photo_url: i.photo_url || null,
+            reported_by: i.user?.name || "Unknown Student",
           })),
         ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
 
@@ -170,6 +173,7 @@ export default function Dashboard() {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
                   <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Item</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Reported By</th>
                   <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
                   <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Time</th>
                 </tr>
@@ -191,6 +195,11 @@ export default function Dashboard() {
                         </button>
                         <p className="font-semibold text-gray-700 text-sm">{activity.item}</p>
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="bg-purple-50 text-purple-700 text-xs font-bold px-3 py-1.5 rounded-lg">
+                        {activity.reported_by}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
@@ -240,7 +249,8 @@ export default function Dashboard() {
             }`}>
               {previewItem.status}
             </span>
-            <p className="text-gray-400 text-sm mt-2">{previewItem.time}</p>
+            <p className="text-gray-400 text-sm mt-2">Reported by {previewItem.reported_by}</p>
+            <p className="text-gray-400 text-sm mt-1">{previewItem.time}</p>
           </div>
         </div>
       )}
