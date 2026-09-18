@@ -84,6 +84,30 @@ class ClaimController extends Controller
             'ip_address' => $request->ip(),
         ]);
 
+        if ($request->proof_photo_url) {
+            $match = AiMatch::with('foundRecord')->find($request->match_id);
+            $foundPhotoUrl = $match?->foundRecord?->photo_url;
+
+            if ($foundPhotoUrl) {
+                $matchService = new \App\Services\MatchScoreService();
+                $photoScore = $matchService->compareClaimPhotos($request->proof_photo_url, $foundPhotoUrl);
+
+                if ($photoScore !== null) {
+                    $claim->update(['photo_similarity_score' => $photoScore]);
+
+                    AuditLog::create([
+                        'user_id' => $request->user()->id,
+                        'action' => 'Claim Photo Similarity Scored',
+                        'target_type' => 'claims',
+                        'target_id' => $claim->id,
+                        'details' => 'AI compared claimant evidence photo against found item photo: ' . $photoScore . '% similarity',
+                        'performed_by' => 'System: AI Matching Engine',
+                        'ip_address' => $request->ip(),
+                    ]);
+                }
+            }
+        }
+
         $questionService = new OwnershipQuestionService();
         $questionsGenerated = $questionService->generateQuestions($claim);
 

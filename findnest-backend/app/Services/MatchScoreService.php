@@ -188,4 +188,54 @@ class MatchScoreService
             );
         }
     }
+
+    public function compareClaimPhotos(string $claimantPhotoUrl, string $foundItemPhotoUrl): ?int
+    {
+        try {
+            $claimantImage = base64_encode(file_get_contents($claimantPhotoUrl));
+            $foundImage = base64_encode(file_get_contents($foundItemPhotoUrl));
+
+            $response = \Illuminate\Support\Facades\Http::timeout(20)->retry(3, 2000)->post($this->apiUrl . '?key=' . $this->apiKey, [
+                'contents' => [
+                    [
+                        'parts' => [
+                            [
+                                'text' => 'Compare these two photos. The first is evidence submitted by a student claiming ownership. The second is the original found item photo on file. Rate how likely these show the exact same physical item, on a scale of 0 to 100, considering color, shape, brand, distinctive marks, and overall visual similarity. Respond with ONLY a JSON object: {"similarity_score": number from 0 to 100}'
+                            ],
+                            [
+                                'inline_data' => [
+                                    'mime_type' => 'image/jpeg',
+                                    'data' => $claimantImage,
+                                ]
+                            ],
+                            [
+                                'inline_data' => [
+                                    'mime_type' => 'image/jpeg',
+                                    'data' => $foundImage,
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]);
+
+            if (!$response->successful()) {
+                \Illuminate\Support\Facades\Log::error('Claim photo comparison failed: ' . $response->body());
+                return null;
+            }
+
+            $data = $response->json();
+            $textResult = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            $cleanedText = trim(preg_replace('/```json\s*|\s*```/', '', $textResult));
+            $result = json_decode($cleanedText, true);
+
+            return is_array($result) && isset($result['similarity_score']) ? (int) $result['similarity_score'] : null;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Claim photo comparison exception: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+
+
 }
