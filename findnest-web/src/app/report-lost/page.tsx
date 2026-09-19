@@ -172,11 +172,8 @@ export default function ReportLostPage() {
               <p className="text-gray-500 text-xs mt-1">Status: <span className="font-bold text-blue-600">Searching for match...</span></p>
             </div>
             <div className="flex gap-3 mt-6">
-              <a href="/student-home" className="flex-1 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-xl transition text-center text-sm">
+              <a href="/student-home" className="w-full bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-xl transition text-center text-sm">
                 Back to Home
-              </a>
-              <a href="/claim-status" className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 rounded-xl transition text-center text-sm">
-                Track Status
               </a>
             </div>
           </div>
