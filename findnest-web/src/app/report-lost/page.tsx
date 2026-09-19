@@ -9,6 +9,7 @@ export default function ReportLostPage() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const [itemName, setItemName] = useState("");
+  const [itemNameAiFilled, setItemNameAiFilled] = useState(false);
   const [category, setCategory] = useState("Electronics");
   const [othersSpecify, setOthersSpecify] = useState("");
   const [description, setDescription] = useState("");
@@ -62,6 +63,12 @@ export default function ReportLostPage() {
       });
       setPhotoUrl(res.data.url);
 
+      if (res.data.ai_item_name) {
+        setItemName(res.data.ai_item_name);
+        setItemNameAiFilled(true);
+      } else {
+        setItemNameAiFilled(false);
+      }
       if (res.data.ai_category && categories.includes(res.data.ai_category)) {
         setCategory(res.data.ai_category);
       }
@@ -218,7 +225,9 @@ export default function ReportLostPage() {
               </label>
 
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">Item Name</label>
+                <label className="block text-sm font-bold text-gray-600 mb-2">
+                  Item Name {itemNameAiFilled && <span className="text-green-600 font-normal">(auto-detected, editable)</span>}
+                </label>
                 <input
                   type="text"
                   value={itemName}
