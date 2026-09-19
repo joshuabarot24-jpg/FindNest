@@ -36,6 +36,7 @@ interface AppealClaim {
   proof_description: string;
   admin_notes: string | null;
   appeal_message: string | null;
+  appeal_photo_url: string | null;
   appeal_submitted_at: string | null;
   photo_similarity_score: number | null;
   student: {
@@ -586,6 +587,9 @@ export default function SuperAdminRecords() {
                       <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 mb-4">
                         <p className="text-orange-400 text-[10px] font-bold uppercase mb-1">Student's Appeal</p>
                         <p className="text-orange-700 text-sm">{claim.appeal_message}</p>
+                        {claim.appeal_photo_url && (
+                          <img src={claim.appeal_photo_url} alt="Appeal evidence" className="w-24 h-24 object-cover rounded-xl mt-3" />
+                        )}
                       </div>
 
                       <button
@@ -664,6 +668,9 @@ export default function SuperAdminRecords() {
             <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 mb-5">
               <p className="text-orange-400 text-[10px] font-bold uppercase mb-1">Student's Appeal</p>
               <p className="text-orange-700 text-sm">{resolvingAppeal.appeal_message}</p>
+              {resolvingAppeal.appeal_photo_url && (
+                <img src={resolvingAppeal.appeal_photo_url} alt="Appeal evidence" className="w-full max-h-48 object-cover rounded-xl mt-3" />
+              )}
             </div>
 
             <label className="block text-sm font-bold text-gray-600 mb-2">Resolution Notes (Optional)</label>
