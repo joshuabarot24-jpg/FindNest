@@ -93,7 +93,19 @@ export default function StudentLoginPage() {
       setOtp(["", "", "", "", "", ""]);
       setOtpError("");
     } catch (err: any) {
-      setOtpError("Failed to resend OTP. Please try again.");
+      if (err.response?.status === 429) {
+        const retryAfter = err.response?.data?.retry_after || 60;
+        setResendTimer(Math.ceil(retryAfter));
+        const interval = setInterval(() => {
+          setResendTimer((prev) => {
+            if (prev <= 1) { clearInterval(interval); return 0; }
+            return prev - 1;
+          });
+        }, 1000);
+        setOtpError("Please wait before requesting another code.");
+      } else {
+        setOtpError("Failed to resend OTP. Please try again.");
+      }
     }
   };
 
