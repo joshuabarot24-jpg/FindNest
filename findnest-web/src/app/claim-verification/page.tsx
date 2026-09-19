@@ -38,7 +38,7 @@ interface Claim {
     id: number;
     confidence_score: number | null;
     match_status: string;
-    report: {
+    lost_report: {
       id: number;
       item_name: string;
       category: string;
@@ -46,7 +46,7 @@ interface Claim {
       date_lost: string;
       photo_url: string | null;
     } | null;
-    foundItem: {
+    found_record: {
       id: number;
       item_name: string;
       category: string;
@@ -89,6 +89,8 @@ export default function ClaimVerification() {
   const [rejectNotes, setRejectNotes] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
+  const [comparingClaim, setComparingClaim] = useState<Claim | null>(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -100,8 +102,12 @@ export default function ClaimVerification() {
     try {
       const res = await api.get("/claims");
       setClaims(res.data.claims || []);
-    } catch (err) {
-      console.error("Error fetching claims:", err);
+    } catch (err: any) {
+      if (err.response?.status === 403) {
+        setAccessDenied(true);
+      } else {
+        console.error("Error fetching claims:", err);
+      }
     } finally {
       setLoading(false);
     }
@@ -114,7 +120,7 @@ export default function ClaimVerification() {
     return claims.filter(
       (c) =>
         (c.student?.name || "").toLowerCase().includes(q) ||
-        (c.match?.foundItem?.item_name || "").toLowerCase().includes(q) ||
+        (c.match?.found_record?.item_name || "").toLowerCase().includes(q) ||
         c.claim_status.toLowerCase().includes(q)
     );
   }, [claims, search]);
@@ -237,6 +243,21 @@ export default function ClaimVerification() {
         </div>
       </aside>
 
+      {accessDenied ? (
+        <div className="flex-1 ml-72 flex items-center justify-center min-h-screen">
+          <div className="text-center max-w-sm">
+            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h1 className="text-xl font-black text-gray-700 mb-2">Access Restricted</h1>
+            <p className="text-gray-400 text-sm">
+              Your account does not have permission to view Claim Verification. Contact the Super Admin if you believe this is a mistake.
+            </p>
+          </div>
+        </div>
+      ) : (
       <main className="flex-1 ml-72 p-8">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -304,28 +325,31 @@ export default function ClaimVerification() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <p className="font-bold text-gray-700 text-sm">{claim.match?.foundItem?.item_name || "—"}</p>
+                          <p className="font-bold text-gray-700 text-sm">{claim.match?.found_record?.item_name || "—"}</p>
                           {claim.claim_status === "pending" && (claim.competing_claims_count ?? 1) > 1 && (
                             <span className="bg-orange-50 text-orange-600 text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
                               {claim.competing_claims_count} CLAIMANTS
                             </span>
                           )}
                         </div>
-                      <p className="text-gray-400 text-xs mt-0.5">{claim.match?.foundItem?.category || ""}</p>
-                    </td>
+                        <p className="text-gray-400 text-xs mt-0.5">{claim.match?.found_record?.category || ""}</p>
+                      </td>
                       <td className="px-6 py-4">
-                        {claim.match?.confidence_score != null ? (
-                          <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
-                            claim.match.confidence_score >= 80
-                              ? "bg-green-50 text-green-700"
-                              : claim.match.confidence_score >= 60
-                              ? "bg-yellow-50 text-yellow-700"
-                              : "bg-red-50 text-red-600"
-                          }`}>
-                            {claim.match.confidence_score}%
-                          </span>
+                        {claim.photo_similarity_score != null ? (
+                          <button
+                            onClick={() => setComparingClaim(claim)}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition hover:ring-2 hover:ring-offset-1 cursor-pointer ${
+                              claim.photo_similarity_score >= 80
+                                ? "bg-green-50 text-green-700 hover:ring-green-300"
+                                : claim.photo_similarity_score >= 60
+                                ? "bg-yellow-50 text-yellow-700 hover:ring-yellow-300"
+                                : "bg-red-50 text-red-600 hover:ring-red-300"
+                            }`}
+                          >
+                            {claim.photo_similarity_score}% &middot; Compare
+                          </button>
                         ) : (
-                          <span className="text-gray-400 text-xs">Pending AI</span>
+                          <span className="text-gray-400 text-xs">No Photo</span>
                         )}
                       </td>
                       <td className="px-6 py-4">
@@ -375,6 +399,7 @@ export default function ClaimVerification() {
           </div>
         </div>
       </main>
+      )}
 
       {viewingClaim && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
@@ -406,13 +431,13 @@ export default function ClaimVerification() {
 
               <div className="bg-gray-50 rounded-2xl p-4">
                 <p className="text-xs font-bold text-gray-400 uppercase mb-3">Item Being Claimed</p>
-                {viewingClaim.match?.foundItem?.photo_url && (
-                  <img src={viewingClaim.match.foundItem.photo_url} alt="Found item" className="w-full h-24 object-cover rounded-xl mb-2" />
+                {viewingClaim.match?.found_record?.photo_url && (
+                  <img src={viewingClaim.match.found_record.photo_url} alt="Found item" className="w-full h-24 object-cover rounded-xl mb-2" />
                 )}
-                <p className="font-black text-gray-700">{viewingClaim.match?.foundItem?.item_name || "—"}</p>
-                <p className="text-gray-400 text-xs mt-1">{viewingClaim.match?.foundItem?.category}</p>
-                <p className="text-gray-400 text-xs">Found at: {viewingClaim.match?.foundItem?.location_found}</p>
-                <p className="text-gray-400 text-xs">Storage: {viewingClaim.match?.foundItem?.storage_location || "—"}</p>
+                <p className="font-black text-gray-700">{viewingClaim.match?.found_record?.item_name || "—"}</p>
+                <p className="text-gray-400 text-xs mt-1">{viewingClaim.match?.found_record?.category}</p>
+                <p className="text-gray-400 text-xs">Found at: {viewingClaim.match?.found_record?.location_found}</p>
+                <p className="text-gray-400 text-xs">Storage: {viewingClaim.match?.found_record?.storage_location || "—"}</p>
                 {viewingClaim.claim_status === "pending" && (viewingClaim.competing_claims_count ?? 1) > 1 && (
                   <div className="mt-3 bg-orange-50 border border-orange-200 rounded-xl p-2.5">
                     <p className="text-orange-700 text-xs font-bold">
@@ -426,13 +451,13 @@ export default function ClaimVerification() {
             <div className="bg-gray-50 rounded-2xl p-4 mb-4">
               <p className="text-xs font-bold text-gray-400 uppercase mb-3">Original Lost Report</p>
               <div className="flex items-center gap-4">
-                {viewingClaim.match?.report?.photo_url && (
-                  <img src={viewingClaim.match.report.photo_url} alt="Lost item" className="w-20 h-20 object-cover rounded-xl flex-shrink-0" />
+                {viewingClaim.match?.lost_report?.photo_url && (
+                  <img src={viewingClaim.match.lost_report.photo_url} alt="Lost item" className="w-20 h-20 object-cover rounded-xl flex-shrink-0" />
                 )}
                 <div>
-                  <p className="font-black text-gray-700">{viewingClaim.match?.report?.item_name || "—"}</p>
-                  <p className="text-gray-400 text-xs mt-1">Lost at: {viewingClaim.match?.report?.location_lost}</p>
-                  <p className="text-gray-400 text-xs">Date lost: {viewingClaim.match?.report?.date_lost}</p>
+                  <p className="font-black text-gray-700">{viewingClaim.match?.lost_report?.item_name || "—"}</p>
+                  <p className="text-gray-400 text-xs mt-1">Lost at: {viewingClaim.match?.lost_report?.location_lost}</p>
+                  <p className="text-gray-400 text-xs">Date lost: {viewingClaim.match?.lost_report?.date_lost}</p>
                 </div>
               </div>
             </div>
@@ -452,8 +477,11 @@ export default function ClaimVerification() {
                   <span className="text-sm text-gray-600 font-medium">Layer 3 &mdash; Evidence Photo + Description</span>
                   <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">{viewingClaim.proof_description ? "Submitted" : "Not Submitted"}</span>
                 </div>
-                <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                  <span className="text-sm text-gray-600 font-medium">Layer 4 &mdash; AI Similarity Score</span>
+                <button
+                  onClick={() => setComparingClaim(viewingClaim)}
+                  className="w-full flex items-center justify-between py-2 border-b border-gray-200 hover:bg-blue-50 transition rounded-lg px-2 -mx-2"
+                >
+                  <span className="text-sm text-gray-600 font-medium">Layer 4 &mdash; AI Similarity Score <span className="text-blue-500 text-xs">(click to compare)</span></span>
                   <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
                     viewingClaim.photo_similarity_score != null
                       ? viewingClaim.photo_similarity_score >= 80
@@ -465,7 +493,7 @@ export default function ClaimVerification() {
                   }`}>
                     {viewingClaim.photo_similarity_score != null ? `${viewingClaim.photo_similarity_score}%` : "No Photo Submitted"}
                   </span>
-                </div>
+                </button>
                 <div className="flex items-center justify-between py-2">
                   <span className="text-sm text-gray-600 font-medium">Layer 5 &mdash; Secret Questions</span>
                   {(() => {
@@ -586,6 +614,75 @@ export default function ClaimVerification() {
               (viewingClaim.claim_status === "approved" && viewingClaim.collected_at)) && (
               <button onClick={() => setViewingClaim(null)} className="w-full mt-6 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 rounded-2xl transition">Close</button>
             )}
+          </div>
+        </div>
+      )}
+
+      {comparingClaim && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#0d1757]/80 backdrop-blur-sm px-4">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl p-8">
+            <button
+              onClick={() => setComparingClaim(null)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition text-xl font-bold leading-none"
+            >
+              &times;
+            </button>
+
+            <h2 className="text-xl font-black text-[#1a237e] mb-1">Photo Comparison</h2>
+            <p className="text-gray-400 text-sm mb-6">AI similarity score compares these two photos directly</p>
+
+            <div className="grid grid-cols-2 gap-4 mb-5">
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Original Found Item</p>
+                <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-100">
+                  {comparingClaim.match?.found_record?.photo_url ? (
+                    <img src={comparingClaim.match.found_record.photo_url} alt="Found item" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No Photo</div>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Claimant&apos;s Evidence Photo</p>
+                <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-100">
+                  {comparingClaim.proof_photo_url ? (
+                    <img src={comparingClaim.proof_photo_url} alt="Evidence" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No Photo Submitted</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className={`text-center rounded-2xl p-5 ${
+              comparingClaim.photo_similarity_score != null
+                ? comparingClaim.photo_similarity_score >= 80
+                  ? "bg-green-50 border border-green-100"
+                  : comparingClaim.photo_similarity_score >= 60
+                  ? "bg-yellow-50 border border-yellow-100"
+                  : "bg-red-50 border border-red-100"
+                : "bg-gray-50 border border-gray-100"
+            }`}>
+              <p className="text-xs font-bold text-gray-400 uppercase mb-1">AI Similarity Score</p>
+              <p className={`text-3xl font-black ${
+                comparingClaim.photo_similarity_score != null
+                  ? comparingClaim.photo_similarity_score >= 80
+                    ? "text-green-700"
+                    : comparingClaim.photo_similarity_score >= 60
+                    ? "text-yellow-700"
+                    : "text-red-600"
+                  : "text-gray-400"
+              }`}>
+                {comparingClaim.photo_similarity_score != null ? `${comparingClaim.photo_similarity_score}%` : "Not Available"}
+              </p>
+            </div>
+
+            <button
+              onClick={() => setComparingClaim(null)}
+              className="w-full mt-5 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
