@@ -94,6 +94,7 @@ export default function DigitalRecords() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   const [cases, setCases] = useState<CaseSummary[]>([]);
   const [casesLoading, setCasesLoading] = useState(true);
@@ -101,6 +102,7 @@ export default function DigitalRecords() {
   const [selectedCase, setSelectedCase] = useState<CaseSummary | null>(null);
   const [caseLogs, setCaseLogs] = useState<CaseLogEntry[]>([]);
   const [caseLogsLoading, setCaseLogsLoading] = useState(false);
+  const [previewCase, setPreviewCase] = useState<CaseSummary | null>(null);
 
   const fetchRecords = async (pageNum: number) => {
     setLoading(true);
@@ -111,8 +113,12 @@ export default function DigitalRecords() {
       const filtered = allRecords.filter((r) => isAdminRelevant(r.action, r.target_type));
       setRecords(filtered);
       setLastPage(data.last_page || 1);
-    } catch (err) {
-      console.error("Error fetching audit logs:", err);
+    } catch (err: any) {
+      if (err.response?.status === 403) {
+        setAccessDenied(true);
+      } else {
+        console.error("Error fetching audit logs:", err);
+      }
     } finally {
       setLoading(false);
     }
@@ -126,8 +132,12 @@ export default function DigitalRecords() {
       setCases(result);
       if (result.length > 0) setSelectedCase(result[0]);
       else setSelectedCase(null);
-    } catch (err) {
-      console.error("Error fetching cases:", err);
+    } catch (err: any) {
+      if (err.response?.status === 403) {
+        setAccessDenied(true);
+      } else {
+        console.error("Error fetching cases:", err);
+      }
     } finally {
       setCasesLoading(false);
     }
@@ -229,6 +239,21 @@ export default function DigitalRecords() {
         </div>
       </aside>
 
+      {accessDenied ? (
+        <div className="flex-1 ml-72 flex items-center justify-center min-h-screen">
+          <div className="text-center max-w-sm">
+            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h1 className="text-xl font-black text-gray-700 mb-2">Access Restricted</h1>
+            <p className="text-gray-400 text-sm">
+              Your account does not have permission to view Digital Records. Contact the Super Admin if you believe this is a mistake.
+            </p>
+          </div>
+        </div>
+      ) : (
       <main className="flex-1 ml-72 p-8">
         <div className="mb-8">
           <h1 className="text-3xl font-black text-[#1a237e]">Digital Records</h1>
@@ -386,14 +411,16 @@ export default function DigitalRecords() {
                 ) : (
                   <div className="divide-y divide-gray-50 max-h-[600px] overflow-y-auto">
                     {cases.map((c) => (
-                      <button
+                      <div
                         key={c.report_id}
-                        onClick={() => setSelectedCase(c)}
-                        className={`w-full text-left px-5 py-4 transition ${
+                        className={`w-full flex items-center gap-3 px-5 py-4 transition ${
                           selectedCase?.report_id === c.report_id ? "bg-blue-50" : "hover:bg-gray-50"
                         }`}
                       >
-                        <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setSelectedCase(c)}
+                          className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                        >
                           <div className="w-10 h-10 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
                             {c.photo_url ? (
                               <img src={c.photo_url} alt={c.item_name} className="w-full h-full object-cover" />
@@ -406,8 +433,18 @@ export default function DigitalRecords() {
                             <p className="text-gray-400 text-xs mt-0.5">{c.case_id}</p>
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 inline-block ${statusBadge(c.status)}`}>{c.status}</span>
                           </div>
-                        </div>
-                      </button>
+                        </button>
+                        <button
+                          onClick={() => setPreviewCase(c)}
+                          className="text-gray-300 hover:text-[#1a237e] transition flex-shrink-0 p-1"
+                          title="View full details"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -419,13 +456,16 @@ export default function DigitalRecords() {
                 {selectedCase ? (
                   <>
                     <div className="bg-gradient-to-r from-[#1a237e] to-[#1565c0] px-6 py-5 flex items-center gap-4">
-                      <div className="w-14 h-14 bg-white/15 rounded-2xl overflow-hidden flex-shrink-0">
+                      <button
+                        onClick={() => setPreviewCase(selectedCase)}
+                        className="w-14 h-14 bg-white/15 rounded-2xl overflow-hidden flex-shrink-0 hover:ring-2 hover:ring-white/50 transition cursor-zoom-in"
+                      >
                         {selectedCase.photo_url ? (
                           <img src={selectedCase.photo_url} alt={selectedCase.item_name} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-white/60 text-[10px] font-bold text-center px-1">No Photo</div>
                         )}
-                      </div>
+                      </button>
                       <div className="flex-1">
                         <p className="text-white font-black text-xl">{selectedCase.item_name}</p>
                         <p className="text-blue-200 text-sm">{selectedCase.category} &middot; {selectedCase.case_id}</p>
@@ -474,6 +514,45 @@ export default function DigitalRecords() {
           </div>
         )}
       </main>
+      )}
+
+      {previewCase && (
+        <div
+          onClick={() => setPreviewCase(null)}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/80 backdrop-blur-sm cursor-zoom-out px-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 cursor-default"
+          >
+            <button
+              onClick={() => setPreviewCase(null)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition text-xl font-bold leading-none"
+            >
+              &times;
+            </button>
+
+            <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-4">
+              {previewCase.photo_url ? (
+                <img src={previewCase.photo_url} alt={previewCase.item_name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No Photo Available</div>
+              )}
+            </div>
+
+            <h3 className="font-black text-[#1a237e] text-lg">{previewCase.item_name}</h3>
+            <span className={`inline-block mt-2 text-xs font-bold px-3 py-1.5 rounded-lg ${statusBadge(previewCase.status)}`}>
+              {previewCase.status}
+            </span>
+            <p className="text-gray-400 text-sm mt-2">{previewCase.category}</p>
+            {previewCase.reported_by && (
+              <p className="text-gray-400 text-sm mt-1">Reported by {previewCase.reported_by}</p>
+            )}
+            <p className="text-gray-400 text-sm mt-1">Case ID: {previewCase.case_id}</p>
+            <p className="text-gray-400 text-sm mt-1">{formatTime(previewCase.created_at)}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
