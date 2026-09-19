@@ -21,8 +21,20 @@ interface SystemUser {
 
 const PAGE_SIZE = 5;
 
+const EDUCATION_LEVELS = [
+  { value: "college", label: "College" },
+  { value: "senior_high_school", label: "Senior High School" },
+  { value: "junior_high_school", label: "Junior High School" },
+  { value: "high_school", label: "High School" },
+];
+
 function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || "?";
+}
+
+function educationLabel(value: string | null) {
+  const found = EDUCATION_LEVELS.find((e) => e.value === value);
+  return found ? found.label : value || "—";
 }
 
 export default function UserManagement() {
@@ -31,7 +43,7 @@ export default function UserManagement() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const [studentSubTab, setStudentSubTab] = useState<"college" | "high_school">("college");
+  const [studentSubTab, setStudentSubTab] = useState<"all" | "college" | "senior_high_school" | "junior_high_school" | "high_school">("all");
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [approvingPassword, setApprovingPassword] = useState(false);
@@ -76,6 +88,7 @@ export default function UserManagement() {
   }, []);
 
   const baseFiltered = useMemo(() => {
+    if (studentSubTab === "all") return users;
     return users.filter((u) => u.education_level === studentSubTab);
   }, [users, studentSubTab]);
 
@@ -323,33 +336,26 @@ export default function UserManagement() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mb-6">
-          <button
-            onClick={() => setStudentSubTab("college")}
-            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition ${
-              studentSubTab === "college"
-                ? "bg-[#1a237e] text-white shadow-md"
-                : "bg-white text-gray-500 border border-gray-200 hover:border-[#1a237e] hover:text-[#1a237e]"
-            }`}
-          >
-            College
-          </button>
-          <button
-            onClick={() => setStudentSubTab("high_school")}
-            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition ${
-              studentSubTab === "high_school"
-                ? "bg-[#1a237e] text-white shadow-md"
-                : "bg-white text-gray-500 border border-gray-200 hover:border-[#1a237e] hover:text-[#1a237e]"
-            }`}
-          >
-            High School
-          </button>
+        <div className="flex items-center gap-2 mb-6 flex-wrap">
+          {(["all", "college", "senior_high_school", "junior_high_school", "high_school"] as const).map((level) => (
+            <button
+              key={level}
+              onClick={() => setStudentSubTab(level)}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition ${
+                studentSubTab === level
+                  ? "bg-[#1a237e] text-white shadow-md"
+                  : "bg-white text-gray-500 border border-gray-200 hover:border-[#1a237e] hover:text-[#1a237e]"
+              }`}
+            >
+              {level === "all" ? "All" : educationLabel(level)}
+            </button>
+          ))}
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <h2 className="font-black text-gray-700 text-lg">
-              {studentSubTab === "college" ? "College Students" : "High School Students"}
+              {studentSubTab === "all" ? "All Students" : educationLabel(studentSubTab) + " Students"}
             </h2>
             <input
               type="text"
@@ -369,6 +375,7 @@ export default function UserManagement() {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
                   <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">User</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Level</th>
                   <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">School ID</th>
                   <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Email</th>
                   <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
@@ -397,6 +404,11 @@ export default function UserManagement() {
                           </p>
                         </div>
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="bg-blue-50 text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg">
+                        {educationLabel(user.education_level)}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <p className="text-gray-600 text-sm font-semibold">{user.school_id || "—"}</p>
@@ -562,8 +574,9 @@ export default function UserManagement() {
                   onChange={(e) => setFormData({ ...formData, education_level: e.target.value })}
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 >
-                  <option value="college">College</option>
-                  <option value="high_school">High School</option>
+                  {EDUCATION_LEVELS.map((level) => (
+                    <option key={level.value} value={level.value}>{level.label}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -706,8 +719,9 @@ export default function UserManagement() {
                   onChange={(e) => setFormData({ ...formData, education_level: e.target.value })}
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 >
-                  <option value="college">College</option>
-                  <option value="high_school">High School</option>
+                  {EDUCATION_LEVELS.map((level) => (
+                    <option key={level.value} value={level.value}>{level.label}</option>
+                  ))}
                 </select>
               </div>
               <div>
