@@ -20,15 +20,15 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [lostRes, foundRes, claimsRes] = await Promise.all([
+        const [lostRes, foundRes, claimsRes] = await Promise.allSettled([
           api.get("/lost-items"),
           api.get("/found-items"),
           api.get("/claims"),
         ]);
 
-        const foundItems = foundRes.data.records || [];
-        const claims = claimsRes.data.claims || [];
-        const lostItems = lostRes.data.reports || [];
+        const foundItems = foundRes.status === "fulfilled" ? foundRes.value.data.records || [] : [];
+        const claims = claimsRes.status === "fulfilled" ? claimsRes.value.data.claims || [] : [];
+        const lostItems = lostRes.status === "fulfilled" ? lostRes.value.data.reports || [] : [];
 
         const today = new Date().toISOString().split("T")[0];
         const foundToday = foundItems.filter((i: any) => i.created_at?.startsWith(today)).length;
