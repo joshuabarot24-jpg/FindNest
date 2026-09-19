@@ -10,6 +10,15 @@ interface LostReport {
   photo_url: string | null;
 }
 
+interface PublicLostReport {
+  id: number;
+  item_name: string;
+  category: string;
+  location_lost: string;
+  date_lost: string;
+  photo_url: string | null;
+}
+
 interface NotificationItem {
   id: number;
   title: string;
@@ -19,12 +28,19 @@ interface NotificationItem {
   match_id: number | null;
 }
 
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
 export default function StudentHome() {
   const [userName, setUserName] = useState("");
   const [userInitial, setUserInitial] = useState("?");
 
   const [myReports, setMyReports] = useState<LostReport[]>([]);
   const [reportsLoading, setReportsLoading] = useState(true);
+
+  const [publicReports, setPublicReports] = useState<PublicLostReport[]>([]);
+  const [publicLoading, setPublicLoading] = useState(true);
 
   const [matchNotification, setMatchNotification] = useState<NotificationItem | null>(null);
   const [showNotification, setShowNotification] = useState(true);
@@ -48,6 +64,17 @@ export default function StudentHome() {
       }
     };
 
+    const fetchPublicReports = async () => {
+      try {
+        const response = await api.get("/lost-items", { params: { status: "searching" } });
+        setPublicReports(response.data.reports || []);
+      } catch (err) {
+        console.error("Error fetching public lost item reports:", err);
+      } finally {
+        setPublicLoading(false);
+      }
+    };
+
     const fetchNotifications = async () => {
       try {
         const response = await api.get("/notifications");
@@ -62,6 +89,7 @@ export default function StudentHome() {
     };
 
     fetchMyReports();
+    fetchPublicReports();
     fetchNotifications();
   }, []);
 
@@ -78,7 +106,6 @@ export default function StudentHome() {
           <a href="/student-home" className="text-[#1a237e] font-bold text-sm border-b-2 border-[#1a237e] pb-1">Home</a>
           <a href="/claim-status" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Claim Status</a>
           <a href="/support" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Support</a>
-          <a href="/report-items" className="text-gray-500 hover:text-[#1a237e] transition text-sm font-medium">Report Items</a>
         </div>
 
         <div className="flex items-center gap-4">
@@ -170,6 +197,50 @@ export default function StudentHome() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-1">
+            <p className="font-black text-gray-700 text-lg">Report Items</p>
+            <span className="text-gray-400 text-xs">{publicReports.length} active</span>
+          </div>
+          <p className="text-gray-400 text-xs mb-5">
+            Items reported lost by other students &mdash; photos are blurred to prevent false claims
+          </p>
+
+          {publicLoading ? (
+            <p className="text-gray-400 text-sm text-center py-8">Loading reports...</p>
+          ) : publicReports.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-400 text-sm font-bold">No active lost reports</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-4">
+              {publicReports.map((item) => (
+                <div key={item.id} className="border border-gray-100 rounded-2xl overflow-hidden">
+                  <div className="w-full h-28 bg-gray-100 overflow-hidden">
+                    {item.photo_url ? (
+                      <img
+                        src={item.photo_url}
+                        alt={item.item_name}
+                        className="w-full h-full object-cover"
+                        style={{ filter: "blur(10px)", transform: "scale(1.1)" }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs font-bold">
+                        No Photo
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="font-bold text-gray-700 text-xs truncate">{item.item_name}</p>
+                    <p className="text-gray-400 text-[10px] mt-1">{item.category}</p>
+                    <p className="text-gray-400 text-[10px]">{formatDate(item.date_lost)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>
