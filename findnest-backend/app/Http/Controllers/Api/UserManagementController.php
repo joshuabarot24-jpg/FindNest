@@ -188,4 +188,36 @@ class UserManagementController extends Controller
         return response()->json(['message' => 'Password change approved. The student can now set a new password.', 'user' => $user]);
     }
 
+    public function toggleRestriction(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'is_restricted' => 'required|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user->update([
+            'is_restricted' => $request->is_restricted,
+        ]);
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => $request->is_restricted ? 'Account Restricted' : 'Restriction Lifted',
+            'target_type' => 'users',
+            'target_id' => $user->id,
+            'details' => ($request->is_restricted ? 'Restricted' : 'Unrestricted') . ' account: ' . $user->name,
+            'performed_by' => ($request->user()->role === 'super_admin' ? 'Super Admin: ' : 'Admin: ') . $request->user()->name,
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json([
+            'message' => $request->is_restricted ? 'Account restricted' : 'Restriction lifted',
+            'user' => $user->fresh(),
+        ]);
+    }
+
 }

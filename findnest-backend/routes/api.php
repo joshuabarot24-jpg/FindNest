@@ -118,6 +118,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/revoke', [UserManagementController::class, 'revoke']);
         Route::post('/{id}/restore', [UserManagementController::class, 'restore']);
         Route::post('/{id}/approve-password-change', [UserManagementController::class, 'approvePasswordChange']);
+        Route::post('/{id}/toggle-restriction', [UserManagementController::class, 'toggleRestriction']);
     });
 
     Route::prefix('case-trail')->middleware('admin.privilege:digital_records')->group(function () {
