@@ -83,6 +83,10 @@ class AuthController extends Controller
             return response()->json(['message' => 'Account is deactivated'], 403);
         }
 
+        if ($user->is_restricted) {
+            return response()->json(['message' => 'Your account has been suspended by the Super Admin. Please contact them for assistance.'], 403);
+        }
+
         $token = $user->createToken('admin-token')->plainTextToken;
 
         AuditLog::create([
