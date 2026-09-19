@@ -64,6 +64,7 @@ class UploadController extends Controller
                 return response()->json(['message' => $analysis['message']], 422);
             }
 
+            $response['ai_item_name'] = $analysis['item_name'];
             $response['ai_category'] = $analysis['category'];
             $response['ai_description'] = $analysis['ai_description'];
             $response['ai_details'] = $analysis['details'];
