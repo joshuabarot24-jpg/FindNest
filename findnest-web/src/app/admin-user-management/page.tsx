@@ -159,11 +159,11 @@ export default function AdminUserManagement() {
     }
   }
 
-  async function handleRestrictConfirm() {
+    async function handleRestrictConfirm() {
     if (!restrictingUser) return;
     setActionLoading(true);
     try {
-      await api.put(`/users/${restrictingUser.id}`, {
+      await api.post(`/users/${restrictingUser.id}/toggle-restriction`, {
         is_restricted: !restrictingUser.is_restricted,
       });
       setToast(
