@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('items:check-unclaimed')->daily();
 Schedule::command('claims:check-pickup-deadlines')->daily();
-Schedule::command('trust:passive-recovery')->daily();
+Schedule::command('trust:passive-recovery')->everyFiveHours();
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
