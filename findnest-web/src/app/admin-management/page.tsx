@@ -661,10 +661,10 @@ export default function AdminManagement() {
 
             {editTab === "privileges" && (
               <div className="space-y-2">
-                <p className="text-gray-400 text-xs mb-3">Select which pages this account can access</p>
+                <p className="text-gray-400 text-xs mb-3">Select which pages this account CANNOT access — unchecked pages remain accessible</p>
                 {PRIVILEGE_OPTIONS.map((priv) => (
                   <label
-                    key={priv.key}
+                    key={priv.key}  
                     className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:border-[#1a237e] transition"
                   >
                     <input
