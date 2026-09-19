@@ -53,7 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [LostItemController::class, 'destroy']);
     });
 
-    Route::prefix('found-items')->group(function () {
+    Route::prefix('found-items')->middleware('admin.privilege:item_management')->group(function () {
         Route::get('/', [FoundItemController::class, 'index']);
         Route::post('/', [FoundItemController::class, 'store']);
         Route::get('/{id}', [FoundItemController::class, 'show']);
@@ -62,17 +62,20 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::prefix('claims')->group(function () {
-        Route::get('/', [ClaimController::class, 'index']);
         Route::get('/my-claims', [ClaimController::class, 'myClaims']);
         Route::post('/', [ClaimController::class, 'store']);
         Route::get('/{id}/questions', [ClaimController::class, 'getQuestions']);
         Route::post('/{id}/answers', [ClaimController::class, 'submitAnswers']);
-        Route::post('/{id}/approve', [ClaimController::class, 'approve']);
-        Route::post('/{id}/reject', [ClaimController::class, 'reject']);
-        Route::post('/{id}/collected', [ClaimController::class, 'markCollected']);
         Route::post('/{id}/appeal', [ClaimController::class, 'submitAppeal']);
-        Route::get('/appeals', [ClaimController::class, 'pendingAppeals']);
-        Route::post('/{id}/resolve-appeal', [ClaimController::class, 'resolveAppeal']);
+
+        Route::middleware('admin.privilege:claim_verification')->group(function () {
+            Route::get('/', [ClaimController::class, 'index']);
+            Route::post('/{id}/approve', [ClaimController::class, 'approve']);
+            Route::post('/{id}/reject', [ClaimController::class, 'reject']);
+            Route::post('/{id}/collected', [ClaimController::class, 'markCollected']);
+            Route::get('/appeals', [ClaimController::class, 'pendingAppeals']);
+            Route::post('/{id}/resolve-appeal', [ClaimController::class, 'resolveAppeal']);
+        });
     });
 
     Route::prefix('notifications')->group(function () {
@@ -82,7 +85,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/read-all', [NotificationController::class, 'markAllAsRead']);
     });
 
-    Route::prefix('audit-logs')->group(function () {
+    Route::prefix('audit-logs')->middleware('admin.privilege:digital_records')->group(function () {
         Route::get('/', [AuditLogController::class, 'index']);
         Route::get('/{type}/{id}', [AuditLogController::class, 'byCase']);
     });
@@ -97,7 +100,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}/reveal', [AiMatchController::class, 'myMatchedItem']);
     });
 
-    Route::prefix('locations')->group(function () {
+    Route::prefix('locations')->middleware('admin.privilege:location_analytics')->group(function () {
         Route::get('/', [LocationController::class, 'index']);
         Route::get('/hotspots', [LocationController::class, 'hotspots']);
         Route::post('/', [LocationController::class, 'store']);
@@ -117,18 +120,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/approve-password-change', [UserManagementController::class, 'approvePasswordChange']);
     });
 
-    Route::prefix('case-trail')->group(function () {
+    Route::prefix('case-trail')->middleware('admin.privilege:digital_records')->group(function () {
         Route::get('/', [CaseTrailController::class, 'index']);
         Route::get('/{id}', [CaseTrailController::class, 'show']);
     });
 
     Route::prefix('support')->group(function () {
         Route::post('/', [SupportController::class, 'store']);
-        Route::get('/', [SupportController::class, 'index']);
         Route::get('/my-messages', [SupportController::class, 'myMessages']);
-        Route::post('/{id}/read', [SupportController::class, 'markAsRead']);
-        Route::get('/{id}/thread', [SupportController::class, 'getThread']);
-        Route::post('/{id}/reply', [SupportController::class, 'reply']);
+
+        Route::middleware('admin.privilege:support_inbox')->group(function () {
+            Route::get('/', [SupportController::class, 'index']);
+            Route::post('/{id}/read', [SupportController::class, 'markAsRead']);
+            Route::get('/{id}/thread', [SupportController::class, 'getThread']);
+            Route::post('/{id}/reply', [SupportController::class, 'reply']);
+        });
     });
 
     Route::post('/fcm/update-token', [FcmController::class, 'updateToken']);
