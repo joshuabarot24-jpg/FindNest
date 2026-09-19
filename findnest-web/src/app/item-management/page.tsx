@@ -22,14 +22,6 @@ const CATEGORY_OPTIONS = [
   "School Supplies", "Accessories", "Books", "Vapes", "Others",
 ];
 
-const STATUS_OPTIONS: { value: ItemStatus; label: string }[] = [
-  { value: "unclaimed", label: "Unclaimed" },
-  { value: "claimed", label: "Claimed" },
-  { value: "for_disposal", label: "For Disposal" },
-  { value: "found_item", label: "Found Item" },
-  { value: "confiscated", label: "Confiscated" },
-];
-
 const PAGE_SIZE = 5;
 
 function statusStyles(status: ItemStatus) {
@@ -55,7 +47,6 @@ export default function ItemManagement() {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewingItem, setViewingItem] = useState<FoundItem | null>(null);
-  const [editingItem, setEditingItem] = useState<FoundItem | null>(null);
   const [deletingItem, setDeletingItem] = useState<FoundItem | null>(null);
 
   const [formName, setFormName] = useState("");
@@ -65,12 +56,12 @@ export default function ItemManagement() {
   const [formDateFound, setFormDateFound] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formIntakeType, setFormIntakeType] = useState<"confiscated" | "found_item">("found_item");
-  const [formStatus, setFormStatus] = useState<ItemStatus>("unclaimed");
   const [formPhotoUrl, setFormPhotoUrl] = useState<string | null>(null);
   const [formPhotoPreview, setFormPhotoPreview] = useState<string | null>(null);
   const [formUploading, setFormUploading] = useState(false);
   const [formError, setFormError] = useState("");
   const [formLoading, setFormLoading] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   const [toast, setToast] = useState<string | null>(null);
 
@@ -84,8 +75,12 @@ export default function ItemManagement() {
     try {
       const res = await api.get("/found-items");
       setItems(res.data.records || []);
-    } catch (err) {
-      console.error("Error fetching found items:", err);
+    } catch (err: any) {
+      if (err.response?.status === 403) {
+        setAccessDenied(true);
+      } else {
+        console.error("Error fetching found items:", err);
+      }
     } finally {
       setLoading(false);
     }
@@ -123,7 +118,6 @@ export default function ItemManagement() {
     setFormDateFound("");
     setFormDescription("");
     setFormIntakeType("found_item");
-    setFormStatus("unclaimed");
     setFormPhotoUrl(null);
     setFormPhotoPreview(null);
     setFormError("");
@@ -179,51 +173,6 @@ export default function ItemManagement() {
       fetchItems();
     } catch (err: any) {
       setFormError(err.response?.data?.message || Object.values(err.response?.data?.errors || {}).flat().join(", ") || "Failed to add item.");
-    } finally {
-      setFormLoading(false);
-    }
-  }
-
-  function openEditModal(item: FoundItem) {
-    setFormName(item.item_name);
-    setFormCategory(item.category);
-    setFormLocationFound(item.location_found);
-    setFormStorageLocation(item.storage_location || "");
-    setFormDateFound(item.date_found || "");
-    setFormDescription(item.description || "");
-    setFormStatus(item.status);
-    setFormPhotoUrl(item.photo_url);
-    setFormPhotoPreview(item.photo_url);
-    setFormError("");
-    setViewingItem(null);
-    setEditingItem(item);
-  }
-
-  async function handleEditSubmit() {
-    if (!editingItem) return;
-    if (!formName.trim() || !formLocationFound.trim()) {
-      setFormError("Item name and location found are required.");
-      return;
-    }
-    setFormError("");
-    setFormLoading(true);
-    try {
-      await api.put(`/found-items/${editingItem.id}`, {
-        item_name: formName.trim(),
-        category: formCategory,
-        description: formDescription.trim() || null,
-        location_found: formLocationFound.trim(),
-        date_found: formDateFound,
-        photo_url: formPhotoUrl,
-        storage_location: formStorageLocation.trim() || null,
-        status: formStatus,
-      });
-      setToast(`${formName.trim()} was updated.`);
-      setEditingItem(null);
-      resetForm();
-      fetchItems();
-    } catch (err: any) {
-      setFormError(err.response?.data?.message || "Failed to update item.");
     } finally {
       setFormLoading(false);
     }
@@ -301,6 +250,21 @@ export default function ItemManagement() {
         </div>
       </aside>
 
+      {accessDenied ? (
+        <div className="flex-1 ml-72 flex items-center justify-center min-h-screen">
+          <div className="text-center max-w-sm">
+            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h1 className="text-xl font-black text-gray-700 mb-2">Access Restricted</h1>
+            <p className="text-gray-400 text-sm">
+              Your account does not have permission to view Item Management. Contact the Super Admin if you believe this is a mistake.
+            </p>
+          </div>
+        </div>
+      ) : (
       <main className="flex-1 ml-72 p-8">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -390,8 +354,8 @@ export default function ItemManagement() {
                       <td className="px-6 py-4">
                         <p className="text-gray-400 text-xs">{formatDateTime(item.created_at)}</p>
                       </td>
-                      <td className="px-8 py-10">
-                        <button onClick={() => setViewingItem(item)} className="bg-blue-30 hover:bg-[#1a237e] hover:text-white text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg transition">View</button>
+                      <td className="px-6 py-4">
+                        <button onClick={() => setViewingItem(item)} className="bg-blue-50 hover:bg-[#1a237e] hover:text-white text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg transition">View</button>
                       </td>
                     </tr>
                   );
@@ -423,6 +387,7 @@ export default function ItemManagement() {
           </div>
         </div>
       </main>
+      )}
 
       {showAddModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
@@ -555,56 +520,8 @@ export default function ItemManagement() {
               )}
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => openEditModal(viewingItem)} className="flex-1 bg-yellow-50 hover:bg-yellow-500 hover:text-white text-yellow-600 font-bold py-3 rounded-2xl transition">Edit</button>
               <button onClick={() => setDeletingItem(viewingItem)} className="flex-1 bg-red-50 hover:bg-red-500 hover:text-white text-red-500 font-bold py-3 rounded-2xl transition">Delete</button>
-            </div>
-            <button onClick={() => setViewingItem(null)} className="w-full mt-3 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition">Close</button>
-          </div>
-        </div>
-      )}
-
-      {editingItem && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 p-8 max-h-[90vh] overflow-y-auto">
-            <button onClick={() => { setEditingItem(null); resetForm(); }} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none">&times;</button>
-            <h2 className="text-2xl font-black text-[#1a237e] mb-1">Edit Item</h2>
-            <p className="text-gray-400 text-sm mb-6">Update {editingItem.item_name}&apos;s record</p>
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Item Name</label>
-                <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm" />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Category</label>
-                <select value={formCategory} onChange={(e) => setFormCategory(e.target.value)} className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm">
-                  {CATEGORY_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Location Found</label>
-                <input type="text" value={formLocationFound} onChange={(e) => setFormLocationFound(e.target.value)} className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm" />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Storage Location</label>
-                <input type="text" value={formStorageLocation} onChange={(e) => setFormStorageLocation(e.target.value)} className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm" />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Status</label>
-                <select value={formStatus} onChange={(e) => setFormStatus(e.target.value as ItemStatus)} className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm">
-                  {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Description</label>
-                <textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} rows={2} className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm resize-none" />
-              </div>
-              {formError && <p className="text-red-500 text-xs font-semibold">{formError}</p>}
-            </div>
-            <div className="flex gap-3 mt-8">
-              <button onClick={() => { setEditingItem(null); resetForm(); }} className="flex-1 border-2 border-gray-200 text-gray-500 font-bold py-3 rounded-2xl hover:bg-gray-50 transition">Cancel</button>
-              <button onClick={handleEditSubmit} disabled={formLoading} className="flex-1 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition disabled:opacity-50">
-                {formLoading ? "Saving..." : "Save Changes"}
-              </button>
+              <button onClick={() => setViewingItem(null)} className="flex-1 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition">Close</button>
             </div>
           </div>
         </div>
