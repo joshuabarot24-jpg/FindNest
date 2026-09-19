@@ -335,21 +335,21 @@ export default function ClaimVerification() {
                         <p className="text-gray-400 text-xs mt-0.5">{claim.match?.found_record?.category || ""}</p>
                       </td>
                       <td className="px-6 py-4">
-                        {claim.photo_similarity_score != null ? (
+                        {claim.match?.confidence_score != null ? (
                           <button
                             onClick={() => setComparingClaim(claim)}
                             className={`text-xs font-bold px-3 py-1.5 rounded-lg transition hover:ring-2 hover:ring-offset-1 cursor-pointer ${
-                              claim.photo_similarity_score >= 80
+                              claim.match.confidence_score >= 80
                                 ? "bg-green-50 text-green-700 hover:ring-green-300"
-                                : claim.photo_similarity_score >= 60
+                                : claim.match.confidence_score >= 60
                                 ? "bg-yellow-50 text-yellow-700 hover:ring-yellow-300"
                                 : "bg-red-50 text-red-600 hover:ring-red-300"
                             }`}
                           >
-                            {claim.photo_similarity_score}% &middot; Compare
+                            {claim.match.confidence_score}% &middot; Compare
                           </button>
                         ) : (
-                          <span className="text-gray-400 text-xs">No Photo</span>
+                          <span className="text-gray-400 text-xs">Pending AI</span>
                         )}
                       </td>
                       <td className="px-6 py-4">
@@ -483,15 +483,15 @@ export default function ClaimVerification() {
                 >
                   <span className="text-sm text-gray-600 font-medium">Layer 4 &mdash; AI Similarity Score <span className="text-blue-500 text-xs">(click to compare)</span></span>
                   <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
-                    viewingClaim.photo_similarity_score != null
-                      ? viewingClaim.photo_similarity_score >= 80
+                    viewingClaim.match?.confidence_score != null
+                      ? viewingClaim.match.confidence_score >= 80
                         ? "bg-green-50 text-green-700"
-                        : viewingClaim.photo_similarity_score >= 60
+                        : viewingClaim.match.confidence_score >= 60
                         ? "bg-yellow-50 text-yellow-700"
                         : "bg-red-50 text-red-600"
                       : "bg-gray-100 text-gray-500"
                   }`}>
-                    {viewingClaim.photo_similarity_score != null ? `${viewingClaim.photo_similarity_score}%` : "No Photo Submitted"}
+                    {viewingClaim.match?.confidence_score != null ? `${viewingClaim.match.confidence_score}%` : "Pending AI"}
                   </span>
                 </button>
                 <div className="flex items-center justify-between py-2">
@@ -629,52 +629,55 @@ export default function ClaimVerification() {
             </button>
 
             <h2 className="text-xl font-black text-[#1a237e] mb-1">Photo Comparison</h2>
-            <p className="text-gray-400 text-sm mb-6">AI similarity score compares these two photos directly</p>
+            <p className="text-gray-400 text-sm mb-6">AI similarity score compares the lost report against the found item</p>
 
             <div className="grid grid-cols-2 gap-4 mb-5">
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Original Found Item</p>
-                <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-100">
+                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Lost Report</p>
+                <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-2">
+                  {comparingClaim.match?.lost_report?.photo_url ? (
+                    <img src={comparingClaim.match.lost_report.photo_url} alt="Lost report" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No Photo</div>
+                  )}
+                </div>
+                <p className="font-bold text-gray-700 text-sm text-center">{comparingClaim.match?.lost_report?.item_name || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Found Item</p>
+                <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-2">
                   {comparingClaim.match?.found_record?.photo_url ? (
                     <img src={comparingClaim.match.found_record.photo_url} alt="Found item" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No Photo</div>
                   )}
                 </div>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Claimant&apos;s Evidence Photo</p>
-                <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-100">
-                  {comparingClaim.proof_photo_url ? (
-                    <img src={comparingClaim.proof_photo_url} alt="Evidence" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No Photo Submitted</div>
-                  )}
-                </div>
+                <p className="font-bold text-gray-700 text-sm text-center">{comparingClaim.match?.found_record?.item_name || "—"}</p>
               </div>
             </div>
 
             <div className={`text-center rounded-2xl p-5 ${
-              comparingClaim.photo_similarity_score != null
-                ? comparingClaim.photo_similarity_score >= 80
+              comparingClaim.match?.confidence_score != null
+                ? comparingClaim.match.confidence_score >= 80
                   ? "bg-green-50 border border-green-100"
-                  : comparingClaim.photo_similarity_score >= 60
+                  : comparingClaim.match.confidence_score >= 60
                   ? "bg-yellow-50 border border-yellow-100"
                   : "bg-red-50 border border-red-100"
                 : "bg-gray-50 border border-gray-100"
             }`}>
               <p className="text-xs font-bold text-gray-400 uppercase mb-1">AI Similarity Score</p>
               <p className={`text-3xl font-black ${
-                comparingClaim.photo_similarity_score != null
-                  ? comparingClaim.photo_similarity_score >= 80
+                comparingClaim.match?.confidence_score != null
+                  ? comparingClaim.match.confidence_score >= 80
                     ? "text-green-700"
-                    : comparingClaim.photo_similarity_score >= 60
+                    : comparingClaim.match.confidence_score >= 60
                     ? "text-yellow-700"
                     : "text-red-600"
                   : "text-gray-400"
               }`}>
-                {comparingClaim.photo_similarity_score != null ? `${comparingClaim.photo_similarity_score}%` : "Not Available"}
+                {comparingClaim.match?.confidence_score != null ? `${comparingClaim.match.confidence_score}%` : "Pending AI Analysis"}
               </p>
+              <p className="text-gray-400 text-xs mt-1">How closely the reported lost item matches the found item</p>
             </div>
 
             <button
