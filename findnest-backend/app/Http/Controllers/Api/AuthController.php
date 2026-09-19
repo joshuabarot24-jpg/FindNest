@@ -134,6 +134,10 @@ class AuthController extends Controller
             return response()->json(['message' => 'Account is deactivated'], 403);
         }
 
+        if ($user->is_restricted) {
+            return response()->json(['message' => 'Your account has been restricted. Please contact the Guidance Office for assistance.'], 403);
+        }
+
         $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $user->update([
             'otp_code' => $otp,
