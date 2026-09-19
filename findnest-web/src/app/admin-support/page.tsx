@@ -27,6 +27,7 @@ export default function SupportInbox() {
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   const [replies, setReplies] = useState<SupportReplyItem[]>([]);
   const [threadLoading, setThreadLoading] = useState(false);
@@ -37,8 +38,12 @@ export default function SupportInbox() {
     try {
       const response = await api.get("/support");
       setMessages(response.data.messages || []);
-    } catch (err) {
-      console.error("Error fetching support messages:", err);
+    } catch (err: any) {
+      if (err.response?.status === 403) {
+        setAccessDenied(true);
+      } else {
+        console.error("Error fetching support messages:", err);
+      }
     } finally {
       setLoading(false);
     }
@@ -149,6 +154,21 @@ export default function SupportInbox() {
         </div>
       </aside>
 
+      {accessDenied ? (
+        <div className="flex-1 ml-72 flex items-center justify-center min-h-screen">
+          <div className="text-center max-w-sm">
+            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h1 className="text-xl font-black text-gray-700 mb-2">Access Restricted</h1>
+            <p className="text-gray-400 text-sm">
+              Your account does not have permission to view Support Inbox. Contact the Super Admin if you believe this is a mistake.
+            </p>
+          </div>
+        </div>
+      ) : (
       <main className="flex-1 ml-72 p-8">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -249,6 +269,7 @@ export default function SupportInbox() {
           )}
         </div>
       </main>
+      )}
     </div>
   );
 }
