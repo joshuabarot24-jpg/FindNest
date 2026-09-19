@@ -9,11 +9,13 @@ export default function ReportFoundPage() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const [itemName, setItemName] = useState("");
+  const [itemNameAiFilled, setItemNameAiFilled] = useState(false);
   const [category, setCategory] = useState("Electronics");
   const [othersSpecify, setOthersSpecify] = useState("");
   const [description, setDescription] = useState("");
   const [aiFilled, setAiFilled] = useState(false);
   const [location, setLocation] = useState("");
+  const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -61,6 +63,12 @@ export default function ReportFoundPage() {
       });
       setPhotoUrl(res.data.url);
 
+      if (res.data.ai_item_name) {
+        setItemName(res.data.ai_item_name);
+        setItemNameAiFilled(true);
+      } else {
+        setItemNameAiFilled(false);
+      }
       if (res.data.ai_category && categories.includes(res.data.ai_category)) {
         setCategory(res.data.ai_category);
       }
@@ -102,7 +110,7 @@ export default function ReportFoundPage() {
         category: category === "Others" ? othersSpecify.trim() : category,
         description: description,
         location_found: location,
-        date_found: new Date().toISOString().split("T")[0],
+        date_found: date,
         photo_url: photoUrl,
       });
       setShowConfirm(false);
@@ -166,6 +174,7 @@ export default function ReportFoundPage() {
               <p className="text-[#1a237e] font-bold text-sm">{itemName || "Your Reported Item"}</p>
               <p className="text-gray-500 text-xs mt-1">Category: {category === "Others" ? othersSpecify : category}</p>
               <p className="text-gray-500 text-xs">Found at: {location || "Not specified"} {time && `at ${time}`}</p>
+              <p className="text-gray-500 text-xs">Date found: {date || "Not specified"}</p>
               <p className="text-gray-500 text-xs mt-1">Status: <span className="font-bold text-yellow-600">Pending Physical Receipt</span></p>
             </div>
             <div className="flex gap-3 mt-6">
@@ -222,7 +231,9 @@ export default function ReportFoundPage() {
               </label>
 
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">Item Name</label>
+                <label className="block text-sm font-bold text-gray-600 mb-2">
+                  Item Name {itemNameAiFilled && <span className="text-green-600 font-normal">(auto-detected, editable)</span>}
+                </label>
                 <input
                   type="text"
                   value={itemName}
@@ -290,14 +301,26 @@ export default function ReportFoundPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">Approx. Time Found</label>
-                <input
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-400 focus:outline-none transition text-gray-700"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-600 mb-2">Date Found</label>
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-400 focus:outline-none transition text-gray-700"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-600 mb-2">Approx. Time Found</label>
+                  <input
+                    type="time"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-400 focus:outline-none transition text-gray-700"
+                  />
+                </div>
               </div>
 
               <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
@@ -337,7 +360,8 @@ export default function ReportFoundPage() {
               <p><span className="font-bold text-gray-700">Item:</span> <span className="text-gray-600">{itemName}</span></p>
               <p><span className="font-bold text-gray-700">Category:</span> <span className="text-gray-600">{category === "Others" ? othersSpecify : category}</span></p>
               <p><span className="font-bold text-gray-700">Description:</span> <span className="text-gray-600">{description}</span></p>
-              <p><span className="font-bold text-gray-700">Location:</span> <span className="text-gray-600">{location}</span> {time && <span className="text-gray-600">at {time}</span>}</p>
+              <p><span className="font-bold text-gray-700">Location:</span> <span className="text-gray-600">{location}</span></p>
+              <p><span className="font-bold text-gray-700">Date:</span> <span className="text-gray-600">{date}</span> {time && <span className="text-gray-600">at {time}</span>}</p>
             </div>
 
             <div className="flex gap-3">
