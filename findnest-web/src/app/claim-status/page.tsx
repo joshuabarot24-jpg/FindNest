@@ -117,6 +117,9 @@ export default function ClaimStatusPage() {
 
   const [appealingClaim, setAppealingClaim] = useState<Claim | null>(null);
   const [appealMessage, setAppealMessage] = useState("");
+  const [appealPhotoPreview, setAppealPhotoPreview] = useState<string | null>(null);
+  const [appealPhotoUrl, setAppealPhotoUrl] = useState<string | null>(null);
+  const [appealPhotoUploading, setAppealPhotoUploading] = useState(false);
   const [appealSubmitting, setAppealSubmitting] = useState(false);
   const [appealError, setAppealError] = useState("");
 
@@ -192,6 +195,33 @@ export default function ClaimStatusPage() {
     }
   };
 
+  const handleAppealPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setAppealPhotoPreview(URL.createObjectURL(file));
+    setAppealPhotoUploading(true);
+    setAppealPhotoUrl(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      formData.append("folder", "appeal-evidence");
+      formData.append("analyze", "false");
+
+      const res = await api.post("/upload/image", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setAppealPhotoUrl(res.data.url);
+    } catch (err: any) {
+      console.error("Appeal photo upload failed:", err);
+      setAppealPhotoPreview(null);
+      setAppealError(err.response?.data?.message || "Photo upload failed. Please try again.");
+    } finally {
+      setAppealPhotoUploading(false);
+    }
+  };
+
   const handleSubmitAppeal = async () => {
     if (!appealingClaim) return;
     if (!appealMessage.trim()) {
@@ -204,9 +234,13 @@ export default function ClaimStatusPage() {
     try {
       await api.post(`/claims/${appealingClaim.id}/appeal`, {
         appeal_message: appealMessage.trim(),
+        appeal_photo_url: appealPhotoUrl,
       });
       setAppealingClaim(null);
       setAppealMessage("");
+      setAppealPhotoPreview(null);
+      setAppealPhotoUrl(null);
+      setAnsweringClaim(null);
       fetchClaims();
     } catch (err: any) {
       setAppealError(err.response?.data?.message || "Failed to submit appeal. Please try again.");
@@ -432,7 +466,13 @@ export default function ClaimStatusPage() {
 
                     {canAppeal && (
                       <button
-                        onClick={() => { setAppealingClaim(claim); setAppealMessage(""); setAppealError(""); }}
+                        onClick={() => {
+                          setAppealingClaim(claim);
+                          setAppealMessage("");
+                          setAppealPhotoPreview(null);
+                          setAppealPhotoUrl(null);
+                          setAppealError("");
+                        }}
                         className="w-full bg-orange-50 hover:bg-orange-100 text-orange-600 font-bold py-2.5 rounded-xl transition text-sm mb-5"
                       >
                         Appeal This Decision
@@ -498,7 +538,7 @@ export default function ClaimStatusPage() {
 
       {appealingClaim && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm px-4">
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setAppealingClaim(null)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none"
@@ -520,13 +560,30 @@ export default function ClaimStatusPage() {
               className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#1a237e] focus:outline-none transition text-gray-700 resize-none mb-4"
             />
 
+            <label className="block text-sm font-bold text-gray-600 mb-2">Supporting Photo (Optional)</label>
+            <label className="block cursor-pointer mb-4">
+              <div className="border-2 border-dashed border-gray-200 hover:border-[#1a237e] rounded-xl p-5 text-center transition">
+                {appealPhotoUploading ? (
+                  <p className="text-sm text-gray-500 font-medium">Uploading...</p>
+                ) : appealPhotoPreview ? (
+                  <div>
+                    <img src={appealPhotoPreview} alt="Appeal evidence" className="max-h-32 mx-auto rounded-xl" />
+                    {appealPhotoUrl && <p className="text-green-600 text-xs font-bold mt-2">Uploaded successfully</p>}
+                  </div>
+                ) : (
+                  <p className="text-gray-400 text-xs">Click to attach a photo the admin can review</p>
+                )}
+              </div>
+              <input type="file" accept="image/*" onChange={handleAppealPhotoUpload} className="hidden" />
+            </label>
+
             {appealError && (
               <p className="text-red-500 text-xs font-semibold mb-4">{appealError}</p>
             )}
 
             <button
               onClick={handleSubmitAppeal}
-              disabled={appealSubmitting}
+              disabled={appealSubmitting || appealPhotoUploading}
               className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-3.5 rounded-xl transition disabled:opacity-50"
             >
               {appealSubmitting ? "Submitting..." : "Submit Appeal"}
@@ -564,12 +621,28 @@ export default function ClaimStatusPage() {
                     ? "Your answers have been recorded. The admin will review your full claim."
                     : "Your answers have been recorded, but were not all correct. The admin will still review your full claim."}
                 </p>
-                <button
-                  onClick={() => setAnsweringClaim(null)}
-                  className="mt-5 bg-[#1a237e] hover:bg-[#283593] text-white font-bold px-6 py-3 rounded-xl transition"
-                >
-                  Close
-                </button>
+                <div className="flex gap-3 mt-5">
+                  <button
+                    onClick={() => setAnsweringClaim(null)}
+                    className="flex-1 border-2 border-gray-200 text-gray-500 font-bold px-6 py-3 rounded-xl transition hover:bg-gray-50"
+                  >
+                    Close
+                  </button>
+                  {answeringClaim.claim_status === "rejected" && !answeringClaim.appeal_status && (
+                    <button
+                      onClick={() => {
+                        setAppealingClaim(answeringClaim);
+                        setAppealMessage("");
+                        setAppealPhotoPreview(null);
+                        setAppealPhotoUrl(null);
+                        setAppealError("");
+                      }}
+                      className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl transition"
+                    >
+                      Appeal This Decision
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="space-y-5">
