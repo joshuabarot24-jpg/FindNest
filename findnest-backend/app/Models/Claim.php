@@ -21,6 +21,7 @@ class Claim extends Model
         'appeal_message',
         'appeal_status',
         'appeal_submitted_at',
+        'appeal_photo_url',
     ];
 
     protected $casts = [

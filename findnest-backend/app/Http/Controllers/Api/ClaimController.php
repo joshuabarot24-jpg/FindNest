@@ -141,7 +141,7 @@ class ClaimController extends Controller
     }
 
         public function markCollected(Request $request, $id)
-    {
+        {
         $claim = Claim::findOrFail($id);
 
         $claim->update(['collected_at' => Carbon::now()]);
@@ -162,28 +162,30 @@ class ClaimController extends Controller
         ]);
 
         return response()->json(['message' => 'Item marked as collected', 'claim' => $claim]);
-    }
-
-    public function submitAppeal(Request $request, $id)
-    {
-        $claim = Claim::where('id', $id)
-            ->where('student_id', $request->user()->id)
-            ->where('claim_status', 'rejected')
-            ->firstOrFail();
-
-        $validator = Validator::make($request->all(), [
-            'appeal_message' => 'required|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $claim->update([
-            'appeal_message' => $request->appeal_message,
-            'appeal_status' => 'pending',
-            'appeal_submitted_at' => Carbon::now(),
-        ]);
+        public function submitAppeal(Request $request, $id)
+        {
+            $claim = Claim::where('id', $id)
+                ->where('student_id', $request->user()->id)
+                ->where('claim_status', 'rejected')
+                ->firstOrFail();
+
+            $validator = Validator::make($request->all(), [
+                'appeal_message' => 'required|string',
+                'appeal_photo_url' => 'nullable|string',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            $claim->update([
+                'appeal_message' => $request->appeal_message,
+                'appeal_photo_url' => $request->appeal_photo_url,
+                'appeal_status' => 'pending',
+                'appeal_submitted_at' => Carbon::now(),
+            ]);
 
         AuditLog::create([
             'user_id' => $request->user()->id,
