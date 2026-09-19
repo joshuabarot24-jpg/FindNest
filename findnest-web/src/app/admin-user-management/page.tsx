@@ -12,6 +12,7 @@ interface SystemUser {
   year_level: string | null;
   education_level: string | null;
   is_active: boolean;
+  is_restricted: boolean;
   trust_score: number;
 }
 
@@ -30,6 +31,8 @@ export default function AdminUserManagement() {
 
   const [editingUser, setEditingUser] = useState<SystemUser | null>(null);
   const [revokingUser, setRevokingUser] = useState<SystemUser | null>(null);
+  const [restrictingUser, setRestrictingUser] = useState<SystemUser | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -93,7 +96,7 @@ export default function AdminUserManagement() {
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const activeCount = users.filter((u) => u.is_active).length;
-  const restrictedCount = users.filter((u) => u.trust_score < 50).length;
+  const restrictedCount = users.filter((u) => u.is_restricted).length;
 
   function openEditModal(user: SystemUser) {
     setFormData({
@@ -130,19 +133,37 @@ export default function AdminUserManagement() {
 
   async function handleRevokeConfirm() {
     if (!revokingUser) return;
+    setActionLoading(true);
     try {
-      if (revokingUser.is_active) {
-        await api.post(`/users/${revokingUser.id}/revoke`);
-        setToast(`${revokingUser.name}'s access was revoked.`);
-      } else {
-        await api.post(`/users/${revokingUser.id}/restore`);
-        setToast(`${revokingUser.name}'s access was restored.`);
-      }
+      await api.post(`/users/${revokingUser.id}/revoke`);
+      setToast(`${revokingUser.name}'s access was permanently revoked.`);
       setRevokingUser(null);
       fetchUsers();
     } catch (err) {
-      console.error("Error updating user status:", err);
-      setRevokingUser(null);
+      console.error("Error revoking user:", err);
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleRestrictConfirm() {
+    if (!restrictingUser) return;
+    setActionLoading(true);
+    try {
+      await api.put(`/users/${restrictingUser.id}`, {
+        is_restricted: !restrictingUser.is_restricted,
+      });
+      setToast(
+        !restrictingUser.is_restricted
+          ? `${restrictingUser.name} was restricted.`
+          : `${restrictingUser.name}'s restriction was lifted.`
+      );
+      setRestrictingUser(null);
+      fetchUsers();
+    } catch (err) {
+      console.error("Error updating restriction:", err);
+    } finally {
+      setActionLoading(false);
     }
   }
 
@@ -229,8 +250,8 @@ export default function AdminUserManagement() {
             <p className="text-4xl font-black text-green-600 mt-1">{activeCount}</p>
           </div>
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <p className="text-gray-400 text-sm font-medium">Low Trust Score (&lt;50)</p>
-            <p className="text-4xl font-black text-red-500 mt-1">{restrictedCount}</p>
+            <p className="text-gray-400 text-sm font-medium">Restricted Accounts</p>
+            <p className="text-4xl font-black text-orange-500 mt-1">{restrictedCount}</p>
           </div>
         </div>
 
@@ -309,33 +330,45 @@ export default function AdminUserManagement() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${user.is_active ? "bg-green-500" : "bg-red-500"}`} />
-                        <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
-                          user.is_active ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
-                        }`}>
-                          {user.is_active ? "ACTIVE" : "INACTIVE"}
-                        </span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {!user.is_active ? (
+                          <span className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-50 text-red-600">REVOKED</span>
+                        ) : user.is_restricted ? (
+                          <span className="text-xs font-bold px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600">RESTRICTED</span>
+                        ) : (
+                          <span className="text-xs font-bold px-3 py-1.5 rounded-lg bg-green-50 text-green-700">ACTIVE</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => openEditModal(user)}
-                          className="bg-blue-50 hover:bg-[#1a237e] hover:text-white text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                          disabled={!user.is_active}
+                          className="bg-blue-50 hover:bg-[#1a237e] hover:text-white text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           Edit
                         </button>
-                        <button
-                          onClick={() => setRevokingUser(user)}
-                          className={
-                            user.is_active
-                              ? "bg-red-50 hover:bg-red-500 hover:text-white text-red-500 text-xs font-bold px-3 py-1.5 rounded-lg transition"
-                              : "bg-green-50 hover:bg-green-600 hover:text-white text-green-600 text-xs font-bold px-3 py-1.5 rounded-lg transition"
-                          }
-                        >
-                          {user.is_active ? "Revoke" : "Restore"}
-                        </button>
+                        {user.is_active && (
+                          <button
+                            onClick={() => setRestrictingUser(user)}
+                            className={
+                              user.is_restricted
+                                ? "bg-green-50 hover:bg-green-600 hover:text-white text-green-600 text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                                : "bg-orange-50 hover:bg-orange-500 hover:text-white text-orange-600 text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                            }
+                          >
+                            {user.is_restricted ? "Unrestrict" : "Restrict"}
+                          </button>
+                        )}
+                        {user.is_active && (
+                          <button
+                            onClick={() => setRevokingUser(user)}
+                            className="bg-red-50 hover:bg-red-600 hover:text-white text-red-500 text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                          >
+                            Revoke
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -480,17 +513,49 @@ export default function AdminUserManagement() {
         </div>
       )}
 
-      {revokingUser && (
+      {restrictingUser && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
           <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 p-8 text-center">
             <h2 className="text-xl font-black text-[#1a237e] mb-2">
-              {revokingUser.is_active ? "Revoke Access?" : "Restore Access?"}
+              {restrictingUser.is_restricted ? "Lift Restriction?" : "Restrict This Account?"}
             </h2>
             <p className="text-gray-400 text-sm mb-8">
-              {revokingUser.is_active
-                ? `${revokingUser.name} will lose access to the system immediately.`
-                : `${revokingUser.name} will regain access to the system.`}
+              {restrictingUser.is_restricted
+                ? `${restrictingUser.name} will regain the ability to submit claims.`
+                : `${restrictingUser.name} will be temporarily blocked from submitting claims. This can be reversed anytime.`}
             </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setRestrictingUser(null)}
+                className="flex-1 border-2 border-gray-200 text-gray-500 font-bold py-3 rounded-2xl hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRestrictConfirm}
+                disabled={actionLoading}
+                className={`flex-1 text-white font-bold py-3 rounded-2xl transition disabled:opacity-50 ${
+                  restrictingUser.is_restricted ? "bg-green-600 hover:bg-green-700" : "bg-orange-500 hover:bg-orange-600"
+                }`}
+              >
+                {actionLoading ? "Processing..." : restrictingUser.is_restricted ? "Lift Restriction" : "Restrict"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {revokingUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 p-8 text-center">
+            <h2 className="text-xl font-black text-[#1a237e] mb-2">Permanently Revoke Access?</h2>
+            <p className="text-gray-400 text-sm mb-3">
+              {revokingUser.name} will permanently lose access to their account.
+            </p>
+            <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-6">
+              <p className="text-red-600 text-xs font-bold">This action CANNOT be undone. There is no restore option once revoked.</p>
+            </div>
 
             <div className="flex gap-3">
               <button
@@ -501,11 +566,10 @@ export default function AdminUserManagement() {
               </button>
               <button
                 onClick={handleRevokeConfirm}
-                className={`flex-1 text-white font-bold py-3 rounded-2xl transition ${
-                  revokingUser.is_active ? "bg-red-500 hover:bg-red-600" : "bg-green-600 hover:bg-green-700"
-                }`}
+                disabled={actionLoading}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-2xl transition disabled:opacity-50"
               >
-                {revokingUser.is_active ? "Revoke" : "Restore"}
+                {actionLoading ? "Revoking..." : "Permanently Revoke"}
               </button>
             </div>
           </div>
