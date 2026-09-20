@@ -6,6 +6,10 @@ interface LostReport {
   id: number;
   item_name: string;
   category: string;
+  description: string | null;
+  ai_description: string | null;
+  location_lost: string;
+  date_lost: string;
   status: string;
   photo_url: string | null;
 }
@@ -32,12 +36,21 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+function statusLabel(status: string) {
+  switch (status) {
+    case "matched": return "Match Found";
+    case "returned": return "Returned";
+    default: return "Searching for match...";
+  }
+}
+
 export default function StudentHome() {
   const [userName, setUserName] = useState("");
   const [userInitial, setUserInitial] = useState("?");
 
   const [myReports, setMyReports] = useState<LostReport[]>([]);
   const [reportsLoading, setReportsLoading] = useState(true);
+  const [selectedMyReport, setSelectedMyReport] = useState<LostReport | null>(null);
 
   const [publicReports, setPublicReports] = useState<PublicLostReport[]>([]);
   const [publicLoading, setPublicLoading] = useState(true);
@@ -178,7 +191,11 @@ export default function StudentHome() {
                   .filter((r) => r.status === "searching")
                   .slice(0, 2)
                   .map((report) => (
-                    <div key={report.id} className="flex items-center gap-3">
+                    <button
+                      key={report.id}
+                      onClick={() => setSelectedMyReport(report)}
+                      className="w-full flex items-center gap-3 text-left hover:bg-gray-50 rounded-xl p-1.5 -m-1.5 transition"
+                    >
                       <div className="w-10 h-10 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
                         {report.photo_url ? (
                           <img src={report.photo_url} alt={report.item_name} className="w-full h-full object-cover" />
@@ -192,7 +209,7 @@ export default function StudentHome() {
                         <p className="font-bold text-gray-700 text-sm">{report.item_name}</p>
                         <p className="text-gray-400 text-xs">Searching</p>
                       </div>
-                    </div>
+                    </button>
                   ))}
               </div>
             )}
@@ -243,6 +260,60 @@ export default function StudentHome() {
           )}
         </div>
       </main>
+
+      {selectedMyReport && (
+        <div
+          onClick={() => setSelectedMyReport(null)}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm px-4 cursor-zoom-out"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 cursor-default"
+          >
+            <button
+              onClick={() => setSelectedMyReport(null)}
+              className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition text-xl font-bold leading-none"
+            >
+              &times;
+            </button>
+
+            <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-4">
+              {selectedMyReport.photo_url ? (
+                <img src={selectedMyReport.photo_url} alt={selectedMyReport.item_name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No Photo Available</div>
+              )}
+            </div>
+
+            <h3 className="font-black text-[#1a237e] text-lg">{selectedMyReport.item_name}</h3>
+            <span className="inline-block mt-2 text-xs font-bold px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700">
+              {statusLabel(selectedMyReport.status)}
+            </span>
+
+            <div className="mt-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Category</span>
+                <span className="font-bold text-gray-700">{selectedMyReport.category}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Location Lost</span>
+                <span className="font-bold text-gray-700">{selectedMyReport.location_lost}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Date Lost</span>
+                <span className="font-bold text-gray-700">{formatDate(selectedMyReport.date_lost)}</span>
+              </div>
+            </div>
+
+            {(selectedMyReport.ai_description || selectedMyReport.description) && (
+              <div className="mt-4 bg-gray-50 rounded-xl p-3">
+                <p className="text-gray-400 text-xs font-bold uppercase mb-1">Description</p>
+                <p className="text-gray-700 text-sm">{selectedMyReport.ai_description || selectedMyReport.description}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
