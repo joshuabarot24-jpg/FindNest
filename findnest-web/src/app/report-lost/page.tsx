@@ -32,6 +32,11 @@ export default function ReportLostPage() {
   const [submitError, setSubmitError] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
 
+  const [itemChoices, setItemChoices] = useState<string[]>([]);
+  const [choosingItemUrl, setChoosingItemUrl] = useState<string | null>(null);
+  const [choosingItemIndex, setChoosingItemIndex] = useState<number | null>(null);
+  const [resolvingChoice, setResolvingChoice] = useState(false);
+
   useEffect(() => {
     const stored = localStorage.getItem("findnest_user");
     if (stored) {
@@ -52,6 +57,20 @@ export default function ReportLostPage() {
 
   const anyUploading = photos.some((p) => p.uploading);
   const uploadedUrls = photos.filter((p) => p.url).map((p) => p.url as string);
+
+  const applyAiFields = (data: any) => {
+    if (data.ai_item_name) {
+      setItemName(data.ai_item_name);
+      setItemNameAiFilled(true);
+    }
+    if (data.ai_category && categories.includes(data.ai_category)) {
+      setCategory(data.ai_category);
+    }
+    if (data.ai_description) {
+      setDescription(data.ai_description);
+      setAiFilled(true);
+    }
+  };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -93,19 +112,20 @@ export default function ReportLostPage() {
         });
 
         if (isFirstPhoto && idx === startIndex) {
-          if (res.data.ai_item_name) {
-            setItemName(res.data.ai_item_name);
-            setItemNameAiFilled(true);
-          }
-          if (res.data.ai_category && categories.includes(res.data.ai_category)) {
-            setCategory(res.data.ai_category);
-          }
-          if (res.data.ai_description) {
-            setDescription(res.data.ai_description);
-            setAiFilled(true);
-          }
+          applyAiFields(res.data);
         }
       } catch (err: any) {
+        if (err.response?.data?.multiple_items && isFirstPhoto && idx === startIndex) {
+          setPhotos((prev) => {
+            const next = [...prev];
+            next[idx] = { ...next[idx], url: err.response.data.url, uploading: false };
+            return next;
+          });
+          setItemChoices(err.response.data.items_found || []);
+          setChoosingItemUrl(err.response.data.url);
+          setChoosingItemIndex(idx);
+          continue;
+        }
         console.error("Photo upload failed:", err);
         setPhotos((prev) => prev.filter((_, i2) => i2 !== idx));
         setPhotoErrorMessage(err.response?.data?.message || "One of your photos failed to upload. Please try again.");
@@ -113,6 +133,29 @@ export default function ReportLostPage() {
       }
     }
     e.target.value = "";
+  };
+
+  const handleChooseItem = async (choice: string) => {
+    if (!choosingItemUrl) return;
+    setResolvingChoice(true);
+    try {
+      const res = await api.post("/upload/analyze-existing", {
+        url: choosingItemUrl,
+        item_hint: choice,
+      });
+      applyAiFields(res.data);
+      setChoosingItemUrl(null);
+      setChoosingItemIndex(null);
+      setItemChoices([]);
+    } catch (err: any) {
+      console.error("Failed to analyze chosen item:", err);
+      setPhotoErrorMessage(err.response?.data?.message || "Could not analyze the selected item. You can still fill the fields manually.");
+      setChoosingItemUrl(null);
+      setChoosingItemIndex(null);
+      setItemChoices([]);
+    } finally {
+      setResolvingChoice(false);
+    }
   };
 
   const removePhoto = (index: number) => {
@@ -378,6 +421,40 @@ export default function ReportLostPage() {
           </div>
         )}
       </main>
+
+      {choosingItemUrl && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm px-4">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+            <h2 className="text-xl font-black text-[#1a237e] mb-1">Multiple Items Detected</h2>
+            <p className="text-gray-400 text-sm mb-6">We found several items in your photo. Which one did you lose?</p>
+
+            {resolvingChoice ? (
+              <div className="py-8 text-center">
+                <div className="w-8 h-8 border-4 border-red-300 border-t-red-500 rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-sm text-gray-500 font-medium">Analyzing your selection...</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {itemChoices.map((choice, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleChooseItem(choice)}
+                    className="w-full text-left px-4 py-3 border-2 border-gray-200 hover:border-red-400 hover:bg-red-50 rounded-xl transition text-gray-700 font-semibold text-sm"
+                  >
+                    {choice}
+                  </button>
+                ))}
+                <button
+                  onClick={() => { setChoosingItemUrl(null); setChoosingItemIndex(null); setItemChoices([]); }}
+                  className="w-full text-center px-4 py-3 text-gray-400 hover:text-gray-600 text-sm font-semibold mt-2"
+                >
+                  None of these — I&apos;ll fill in details manually
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {showConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm px-4">
