@@ -19,6 +19,8 @@ export default function ReportFoundPage() {
   const [itemNameAiFilled, setItemNameAiFilled] = useState(false);
   const [category, setCategory] = useState("Electronics");
   const [othersSpecify, setOthersSpecify] = useState("");
+  const [primaryColor, setPrimaryColor] = useState("");
+  const [brandModel, setBrandModel] = useState("");
   const [description, setDescription] = useState("");
   const [aiFilled, setAiFilled] = useState(false);
   const [location, setLocation] = useState("");
@@ -67,6 +69,12 @@ export default function ReportFoundPage() {
     if (data.ai_description) {
       setDescription(data.ai_description);
       setAiFilled(true);
+    }
+    if (data.ai_details?.primary_color) {
+      setPrimaryColor(data.ai_details.primary_color);
+    }
+    if (data.ai_details?.brand_or_markings) {
+      setBrandModel(data.ai_details.brand_or_markings);
     }
   };
 
@@ -178,6 +186,9 @@ export default function ReportFoundPage() {
         date_found: date,
         photo_url: uploadedUrls[0] || null,
         photo_urls: uploadedUrls,
+        approx_time: time,
+        primary_color: primaryColor,
+        brand_model: brandModel,
       });
       setShowConfirm(false);
       setSubmitted(true);
@@ -350,10 +361,36 @@ export default function ReportFoundPage() {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-400 focus:outline-none transition text-gray-700"
                     required
                   />
-                </div>
-              )}
+                  </div>
+                  )}
 
-              <div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-600 mb-2">
+                      Primary Color(s) {primaryColor ? <span className="text-green-600 font-normal">(auto-detected, editable)</span> : <span className="text-red-500">*</span>}
+                    </label>
+                    <input
+                      type="text"
+                      value={primaryColor}
+                      onChange={(e) => setPrimaryColor(e.target.value)}
+                      placeholder="If AI couldn't detect this, please fill in manually (e.g. Black, Silver)"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-400 focus:outline-none transition text-gray-700"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-gray-600 mb-2">
+                      Brand & Model {brandModel ? <span className="text-green-600 font-normal">(auto-detected, editable)</span> : <span className="text-red-500">*</span>}
+                  </label>
+                  <input
+                    type="text"
+                    value={brandModel}
+                    onChange={(e) => setBrandModel(e.target.value)}
+                    placeholder="If AI couldn't detect this, please fill in manually (e.g. Apple iPhone 15)"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-400 focus:outline-none transition text-gray-700"
+                  />
+                </div>
+
+                <div>
                 <label className="block text-sm font-bold text-gray-600 mb-2">
                   Description {aiFilled ? <span className="text-green-600 font-normal">(auto-filled by AI, editable)</span> : <span className="text-red-500">*</span>}
                 </label>
@@ -473,6 +510,8 @@ export default function ReportFoundPage() {
             <div className="bg-gray-50 rounded-2xl p-4 space-y-2 text-sm mb-6">
               <p><span className="font-bold text-gray-700">Item:</span> <span className="text-gray-600">{itemName}</span></p>
               <p><span className="font-bold text-gray-700">Category:</span> <span className="text-gray-600">{category === "Others" ? othersSpecify : category}</span></p>
+              <p><span className="font-bold text-gray-700">Primary Color(s):</span> <span className="text-gray-600">{primaryColor || "Not specified"}</span></p>
+              <p><span className="font-bold text-gray-700">Brand & Model:</span> <span className="text-gray-600">{brandModel || "Not specified"}</span></p>
               <p><span className="font-bold text-gray-700">Description:</span> <span className="text-gray-600">{description}</span></p>
               <p><span className="font-bold text-gray-700">Location:</span> <span className="text-gray-600">{location}</span></p>
               <p><span className="font-bold text-gray-700">Date:</span> <span className="text-gray-600">{date}</span> {time && <span className="text-gray-600">at {time}</span>}</p>
