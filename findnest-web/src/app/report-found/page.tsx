@@ -3,6 +3,13 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 
 const categories = ["Electronics", "Personal Belongings", "ID/Cards", "Keys", "School Supplies", "Accessories", "Others"];
+const MAX_PHOTOS = 4;
+
+interface PhotoItem {
+  preview: string;
+  url: string | null;
+  uploading: boolean;
+}
 
 export default function ReportFoundPage() {
   const [userInitial, setUserInitial] = useState("");
@@ -17,10 +24,9 @@ export default function ReportFoundPage() {
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [photoError, setPhotoError] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [photoErrorMessage, setPhotoErrorMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -44,53 +50,78 @@ export default function ReportFoundPage() {
     fetchUnread();
   }, []);
 
+  const anyUploading = photos.some((p) => p.uploading);
+  const uploadedUrls = photos.filter((p) => p.url).map((p) => p.url as string);
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    setPhotoPreview(URL.createObjectURL(file));
+    const remainingSlots = MAX_PHOTOS - photos.length;
+    const filesToAdd = files.slice(0, remainingSlots);
+    if (filesToAdd.length === 0) return;
+
     setPhotoError(false);
-    setUploading(true);
-    setPhotoUrl(null);
+    setPhotoErrorMessage("");
 
-    try {
-      const formData = new FormData();
-      formData.append("image", file);
-      formData.append("folder", "found-items");
+    const isFirstPhoto = photos.length === 0;
 
-      const res = await api.post("/upload/image", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      setPhotoUrl(res.data.url);
+    const newEntries: PhotoItem[] = filesToAdd.map((file) => ({
+      preview: URL.createObjectURL(file),
+      url: null,
+      uploading: true,
+    }));
+    const startIndex = photos.length;
+    setPhotos((prev) => [...prev, ...newEntries]);
 
-      if (res.data.ai_item_name) {
-        setItemName(res.data.ai_item_name);
-        setItemNameAiFilled(true);
-      } else {
-        setItemNameAiFilled(false);
+    for (let i = 0; i < filesToAdd.length; i++) {
+      const file = filesToAdd[i];
+      const idx = startIndex + i;
+      try {
+        const formData = new FormData();
+        formData.append("image", file);
+        formData.append("folder", "found-items");
+
+        const res = await api.post("/upload/image", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+
+        setPhotos((prev) => {
+          const next = [...prev];
+          next[idx] = { ...next[idx], url: res.data.url, uploading: false };
+          return next;
+        });
+
+        if (isFirstPhoto && idx === startIndex) {
+          if (res.data.ai_item_name) {
+            setItemName(res.data.ai_item_name);
+            setItemNameAiFilled(true);
+          }
+          if (res.data.ai_category && categories.includes(res.data.ai_category)) {
+            setCategory(res.data.ai_category);
+          }
+          if (res.data.ai_description) {
+            setDescription(res.data.ai_description);
+            setAiFilled(true);
+          }
+        }
+      } catch (err: any) {
+        console.error("Photo upload failed:", err);
+        setPhotos((prev) => prev.filter((_, i2) => i2 !== idx));
+        setPhotoErrorMessage(err.response?.data?.message || "One of your photos failed to upload. Please try again.");
+        setPhotoError(true);
       }
-      if (res.data.ai_category && categories.includes(res.data.ai_category)) {
-        setCategory(res.data.ai_category);
-      }
-      if (res.data.ai_description) {
-        setDescription(res.data.ai_description);
-        setAiFilled(true);
-      } else {
-        setAiFilled(false);
-      }
-    } catch (err: any) {
-      console.error("Photo upload failed:", err);
-      setPhotoPreview(null);
-      setPhotoError(true);
-      alert(err.response?.data?.message || "Photo upload failed. Please try again.");
-    } finally {
-      setUploading(false);
     }
+    e.target.value = "";
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleReview = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!photoUrl) {
+    if (uploadedUrls.length === 0) {
       setPhotoError(true);
       return;
     }
@@ -111,7 +142,8 @@ export default function ReportFoundPage() {
         description: description,
         location_found: location,
         date_found: date,
-        photo_url: photoUrl,
+        photo_url: uploadedUrls[0] || null,
+        photo_urls: uploadedUrls,
       });
       setShowConfirm(false);
       setSubmitted(true);
@@ -194,35 +226,52 @@ export default function ReportFoundPage() {
 
               <label className="block">
                 <p className="text-sm font-bold text-gray-600 mb-2">
-                  Upload Photo <span className="text-red-500">*</span>
+                  Upload Photos <span className="text-red-500">*</span>
+                  <span className="text-gray-400 font-normal text-xs ml-1">(up to {MAX_PHOTOS}, different angles help)</span>
                 </p>
-                <div className={`border-2 border-dashed rounded-2xl p-8 text-center transition cursor-pointer ${
-                  photoError ? "border-red-400 bg-red-50" : "border-gray-200 hover:border-green-300 bg-gray-50"
-                }`}>
-                  {uploading ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-8 h-8 border-4 border-green-300 border-t-green-500 rounded-full animate-spin" />
-                      <p className="text-sm text-gray-500 font-medium">Analyzing photo with AI...</p>
-                    </div>
-                  ) : photoPreview ? (
-                    <div className="relative">
-                      <img src={photoPreview} alt="Preview" className="max-h-48 mx-auto rounded-xl" />
-                      {photoUrl && (
-                        <div className="mt-2 inline-flex items-center gap-1 bg-green-50 border border-green-200 rounded-full px-3 py-1">
-                          <span className="text-green-600 text-xs font-bold">Photo uploaded and analyzed</span>
+
+                {photos.length > 0 && (
+                  <div className="grid grid-cols-4 gap-3 mb-3">
+                    {photos.map((p, idx) => (
+                      <div key={idx} className="relative">
+                        <div className="w-full aspect-square rounded-xl overflow-hidden bg-gray-100 border-2 border-gray-200">
+                          <img src={p.preview} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                          {p.uploading && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ) : (
+                        {!p.uploading && (
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(idx)}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow"
+                          >
+                            &times;
+                          </button>
+                        )}
+                        {idx === 0 && (
+                          <span className="absolute bottom-1 left-1 bg-green-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">MAIN</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {photos.length < MAX_PHOTOS && (
+                  <div className={`border-2 border-dashed rounded-2xl p-6 text-center transition cursor-pointer ${
+                    photoError ? "border-red-400 bg-red-50" : "border-gray-200 hover:border-green-300 bg-gray-50"
+                  }`}>
                     <p className={`font-bold text-sm ${photoError ? "text-red-600" : "text-gray-600"}`}>
-                      Click to upload a photo
+                      {photos.length === 0 ? "Click to upload photos" : `Add more (${MAX_PHOTOS - photos.length} left)`}
                     </p>
-                  )}
-                </div>
-                <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                  </div>
+                )}
+                <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" />
                 {photoError && (
                   <p className="text-red-500 text-xs font-bold mt-2">
-                    A photo is required before you can submit this report.
+                    {photoErrorMessage || "At least one photo is required before you can submit this report."}
                   </p>
                 )}
               </label>
@@ -243,7 +292,7 @@ export default function ReportFoundPage() {
 
               <div>
                 <label className="block text-sm font-bold text-gray-600 mb-2">
-                  Category {photoUrl && <span className="text-green-600 font-normal">(auto-detected, editable)</span>}
+                  Category {uploadedUrls.length > 0 && <span className="text-green-600 font-normal">(auto-detected, editable)</span>}
                 </label>
                 <select
                   value={category}
@@ -337,10 +386,10 @@ export default function ReportFoundPage() {
 
               <button
                 type="submit"
-                disabled={uploading || !photoUrl}
+                disabled={anyUploading || uploadedUrls.length === 0}
                 className="w-full bg-green-500 hover:bg-green-600 text-white font-black py-4 rounded-xl transition shadow-lg text-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {uploading ? "Waiting for photo analysis..." : "Review Report"}
+                {anyUploading ? "Waiting for photo analysis..." : "Review Report"}
               </button>
             </form>
           </div>
@@ -359,6 +408,7 @@ export default function ReportFoundPage() {
               <p><span className="font-bold text-gray-700">Description:</span> <span className="text-gray-600">{description}</span></p>
               <p><span className="font-bold text-gray-700">Location:</span> <span className="text-gray-600">{location}</span></p>
               <p><span className="font-bold text-gray-700">Date:</span> <span className="text-gray-600">{date}</span> {time && <span className="text-gray-600">at {time}</span>}</p>
+              <p><span className="font-bold text-gray-700">Photos:</span> <span className="text-gray-600">{uploadedUrls.length} attached</span></p>
             </div>
 
             <div className="flex gap-3">
