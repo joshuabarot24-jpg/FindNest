@@ -33,15 +33,17 @@ class UploadController extends Controller
             ]
         );
 
-        $moderationService = new ContentModerationService();
-        $moderationResult = $moderationService->checkImage($uploadedFile['secure_url']);
+        if ($request->folder !== 'appeal-evidence') {
+            $moderationService = new ContentModerationService();
+            $moderationResult = $moderationService->checkImage($uploadedFile['secure_url']);
 
-        if (!$moderationResult['passed']) {
-            Cloudinary::uploadApi()->destroy($uploadedFile['public_id']);
+            if (!$moderationResult['passed']) {
+                Cloudinary::uploadApi()->destroy($uploadedFile['public_id']);
 
-            return response()->json([
-                'message' => $moderationResult['message'],
-            ], 422);
+                return response()->json([
+                    'message' => $moderationResult['message'],
+                ], 422);
+            }
         }
 
         $response = [
