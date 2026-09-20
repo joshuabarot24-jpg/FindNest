@@ -54,14 +54,17 @@ class MatchScoreService
             $found->ai_description ?: $found->description
         );
 
+        $photoScore = $this->comparePhotos($report->photo_url, $found->photo_url);
+
         $categoryScore = ($report->category === $found->category) ? 100 : 0;
 
         $temporalSpatialScore = $this->calculateTemporalSpatialScore($report, $found);
 
         $finalScore = round(
-            ($descriptionScore * 0.6) +
-            ($categoryScore * 0.2) +
-            ($temporalSpatialScore * 0.2)
+            ($descriptionScore * 0.35) +
+            ($photoScore * 0.35) +
+            ($categoryScore * 0.15) +
+            ($temporalSpatialScore * 0.15)
         );
 
         $threshold = (int) \App\Models\SystemSetting::get('match_confidence_threshold', 75);
@@ -80,6 +83,7 @@ class MatchScoreService
             'confidence_score' => $finalScore,
             'attributes' => json_encode([
                 'description_score' => $descriptionScore,
+                'photo_score' => $photoScore,
                 'category_score' => $categoryScore,
                 'temporal_spatial_score' => $temporalSpatialScore,
             ]),
@@ -236,6 +240,45 @@ class MatchScoreService
         }
     }
 
+    protected function comparePhotos(?string $photoUrlA, ?string $photoUrlB): int
+    {
+        if (empty($photoUrlA) || empty($photoUrlB)) {
+            return 0;
+        }
 
+        try {
+            $imageA = base64_encode(file_get_contents($photoUrlA));
+            $imageB = base64_encode(file_get_contents($photoUrlB));
+
+            $response = Http::timeout(20)->retry(3, 2000)->post($this->apiUrl . '?key=' . $this->apiKey, [
+                'contents' => [
+                    [
+                        'parts' => [
+                            [
+                                'text' => 'Compare these two photos, one from a lost item report and one from a found item report. Rate how likely they show the SAME physical item, on a scale of 0 to 100. Consider the item itself first (shape, color, brand, distinctive marks) as the primary signal. If the specific item cannot be clearly compared, also weigh secondary visual context clues that might indicate the same environment or scene (matching background objects, furniture, or surroundings), but these should only moderately raise the score, never make it high on their own. Respond with ONLY a JSON object in this exact format, no other text: {"similarity_score": number from 0 to 100}'
+                            ],
+                            ['inline_data' => ['mime_type' => 'image/jpeg', 'data' => $imageA]],
+                            ['inline_data' => ['mime_type' => 'image/jpeg', 'data' => $imageB]],
+                        ]
+                    ]
+                ]
+            ]);
+
+            if (!$response->successful()) {
+                Log::error('Photo comparison failed: ' . $response->body());
+                return 0;
+            }
+
+            $data = $response->json();
+            $textResult = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            $cleanedText = trim(preg_replace('/```json\s*|\s*```/', '', $textResult));
+            $result = json_decode($cleanedText, true);
+
+            return is_array($result) && isset($result['similarity_score']) ? (int) $result['similarity_score'] : 0;
+        } catch (\Exception $e) {
+            Log::error('Photo comparison exception: ' . $e->getMessage());
+            return 0;
+        }
+    }
 
 }
