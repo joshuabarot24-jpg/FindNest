@@ -11,10 +11,16 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import api from "../lib/api";
 
 const NAVY = "#1a237e";
+
+interface OwnershipQuestion {
+  id: number;
+  student_answer: string | null;
+}
 
 interface Claim {
   id: number;
@@ -27,6 +33,7 @@ interface Claim {
   collected_at: string | null;
   appeal_message: string | null;
   appeal_status: string | null;
+  ownership_questions?: OwnershipQuestion[];
   match: {
     lost_report: { item_name: string; location_lost: string } | null;
     found_record: { item_name: string; location_found: string } | null;
@@ -57,16 +64,19 @@ interface Question {
 
 const TIMELINE_STEPS = ["Submitted", "Under AI Review", "Matched", "Claim Submitted", "Pending Verification", "Approved", "Returned"];
 
-function currentStepIndex(status: string): number {
+function currentStepIndex(status: string, collectedAt: string | null): number {
+  if (collectedAt) return 7;
   switch (status) {
     case "approved":
       return 5;
-    case "returned":
-      return 6;
     case "pending":
     default:
       return 4;
   }
+}
+
+function questionsAnswered(claim: Claim): boolean {
+  return !!(claim.ownership_questions && claim.ownership_questions.length > 0 && claim.ownership_questions.every((q) => q.student_answer !== null));
 }
 
 function statusLabel(status: string) {
@@ -119,6 +129,9 @@ export default function ClaimStatusScreen({ navigation }: any) {
 
   const [appealingClaim, setAppealingClaim] = useState<Claim | null>(null);
   const [appealMessage, setAppealMessage] = useState("");
+  const [appealPhotoPreview, setAppealPhotoPreview] = useState<string | null>(null);
+  const [appealPhotoUrl, setAppealPhotoUrl] = useState<string | null>(null);
+  const [appealPhotoUploading, setAppealPhotoUploading] = useState(false);
   const [appealSubmitting, setAppealSubmitting] = useState(false);
   const [appealError, setAppealError] = useState("");
 
@@ -185,6 +198,37 @@ export default function ClaimStatusScreen({ navigation }: any) {
     }
   };
 
+  const handleAppealPhotoUpload = async (uri: string) => {
+    setAppealPhotoPreview(uri);
+    setAppealPhotoUploading(true);
+    setAppealPhotoUrl(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("image", { uri, name: "appeal.jpg", type: "image/jpeg" } as any);
+      formData.append("folder", "appeal-evidence");
+
+      const res = await api.post("/upload/image", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setAppealPhotoUrl(res.data.url);
+    } catch (err: any) {
+      console.error("Appeal photo upload failed:", err);
+      setAppealPhotoPreview(null);
+      setAppealError(err.response?.data?.message || "Photo upload failed. Please try again.");
+    } finally {
+      setAppealPhotoUploading(false);
+    }
+  };
+
+  const pickAppealPhoto = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+    });
+    if (!result.canceled) handleAppealPhotoUpload(result.assets[0].uri);
+  };
+
   const handleSubmitAppeal = async () => {
     if (!appealingClaim) return;
     if (!appealMessage.trim()) {
@@ -194,15 +238,29 @@ export default function ClaimStatusScreen({ navigation }: any) {
     setAppealError("");
     setAppealSubmitting(true);
     try {
-      await api.post(`/claims/${appealingClaim.id}/appeal`, { appeal_message: appealMessage.trim() });
+      await api.post(`/claims/${appealingClaim.id}/appeal`, {
+        appeal_message: appealMessage.trim(),
+        appeal_photo_url: appealPhotoUrl,
+      });
       setAppealingClaim(null);
       setAppealMessage("");
+      setAppealPhotoPreview(null);
+      setAppealPhotoUrl(null);
+      setAnsweringClaim(null);
       fetchClaims();
     } catch (err: any) {
       setAppealError(err.response?.data?.message || "Failed to submit appeal. Please try again.");
     } finally {
       setAppealSubmitting(false);
     }
+  };
+
+  const openAppealModal = (claim: Claim) => {
+    setAppealingClaim(claim);
+    setAppealMessage("");
+    setAppealPhotoPreview(null);
+    setAppealPhotoUrl(null);
+    setAppealError("");
   };
 
   const openAnswerModal = async (claim: Claim) => {
@@ -244,6 +302,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
       const payload = { answers: questions.map((q) => ({ question_id: q.id, answer: answers[q.id] })) };
       const res = await api.post(`/claims/${answeringClaim.id}/answers`, payload);
       setAnswersResult({ correct: res.data.correct_count, total: res.data.total_count });
+      fetchClaims();
     } catch (err: any) {
       setAnswersError(err.response?.data?.message || "Failed to submit answers. Please try again.");
     } finally {
@@ -301,10 +360,11 @@ export default function ClaimStatusScreen({ navigation }: any) {
           claims.map((claim) => {
             const item = claim.match?.found_record || claim.match?.lost_report;
             const itemName = item?.item_name || "Unknown Item";
-            const step = currentStepIndex(claim.claim_status);
+            const step = currentStepIndex(claim.claim_status, claim.collected_at);
             const isTerminal = ["rejected", "abandoned"].includes(claim.claim_status);
             const canAppeal = claim.claim_status === "rejected" && !claim.appeal_status;
             const colors = statusColors(claim.claim_status);
+            const answered = questionsAnswered(claim);
 
             return (
               <View key={claim.id} style={styles.claimCard}>
@@ -348,7 +408,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
                   </View>
                 )}
 
-                {claim.claim_status === "pending" && (
+                {claim.claim_status === "pending" && !answered && (
                   <TouchableOpacity style={styles.answerQuestionsButton} onPress={() => openAnswerModal(claim)}>
                     <Text style={styles.answerQuestionsButtonText}>Answer Verification Questions</Text>
                   </TouchableOpacity>
@@ -376,7 +436,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
                 {canAppeal && (
                   <TouchableOpacity
                     style={styles.appealButton}
-                    onPress={() => { setAppealingClaim(claim); setAppealMessage(""); setAppealError(""); }}
+                    onPress={() => openAppealModal(claim)}
                   >
                     <Text style={styles.appealButtonText}>Appeal This Decision</Text>
                   </TouchableOpacity>
@@ -462,9 +522,27 @@ export default function ClaimStatusScreen({ navigation }: any) {
                 textAlignVertical="top"
               />
 
+              <Text style={styles.fieldLabel}>Supporting Photo (Optional)</Text>
+              <TouchableOpacity style={styles.appealPhotoBox} onPress={pickAppealPhoto} disabled={appealPhotoUploading}>
+                {appealPhotoUploading ? (
+                  <Text style={styles.appealPhotoText}>Uploading...</Text>
+                ) : appealPhotoPreview ? (
+                  <>
+                    <Image source={{ uri: appealPhotoPreview }} style={styles.appealPhotoPreview} />
+                    {appealPhotoUrl && <Text style={styles.appealPhotoUploadedText}>Uploaded successfully</Text>}
+                  </>
+                ) : (
+                  <Text style={styles.appealPhotoText}>Tap to attach a photo the admin can review</Text>
+                )}
+              </TouchableOpacity>
+
               {appealError ? <Text style={styles.errorText}>{appealError}</Text> : null}
 
-              <TouchableOpacity style={styles.appealSubmitButton} onPress={handleSubmitAppeal} disabled={appealSubmitting}>
+              <TouchableOpacity
+                style={styles.appealSubmitButton}
+                onPress={handleSubmitAppeal}
+                disabled={appealSubmitting || appealPhotoUploading}
+              >
                 <Text style={styles.primaryButtonText}>{appealSubmitting ? "Submitting..." : "Submit Appeal"}</Text>
               </TouchableOpacity>
             </View>
@@ -497,9 +575,22 @@ export default function ClaimStatusScreen({ navigation }: any) {
                       ? "Your answers have been recorded. The admin will review your full claim."
                       : "Your answers have been recorded, but not all were correct. The admin will still review your claim."}
                   </Text>
-                  <TouchableOpacity style={styles.primaryButton} onPress={() => setAnsweringClaim(null)}>
-                    <Text style={styles.primaryButtonText}>Close</Text>
-                  </TouchableOpacity>
+                  <View style={styles.resultButtonRow}>
+                    <TouchableOpacity
+                      style={styles.resultCloseButton}
+                      onPress={() => setAnsweringClaim(null)}
+                    >
+                      <Text style={styles.resultCloseButtonText}>Close</Text>
+                    </TouchableOpacity>
+                    {answeringClaim && answeringClaim.claim_status === "rejected" && !answeringClaim.appeal_status && (
+                      <TouchableOpacity
+                        style={styles.resultAppealButton}
+                        onPress={() => openAppealModal(answeringClaim)}
+                      >
+                        <Text style={styles.primaryButtonText}>Appeal This Decision</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               ) : (
                 <>
@@ -621,6 +712,10 @@ const styles = StyleSheet.create({
   infoNoteText: { fontSize: 11.5, color: "#1e40af", lineHeight: 16 },
   fieldLabel: { fontSize: 12, fontWeight: "800", color: "#374151", marginBottom: 8 },
   textArea: { backgroundColor: "#f8f9fc", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, padding: 14, fontSize: 13, color: "#374151", minHeight: 90, marginBottom: 12 },
+  appealPhotoBox: { backgroundColor: "#f8f9fc", borderWidth: 1.5, borderColor: "#e5e7eb", borderStyle: "dashed", borderRadius: 14, padding: 16, alignItems: "center", marginBottom: 12 },
+  appealPhotoText: { fontSize: 11.5, color: "#9ca3af", textAlign: "center" },
+  appealPhotoPreview: { width: 100, height: 100, borderRadius: 12, resizeMode: "cover" },
+  appealPhotoUploadedText: { fontSize: 10.5, fontWeight: "700", color: "#22c55e", marginTop: 6 },
   errorText: { color: "#ef4444", fontSize: 11.5, fontWeight: "700", marginBottom: 10 },
   primaryButton: { backgroundColor: NAVY, borderRadius: 14, paddingVertical: 15, alignItems: "center" },
   primaryButtonText: { color: "white", fontWeight: "900", fontSize: 14 },
@@ -638,6 +733,10 @@ const styles = StyleSheet.create({
   resultScoreGood: { color: "#15803d" },
   resultScoreWarn: { color: "#a16207" },
   resultText: { fontSize: 12.5, color: "#6b7280", textAlign: "center", marginBottom: 16, lineHeight: 18 },
+  resultButtonRow: { flexDirection: "row", gap: 10, width: "100%" },
+  resultCloseButton: { flex: 1, borderWidth: 2, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 13, alignItems: "center" },
+  resultCloseButtonText: { color: "#9ca3af", fontWeight: "800", fontSize: 13 },
+  resultAppealButton: { flex: 1, backgroundColor: "#f97316", borderRadius: 14, paddingVertical: 13, alignItems: "center" },
   bottomNav: { flexDirection: "row", backgroundColor: "white", borderTopWidth: 1, borderTopColor: "#f0f0f0", paddingVertical: 10, paddingBottom: 16 },
   navItem: { flex: 1, alignItems: "center", gap: 3 },
   navLabel: { fontSize: 10, color: "#9ca3af", fontWeight: "600" },
