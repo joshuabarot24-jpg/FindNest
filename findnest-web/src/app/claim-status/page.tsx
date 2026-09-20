@@ -13,6 +13,7 @@ interface Claim {
   collected_at: string | null;
   appeal_message: string | null;
   appeal_status: string | null;
+  ownership_questions?: { student_answer: string | null }[];
   match: {
     lost_report: { item_name: string; location_lost: string } | null;
     found_record: { item_name: string; location_found: string } | null;
@@ -207,7 +208,6 @@ export default function ClaimStatusPage() {
       const formData = new FormData();
       formData.append("image", file);
       formData.append("folder", "appeal-evidence");
-      formData.append("analyze", "false");
 
       const res = await api.post("/upload/image", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -436,7 +436,7 @@ export default function ClaimStatusPage() {
                       </div>
                     )}
 
-                    {claim.claim_status === "pending" && (
+                    {claim.claim_status === "pending" && !(claim.ownership_questions && claim.ownership_questions.length > 0 && claim.ownership_questions.every(q => q.student_answer !== null)) && (
                       <button
                         onClick={() => openAnswerModal(claim)}
                         className="w-full bg-blue-50 hover:bg-[#1a237e] hover:text-white text-[#1a237e] font-bold py-2.5 rounded-xl transition text-sm mb-5"
