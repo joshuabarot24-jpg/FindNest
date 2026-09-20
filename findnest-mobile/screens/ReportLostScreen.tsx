@@ -20,11 +20,13 @@ const NAVY = "#1a237e";
 
 export default function ReportLostScreen({ navigation }: any) {
   const [itemName, setItemName] = useState("");
+  const [itemNameAiFilled, setItemNameAiFilled] = useState(false);
   const [category, setCategory] = useState("Electronics");
   const [othersSpecify, setOthersSpecify] = useState("");
   const [description, setDescription] = useState("");
   const [aiFilled, setAiFilled] = useState(false);
   const [location, setLocation] = useState("");
+  const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -55,6 +57,12 @@ export default function ReportLostScreen({ navigation }: any) {
       });
       setPhotoUrl(res.data.url);
 
+      if (res.data.ai_item_name) {
+        setItemName(res.data.ai_item_name);
+        setItemNameAiFilled(true);
+      } else {
+        setItemNameAiFilled(false);
+      }
       if (res.data.ai_category && categories.includes(res.data.ai_category)) {
         setCategory(res.data.ai_category);
       }
@@ -65,7 +73,7 @@ export default function ReportLostScreen({ navigation }: any) {
         setAiFilled(false);
       }
     } catch (err: any) {
-      console.error("Photo upload failed:", err);
+      console.error("Photo upload failed:", JSON.stringify(err.response?.data));
       setPhotoPreview(null);
       setPhotoError(true);
       setPhotoErrorMessage(err.response?.data?.message || "Photo upload failed. Please try again.");
@@ -106,6 +114,14 @@ export default function ReportLostScreen({ navigation }: any) {
       setSubmitError("Description is required. Since AI couldn't auto-fill it, please describe your item manually.");
       return;
     }
+    if (!location.trim()) {
+      setSubmitError("Last seen location is required.");
+      return;
+    }
+    if (!date.trim()) {
+      setSubmitError("Date lost is required.");
+      return;
+    }
     setSubmitError("");
     setShowConfirm(true);
   };
@@ -118,7 +134,7 @@ export default function ReportLostScreen({ navigation }: any) {
         category: category === "Others" ? othersSpecify.trim() : category,
         description: description,
         location_lost: location.trim(),
-        date_lost: new Date().toISOString().split("T")[0],
+        date_lost: date,
         photo_url: photoUrl,
       });
       setShowConfirm(false);
@@ -195,7 +211,10 @@ export default function ReportLostScreen({ navigation }: any) {
               <Text style={styles.errorText}>{photoErrorMessage || "A photo is required before you can submit your report."}</Text>
             )}
 
-            <Text style={styles.label}>Item Name</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Item Name</Text>
+              {itemNameAiFilled && <Text style={styles.autoTag}>auto-detected, editable</Text>}
+            </View>
             <TextInput
               style={styles.input}
               placeholder="e.g. Red iPhone with clear case"
@@ -250,6 +269,15 @@ export default function ReportLostScreen({ navigation }: any) {
               placeholderTextColor="#9ca3af"
               value={location}
               onChangeText={setLocation}
+            />
+
+            <Text style={styles.label}>Date Lost</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="YYYY-MM-DD e.g. 2026-09-20"
+              placeholderTextColor="#9ca3af"
+              value={date}
+              onChangeText={setDate}
             />
 
             <Text style={styles.label}>Approx. Time</Text>
@@ -328,7 +356,8 @@ export default function ReportLostScreen({ navigation }: any) {
               <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Item: </Text>{itemName}</Text>
               <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Category: </Text>{category === "Others" ? othersSpecify : category}</Text>
               <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Description: </Text>{description}</Text>
-              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Location: </Text>{location} {time ? `at ${time}` : ""}</Text>
+              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Location: </Text>{location}</Text>
+              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Date: </Text>{date} {time ? `at ${time}` : ""}</Text>
             </View>
 
             <View style={styles.confirmButtonRow}>
