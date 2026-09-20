@@ -36,6 +36,8 @@ export default function ReportLostPage() {
   const [choosingItemUrl, setChoosingItemUrl] = useState<string | null>(null);
   const [choosingItemIndex, setChoosingItemIndex] = useState<number | null>(null);
   const [resolvingChoice, setResolvingChoice] = useState(false);
+  const [primaryColor, setPrimaryColor] = useState("");
+  const [brandModel, setBrandModel] = useState("");
 
   useEffect(() => {
     const stored = localStorage.getItem("findnest_user");
@@ -69,6 +71,12 @@ export default function ReportLostPage() {
     if (data.ai_description) {
       setDescription(data.ai_description);
       setAiFilled(true);
+    }
+    if (data.ai_details?.primary_color) {
+      setPrimaryColor(data.ai_details.primary_color);
+    }
+    if (data.ai_details?.brand_or_markings) {
+      setBrandModel(data.ai_details.brand_or_markings);
     }
   };
 
@@ -185,6 +193,9 @@ export default function ReportLostPage() {
         description: description,
         location_lost: location,
         date_lost: date,
+        approx_time: time,
+        primary_color: primaryColor,
+        brand_model: brandModel,
         photo_url: uploadedUrls[0] || null,
         photo_urls: uploadedUrls,
       });
