@@ -22,7 +22,6 @@ const EDUCATION_LEVELS = [
   { value: "college", label: "College" },
   { value: "senior_high_school", label: "Senior High School" },
   { value: "junior_high_school", label: "Junior High School" },
-  { value: "high_school", label: "High School" },
 ];
 
 function getInitial(name: string) {
@@ -39,9 +38,10 @@ export default function AdminUserManagement() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [studentSubTab, setStudentSubTab] = useState<"all" | "college" | "senior_high_school" | "junior_high_school" | "high_school">("all");
+  const [studentSubTab, setStudentSubTab] = useState<"all" | "college" | "senior_high_school" | "junior_high_school">("all");
 
   const [editingUser, setEditingUser] = useState<SystemUser | null>(null);
+  const [viewingUser, setViewingUser] = useState<SystemUser | null>(null);
   const [revokingUser, setRevokingUser] = useState<SystemUser | null>(null);
   const [restrictingUser, setRestrictingUser] = useState<SystemUser | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -159,7 +159,7 @@ export default function AdminUserManagement() {
     }
   }
 
-    async function handleRestrictConfirm() {
+  async function handleRestrictConfirm() {
     if (!restrictingUser) return;
     setActionLoading(true);
     try {
@@ -269,7 +269,7 @@ export default function AdminUserManagement() {
         </div>
 
         <div className="flex items-center gap-2 mb-6 flex-wrap">
-          {(["all", "college", "senior_high_school", "junior_high_school", "high_school"] as const).map((level) => (
+          {(["all", "college", "senior_high_school", "junior_high_school"] as const).map((level) => (
             <button
               key={level}
               onClick={() => setStudentSubTab(level)}
@@ -315,74 +315,86 @@ export default function AdminUserManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {paginated.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50 transition group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-11 h-11 bg-gradient-to-br from-[#1a237e] to-[#1565c0] rounded-xl flex items-center justify-center text-white font-black text-lg shadow-sm shrink-0">
-                          {getInitial(user.name)}
+                {paginated.map((user) => {
+                  const isCollege = user.education_level === "college";
+                  return (
+                    <tr key={user.id} className="hover:bg-gray-50 transition group">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-11 h-11 bg-gradient-to-br from-[#1a237e] to-[#1565c0] rounded-xl flex items-center justify-center text-white font-black text-lg shadow-sm shrink-0">
+                            {getInitial(user.name)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-700">{user.name}</p>
+                            <p className="text-gray-400 text-xs mt-0.5">{user.email}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold text-gray-700">{user.name}</p>
-                          <p className="text-gray-400 text-xs mt-0.5">{user.email}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-block bg-blue-50 text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap">
+                          {educationLabel(user.education_level)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-gray-600 text-sm font-semibold">{user.school_id || "—"}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${trustScoreColor(user.trust_score)}`}>
+                          {user.trust_score}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {!user.is_active ? (
+                          <span className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-50 text-red-600">REVOKED</span>
+                        ) : user.is_restricted ? (
+                          <span className="text-xs font-bold px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600">RESTRICTED</span>
+                        ) : (
+                          <span className="text-xs font-bold px-3 py-1.5 rounded-lg bg-green-50 text-green-700">ACTIVE</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          {isCollege ? (
+                            <button
+                              onClick={() => openEditModal(user)}
+                              disabled={!user.is_active}
+                              className="bg-blue-50 hover:bg-[#1a237e] hover:text-white text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              Edit
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setViewingUser(user)}
+                              className="bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                            >
+                              View
+                            </button>
+                          )}
+                          {user.is_active && (
+                            <button
+                              onClick={() => setRestrictingUser(user)}
+                              className={
+                                user.is_restricted
+                                  ? "bg-green-50 hover:bg-green-600 hover:text-white text-green-600 text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                                  : "bg-orange-50 hover:bg-orange-500 hover:text-white text-orange-600 text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                              }
+                            >
+                              {user.is_restricted ? "Unrestrict" : "Restrict"}
+                            </button>
+                          )}
+                          {user.is_active && (
+                            <button
+                              onClick={() => setRevokingUser(user)}
+                              className="bg-red-50 hover:bg-red-600 hover:text-white text-red-500 text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                            >
+                              Revoke
+                            </button>
+                          )}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="bg-blue-50 text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg">
-                        {educationLabel(user.education_level)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-gray-600 text-sm font-semibold">{user.school_id || "—"}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${trustScoreColor(user.trust_score)}`}>
-                        {user.trust_score}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {!user.is_active ? (
-                        <span className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-50 text-red-600">REVOKED</span>
-                      ) : user.is_restricted ? (
-                        <span className="text-xs font-bold px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600">RESTRICTED</span>
-                      ) : (
-                        <span className="text-xs font-bold px-3 py-1.5 rounded-lg bg-green-50 text-green-700">ACTIVE</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => openEditModal(user)}
-                          disabled={!user.is_active}
-                          className="bg-blue-50 hover:bg-[#1a237e] hover:text-white text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          Edit
-                        </button>
-                        {user.is_active && (
-                          <button
-                            onClick={() => setRestrictingUser(user)}
-                            className={
-                              user.is_restricted
-                                ? "bg-green-50 hover:bg-green-600 hover:text-white text-green-600 text-xs font-bold px-3 py-1.5 rounded-lg transition"
-                                : "bg-orange-50 hover:bg-orange-500 hover:text-white text-orange-600 text-xs font-bold px-3 py-1.5 rounded-lg transition"
-                            }
-                          >
-                            {user.is_restricted ? "Unrestrict" : "Restrict"}
-                          </button>
-                        )}
-                        {user.is_active && (
-                          <button
-                            onClick={() => setRevokingUser(user)}
-                            className="bg-red-50 hover:bg-red-600 hover:text-white text-red-500 text-xs font-bold px-3 py-1.5 rounded-lg transition"
-                          >
-                            Revoke
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -470,18 +482,6 @@ export default function AdminUserManagement() {
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Education Level</label>
-                <select
-                  value={formData.education_level}
-                  onChange={(e) => setFormData({ ...formData, education_level: e.target.value })}
-                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                >
-                  {EDUCATION_LEVELS.map((level) => (
-                    <option key={level.value} value={level.value}>{level.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">School ID</label>
                 <input
                   type="text"
@@ -491,9 +491,7 @@ export default function AdminUserManagement() {
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  {formData.education_level === "college" ? "Course" : "Section"}
-                </label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Course</label>
                 <input
                   type="text"
                   value={formData.course}
@@ -502,9 +500,7 @@ export default function AdminUserManagement() {
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  {formData.education_level === "college" ? "Year Level" : "Grade Level"}
-                </label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Year Level</label>
                 <input
                   type="text"
                   value={formData.year_level}
@@ -531,6 +527,65 @@ export default function AdminUserManagement() {
                 {formLoading ? "Saving..." : "Save Changes"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {viewingUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 p-8">
+            <button
+              onClick={() => setViewingUser(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none"
+            >
+              &times;
+            </button>
+
+            <h2 className="text-2xl font-black text-[#1a237e] mb-1">Student Details</h2>
+            <p className="text-gray-400 text-sm mb-6">
+              Created by Super Admin — read-only. Contact the Super Admin to make changes.
+            </p>
+
+            <div className="bg-blue-50 rounded-2xl p-4 mb-5">
+              <p className="text-xs font-bold text-gray-400 uppercase">Trust Score</p>
+              <p className="text-2xl font-black text-[#1a237e]">{viewingUser.trust_score}</p>
+            </div>
+
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-gray-400 font-medium">Full Name</span>
+                <span className="font-bold text-gray-700">{viewingUser.name}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-gray-400 font-medium">Email</span>
+                <span className="font-bold text-gray-700">{viewingUser.email}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-gray-400 font-medium">Education Level</span>
+                <span className="font-bold text-gray-700">{educationLabel(viewingUser.education_level)}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-gray-400 font-medium">School ID</span>
+                <span className="font-bold text-gray-700">{viewingUser.school_id || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-gray-400 font-medium">
+                  {viewingUser.education_level === "senior_high_school" ? "Strand" : "Section"}
+                </span>
+                <span className="font-bold text-gray-700">{viewingUser.course || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-gray-400 font-medium">Grade Level</span>
+                <span className="font-bold text-gray-700">{viewingUser.year_level || "—"}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setViewingUser(null)}
+              className="w-full mt-6 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
