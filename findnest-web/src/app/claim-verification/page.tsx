@@ -42,6 +42,8 @@ interface Claim {
       id: number;
       item_name: string;
       category: string;
+      description: string | null;
+      ai_description: string | null;
       location_lost: string;
       date_lost: string;
       photo_url: string | null;
@@ -50,6 +52,8 @@ interface Claim {
       id: number;
       item_name: string;
       category: string;
+      description: string | null;
+      ai_description: string | null;
       location_found: string;
       storage_location: string | null;
       photo_url: string | null;
@@ -619,40 +623,87 @@ export default function ClaimVerification() {
       )}
 
       {comparingClaim && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#0d1757]/80 backdrop-blur-sm px-4">
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl p-8">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#0d1757]/80 backdrop-blur-sm px-4 py-8 overflow-y-auto">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl p-8 my-auto">
             <button
               onClick={() => setComparingClaim(null)}
-              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition text-xl font-bold leading-none"
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition text-xl font-bold leading-none z-10"
             >
               &times;
             </button>
 
-            <h2 className="text-xl font-black text-[#1a237e] mb-1">Photo Comparison</h2>
-            <p className="text-gray-400 text-sm mb-6">AI similarity score compares the lost report against the found item</p>
+            <h2 className="text-xl font-black text-[#1a237e] mb-1">Side-by-Side Comparison</h2>
+            <p className="text-gray-400 text-sm mb-6">Full details of the lost report and found item being compared by AI</p>
 
-            <div className="grid grid-cols-2 gap-4 mb-5">
+            <div className="grid grid-cols-2 gap-6 mb-6">
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Lost Report</p>
-                <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-2">
+                <p className="text-xs font-bold text-red-500 uppercase mb-2">Report Lost</p>
+                <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-3">
                   {comparingClaim.match?.lost_report?.photo_url ? (
                     <img src={comparingClaim.match.lost_report.photo_url} alt="Lost report" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No Photo</div>
                   )}
                 </div>
-                <p className="font-bold text-gray-700 text-sm text-center">{comparingClaim.match?.lost_report?.item_name || "—"}</p>
+                <div className="space-y-2.5 text-sm">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400 font-medium">Item Name</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.lost_report?.item_name || "—"}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400 font-medium">Category</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.lost_report?.category || "—"}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400 font-medium">Location</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.lost_report?.location_lost || "—"}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400 font-medium">Date Lost</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.lost_report?.date_lost || "—"}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 font-medium block mb-1">Description</span>
+                    <p className="text-gray-700 bg-gray-50 rounded-xl p-3 text-xs leading-relaxed">
+                      {comparingClaim.match?.lost_report?.ai_description || comparingClaim.match?.lost_report?.description || "No description provided."}
+                    </p>
+                  </div>
+                </div>
               </div>
+
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Found Item</p>
-                <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-2">
+                <p className="text-xs font-bold text-green-600 uppercase mb-2">Report Found</p>
+                <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-3">
                   {comparingClaim.match?.found_record?.photo_url ? (
                     <img src={comparingClaim.match.found_record.photo_url} alt="Found item" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No Photo</div>
                   )}
                 </div>
-                <p className="font-bold text-gray-700 text-sm text-center">{comparingClaim.match?.found_record?.item_name || "—"}</p>
+                <div className="space-y-2.5 text-sm">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400 font-medium">Item Name</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.found_record?.item_name || "—"}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400 font-medium">Category</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.found_record?.category || "—"}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400 font-medium">Location</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.found_record?.location_found || "—"}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400 font-medium">Storage</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.found_record?.storage_location || "—"}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 font-medium block mb-1">Description</span>
+                    <p className="text-gray-700 bg-gray-50 rounded-xl p-3 text-xs leading-relaxed">
+                      {comparingClaim.match?.found_record?.ai_description || comparingClaim.match?.found_record?.description || "No description provided."}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
