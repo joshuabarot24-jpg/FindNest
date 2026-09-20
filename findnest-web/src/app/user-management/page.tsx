@@ -25,8 +25,17 @@ const EDUCATION_LEVELS = [
   { value: "college", label: "College" },
   { value: "senior_high_school", label: "Senior High School" },
   { value: "junior_high_school", label: "Junior High School" },
-  { value: "high_school", label: "High School" },
 ];
+
+const STRANDS = [
+  { value: "STEM", label: "STEM (Science, Technology, Engineering, and Mathematics)" },
+  { value: "ABM", label: "ABM (Accountancy, Business, and Management)" },
+  { value: "HUMSS", label: "HUMSS (Humanities and Social Sciences)" },
+  { value: "GAS", label: "GAS (General Academic Strand)" },
+  { value: "TVL", label: "TVL (Technical-Vocational-Livelihood)" },
+];
+
+const JHS_GRADES = ["Grade 7", "Grade 8", "Grade 9", "Grade 10"];
 
 function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || "?";
@@ -43,7 +52,7 @@ export default function UserManagement() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const [studentSubTab, setStudentSubTab] = useState<"all" | "college" | "senior_high_school" | "junior_high_school" | "high_school">("all");
+  const [studentSubTab, setStudentSubTab] = useState<"all" | "college" | "senior_high_school" | "junior_high_school">("all");
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [approvingPassword, setApprovingPassword] = useState(false);
@@ -303,7 +312,7 @@ export default function UserManagement() {
           <div>
             <h1 className="text-3xl font-black text-[#1a237e]">User Management</h1>
             <p className="text-gray-400 text-sm mt-1">
-              Manage student accounts for College and High School
+              Manage student accounts for College, Senior High School, and Junior High School
             </p>
           </div>
           <button
@@ -337,7 +346,7 @@ export default function UserManagement() {
         </div>
 
         <div className="flex items-center gap-2 mb-6 flex-wrap">
-          {(["all", "college", "senior_high_school", "junior_high_school", "high_school"] as const).map((level) => (
+          {(["all", "college", "senior_high_school", "junior_high_school"] as const).map((level) => (
             <button
               key={level}
               onClick={() => setStudentSubTab(level)}
@@ -406,7 +415,7 @@ export default function UserManagement() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="bg-blue-50 text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg">
+                      <span className="inline-block bg-blue-50 text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap">
                         {educationLabel(user.education_level)}
                       </span>
                     </td>
@@ -509,7 +518,7 @@ export default function UserManagement() {
 
       {showCreateModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 p-8">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 p-8 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setShowCreateModal(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none"
@@ -571,7 +580,7 @@ export default function UserManagement() {
                 </label>
                 <select
                   value={formData.education_level}
-                  onChange={(e) => setFormData({ ...formData, education_level: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, education_level: e.target.value, course: "", year_level: "" })}
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 >
                   {EDUCATION_LEVELS.map((level) => (
@@ -592,30 +601,77 @@ export default function UserManagement() {
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 />
               </div>
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  {formData.education_level === "college" ? "Course" : "Section"}
-                </label>
-                <input
-                  type="text"
-                  value={formData.course}
-                  onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-                  placeholder={formData.education_level === "college" ? "e.g. BSIT" : "e.g. Newton"}
-                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  {formData.education_level === "college" ? "Year Level" : "Grade Level"}
-                </label>
-                <input
-                  type="text"
-                  value={formData.year_level}
-                  onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
-                  placeholder={formData.education_level === "college" ? "e.g. 3rd Year" : "e.g. Grade 8"}
-                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                />
-              </div>
+
+              {formData.education_level === "college" && (
+                <>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Course</label>
+                    <input
+                      type="text"
+                      value={formData.course}
+                      onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                      placeholder="e.g. BSIT, BSED, or Irregular"
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Year Level</label>
+                    <input
+                      type="text"
+                      value={formData.year_level}
+                      onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
+                      placeholder="e.g. 3rd Year or Irregular"
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    />
+                  </div>
+                </>
+              )}
+
+              {formData.education_level === "senior_high_school" && (
+                <>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Strand</label>
+                    <select
+                      value={formData.course}
+                      onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    >
+                      <option value="">Select Strand</option>
+                      {STRANDS.map((s) => (
+                        <option key={s.value} value={s.value}>{s.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Grade Level</label>
+                    <select
+                      value={formData.year_level}
+                      onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    >
+                      <option value="">Select Grade Level</option>
+                      <option value="Grade 11">Grade 11</option>
+                      <option value="Grade 12">Grade 12</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {formData.education_level === "junior_high_school" && (
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Grade Level</label>
+                  <select
+                    value={formData.year_level}
+                    onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
+                    className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                  >
+                    <option value="">Select Grade Level</option>
+                    {JHS_GRADES.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {formError && (
                 <p className="text-red-500 text-xs font-semibold">{formError}</p>
@@ -736,28 +792,77 @@ export default function UserManagement() {
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 />
               </div>
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  {formData.education_level === "college" ? "Course" : "Section"}
-                </label>
-                <input
-                  type="text"
-                  value={formData.course}
-                  onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  {formData.education_level === "college" ? "Year Level" : "Grade Level"}
-                </label>
-                <input
-                  type="text"
-                  value={formData.year_level}
-                  onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
-                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                />
-              </div>
+
+              {formData.education_level === "college" && (
+                <>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Course</label>
+                    <input
+                      type="text"
+                      value={formData.course}
+                      onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                      placeholder="e.g. BSIT, BSED, or Irregular"
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Year Level</label>
+                    <input
+                      type="text"
+                      value={formData.year_level}
+                      onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
+                      placeholder="e.g. 3rd Year or Irregular"
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    />
+                  </div>
+                </>
+              )}
+
+              {formData.education_level === "senior_high_school" && (
+                <>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Strand</label>
+                    <select
+                      value={formData.course}
+                      onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    >
+                      <option value="">Select Strand</option>
+                      {STRANDS.map((s) => (
+                        <option key={s.value} value={s.value}>{s.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Grade Level</label>
+                    <select
+                      value={formData.year_level}
+                      onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    >
+                      <option value="">Select Grade Level</option>
+                      <option value="Grade 11">Grade 11</option>
+                      <option value="Grade 12">Grade 12</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {formData.education_level === "junior_high_school" && (
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Grade Level</label>
+                  <select
+                    value={formData.year_level}
+                    onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
+                    className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                  >
+                    <option value="">Select Grade Level</option>
+                    {JHS_GRADES.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {formError && (
                 <p className="text-red-500 text-xs font-semibold">{formError}</p>
