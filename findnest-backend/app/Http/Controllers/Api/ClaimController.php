@@ -39,7 +39,7 @@ class ClaimController extends Controller
 
     public function myClaims(Request $request)
     {
-        $claims = Claim::with(['match.lostReport', 'match.foundRecord'])
+        $claims = Claim::with(['match.lostReport', 'match.foundRecord', 'ownershipQuestions'])
             ->where('student_id', $request->user()->id)
             ->orderBy('created_at', 'desc')
             ->get();
