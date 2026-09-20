@@ -43,8 +43,6 @@ function formatDate(dateStr: string) {
 }
 
 export default function HomeScreen({ navigation }: any) {
-  const [myReports, setMyReports] = useState<LostReport[]>([]);
-  const [reportsLoading, setReportsLoading] = useState(true);
   const [matchNotification, setMatchNotification] = useState<NotificationItem | null>(null);
 
   const [publicReports, setPublicReports] = useState<PublicLostReport[]>([]);
@@ -52,16 +50,6 @@ export default function HomeScreen({ navigation }: any) {
   const [selectedItem, setSelectedItem] = useState<PublicLostReport | null>(null);
 
   useEffect(() => {
-    const fetchMyReports = async () => {
-      try {
-        const response = await api.get("/lost-items/my-reports");
-        setMyReports(response.data.reports || []);
-      } catch (err) {
-        console.error("Error fetching my reports:", err);
-      } finally {
-        setReportsLoading(false);
-      }
-    };
 
     const fetchPublicReports = async () => {
       try {
@@ -87,12 +75,10 @@ export default function HomeScreen({ navigation }: any) {
       }
     };
 
-    fetchMyReports();
     fetchPublicReports();
     fetchNotifications();
   }, []);
 
-  const activeReports = myReports.filter((r) => r.status === "searching");
 
   return (
     <SafeAreaView style={styles.container}>
@@ -147,37 +133,6 @@ export default function HomeScreen({ navigation }: any) {
             <Text style={styles.actionText}>Found Item</Text>
           </TouchableOpacity>
         </View>
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Active Lost Item Reports</Text>
-        </View>
-
-        {reportsLoading ? (
-          <Text style={styles.loadingText}>Loading your reports...</Text>
-        ) : activeReports.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Ionicons name="document-text-outline" size={28} color="#d1d5db" />
-            <Text style={styles.loadingText}>No active reports</Text>
-          </View>
-        ) : (
-          <View style={styles.reportsList}>
-            {activeReports.slice(0, 2).map((report) => (
-              <View key={report.id} style={styles.reportCard}>
-                <View style={styles.itemIconBox}>
-                  {report.photo_url ? (
-                    <Image source={{ uri: report.photo_url }} style={styles.itemImage} />
-                  ) : (
-                    <Ionicons name="image-outline" size={20} color="#9ca3af" />
-                  )}
-                </View>
-                <View style={styles.reportTextBox}>
-                  <Text style={styles.reportName}>{report.item_name}</Text>
-                  <Text style={styles.reportStatus}>Searching for match...</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Report Items</Text>
