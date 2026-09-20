@@ -99,7 +99,7 @@ class MatchScoreService
             'ip_address' => request()->ip() ?? 'system',
         ]);
 
-        if ($finalScore >= 80) {
+        if ($finalScore >= $threshold) {
             $this->notifyStudent($report, $found, $finalScore, $match->id);
         }
     }
