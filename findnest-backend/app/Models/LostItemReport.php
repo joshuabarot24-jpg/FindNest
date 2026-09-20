@@ -12,9 +12,14 @@ class LostItemReport extends Model
         'description',
         'location_lost',
         'date_lost',
+        'photo_urls',
         'photo_url',
         'status',
         'ai_description',
+    ];
+
+    protected $casts = [
+    'photo_urls' => 'array',
     ];
 
     public function user()
@@ -31,4 +36,5 @@ class LostItemReport extends Model
     {
         return $this->hasMany(LocationLog::class, 'report_id');
     }
+
 }

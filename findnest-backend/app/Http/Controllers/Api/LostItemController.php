@@ -40,6 +40,8 @@ class LostItemController extends Controller
             'location_lost' => 'required|string',
             'date_lost' => 'required|date',
             'photo_url' => 'nullable|string',
+            'photo_urls' => 'nullable|array',
+            'photo_urls.*' => 'string',
         ]);
 
         if ($validator->fails()) {
@@ -55,6 +57,7 @@ class LostItemController extends Controller
             'location_lost' => $request->location_lost,
             'date_lost' => $request->date_lost,
             'photo_url' => $request->photo_url,
+            'photo_urls' => $request->photo_urls ?? ($request->photo_url ? [$request->photo_url] : null),
             'status' => 'searching',
         ]);
 
@@ -89,7 +92,7 @@ class LostItemController extends Controller
 
         $report->update($request->only([
             'item_name', 'category', 'description',
-            'location_lost', 'date_lost', 'photo_url', 'status'
+            'location_lost', 'date_lost', 'photo_url', 'photo_urls', 'status'
         ]));
 
         AuditLog::create([

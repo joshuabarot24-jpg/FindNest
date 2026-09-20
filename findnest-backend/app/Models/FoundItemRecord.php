@@ -12,10 +12,15 @@ class FoundItemRecord extends Model
         'description',
         'location_found',
         'date_found',
+        'photo_urls',
         'photo_url',
         'storage_location',
         'status',
         'ai_description',
+    ];
+
+    protected $casts = [
+    'photo_urls' => 'array',
     ];
 
     public function admin()

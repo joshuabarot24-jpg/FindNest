@@ -82,7 +82,7 @@ class FoundItemController extends Controller
 
         $record->update($request->only([
             'item_name', 'category', 'description',
-            'location_found', 'date_found', 'photo_url',
+            'location_found', 'date_found', 'photo_url', 'photo_urls',
             'storage_location', 'status'
         ]));
 
