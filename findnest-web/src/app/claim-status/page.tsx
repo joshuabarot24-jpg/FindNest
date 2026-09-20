@@ -399,7 +399,7 @@ export default function ClaimStatusPage() {
                           const stepNum = idx + 1;
                           const isActive = stepNum <= step;
                           return (
-                            <div key={label} className="flex-1 flex items-center min-w-[70px]">
+                            <div key={label} className="flex items-center w-[90px] shrink-0">
                               <div className="flex flex-col items-center gap-1 flex-shrink-0">
                                 <div
                                   className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${
