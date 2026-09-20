@@ -99,4 +99,32 @@ class UploadController extends Controller
 
         return response()->json(['message' => 'Image deleted successfully']);
     }
+
+    public function analyzeExisting(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'url' => 'required|string',
+            'item_hint' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $descriptionService = new ItemDescriptionService();
+        $analysis = $descriptionService->analyzeImage($request->url, $request->item_hint);
+
+        if (!$analysis['success'] || !$analysis['item_detected']) {
+            return response()->json(['message' => $analysis['message'] ?? 'Could not analyze the selected item.'], 422);
+        }
+
+        return response()->json([
+            'ai_item_name' => $analysis['item_name'],
+            'ai_category' => $analysis['category'],
+            'ai_description' => $analysis['ai_description'],
+            'ai_details' => $analysis['details'],
+        ]);
+    }
+
+
 }

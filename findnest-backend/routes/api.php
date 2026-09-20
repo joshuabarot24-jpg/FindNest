@@ -109,6 +109,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('upload')->group(function () {
         Route::post('/image', [UploadController::class, 'uploadImage']);
         Route::delete('/image', [UploadController::class, 'deleteImage']);
+        Route::post('/analyze-existing', [UploadController::class, 'analyzeExisting']);
     });
 
     Route::prefix('users')->group(function () {
