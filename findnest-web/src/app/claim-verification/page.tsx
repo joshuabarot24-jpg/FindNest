@@ -44,6 +44,9 @@ interface Claim {
       category: string;
       description: string | null;
       ai_description: string | null;
+      approx_time: string | null;
+      primary_color: string | null;
+      brand_model: string | null;
       location_lost: string;
       date_lost: string;
       photo_url: string | null;
@@ -54,8 +57,12 @@ interface Claim {
       category: string;
       description: string | null;
       ai_description: string | null;
+      approx_time: string | null;
+      primary_color: string | null;
+      brand_model: string | null;
       location_found: string;
       storage_location: string | null;
+      date_found: string | null;
       photo_url: string | null;
     } | null;
   } | null;
@@ -645,7 +652,7 @@ export default function ClaimVerification() {
                     <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No Photo</div>
                   )}
                 </div>
-                <div className="space-y-2.5 text-sm">
+                <div className="space-y-2 text-sm">
                   <div className="flex justify-between gap-2">
                     <span className="text-gray-400 font-medium">Item Name</span>
                     <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.lost_report?.item_name || "—"}</span>
@@ -661,6 +668,22 @@ export default function ClaimVerification() {
                   <div className="flex justify-between gap-2">
                     <span className="text-gray-400 font-medium">Date Lost</span>
                     <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.lost_report?.date_lost || "—"}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400 font-medium">Approx. Time</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.lost_report?.approx_time || "—"}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400 font-medium">Primary Color(s)</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.lost_report?.primary_color || "—"}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400 font-medium">Brand & Model</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.lost_report?.brand_model || "—"}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400 font-medium">AI Similarity Score</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.confidence_score != null ? `${comparingClaim.match.confidence_score}%` : "—"}</span>
                   </div>
                   <div>
                     <span className="text-gray-400 font-medium block mb-1">Description</span>
@@ -680,7 +703,7 @@ export default function ClaimVerification() {
                     <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No Photo</div>
                   )}
                 </div>
-                <div className="space-y-2.5 text-sm">
+                <div className="space-y-2 text-sm">
                   <div className="flex justify-between gap-2">
                     <span className="text-gray-400 font-medium">Item Name</span>
                     <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.found_record?.item_name || "—"}</span>
@@ -694,8 +717,24 @@ export default function ClaimVerification() {
                     <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.found_record?.location_found || "—"}</span>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <span className="text-gray-400 font-medium">Storage</span>
-                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.found_record?.storage_location || "—"}</span>
+                    <span className="text-gray-400 font-medium">Date Found</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.found_record?.date_found || "—"}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400 font-medium">Approx. Time</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.found_record?.approx_time || "—"}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400 font-medium">Primary Color(s)</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.found_record?.primary_color || "—"}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400 font-medium">Brand & Model</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.found_record?.brand_model || "—"}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400 font-medium">AI Similarity Score</span>
+                    <span className="font-bold text-gray-700 text-right">{comparingClaim.match?.confidence_score != null ? `${comparingClaim.match.confidence_score}%` : "—"}</span>
                   </div>
                   <div>
                     <span className="text-gray-400 font-medium block mb-1">Description</span>
