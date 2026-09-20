@@ -630,10 +630,6 @@ export default function ClaimStatusScreen({ navigation }: any) {
           <Ionicons name="home-outline" size={22} color="#9ca3af" />
           <Text style={styles.navLabel}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Browse")}>
-          <Ionicons name="search-outline" size={22} color="#9ca3af" />
-          <Text style={styles.navLabel}>Browse</Text>
-        </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ClaimStatus")}>
           <Ionicons name="document-text" size={22} color={NAVY} />
           <Text style={styles.navLabelActive}>Status</Text>

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Image,
   ScrollView,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,6 +16,15 @@ interface LostReport {
   id: number;
   item_name: string;
   status: string;
+  photo_url: string | null;
+}
+
+interface PublicLostReport {
+  id: number;
+  item_name: string;
+  category: string;
+  location_lost: string;
+  date_lost: string;
   photo_url: string | null;
 }
 
@@ -28,10 +38,18 @@ interface NotificationItem {
 
 const NAVY = "#1a237e";
 
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
 export default function HomeScreen({ navigation }: any) {
   const [myReports, setMyReports] = useState<LostReport[]>([]);
   const [reportsLoading, setReportsLoading] = useState(true);
   const [matchNotification, setMatchNotification] = useState<NotificationItem | null>(null);
+
+  const [publicReports, setPublicReports] = useState<PublicLostReport[]>([]);
+  const [publicLoading, setPublicLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<PublicLostReport | null>(null);
 
   useEffect(() => {
     const fetchMyReports = async () => {
@@ -42,6 +60,17 @@ export default function HomeScreen({ navigation }: any) {
         console.error("Error fetching my reports:", err);
       } finally {
         setReportsLoading(false);
+      }
+    };
+
+    const fetchPublicReports = async () => {
+      try {
+        const response = await api.get("/lost-items", { params: { status: "searching" } });
+        setPublicReports(response.data.reports || []);
+      } catch (err) {
+        console.error("Error fetching public reports:", err);
+      } finally {
+        setPublicLoading(false);
       }
     };
 
@@ -59,6 +88,7 @@ export default function HomeScreen({ navigation }: any) {
     };
 
     fetchMyReports();
+    fetchPublicReports();
     fetchNotifications();
   }, []);
 
@@ -148,16 +178,95 @@ export default function HomeScreen({ navigation }: any) {
             ))}
           </View>
         )}
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Report Items</Text>
+          <Text style={styles.sectionCount}>{publicReports.length} active</Text>
+        </View>
+        <Text style={styles.sectionSubtitle}>Items reported lost by other students &mdash; photos blurred for privacy</Text>
+
+        {publicLoading ? (
+          <Text style={styles.loadingText}>Loading reports...</Text>
+        ) : publicReports.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Ionicons name="cube-outline" size={28} color="#d1d5db" />
+            <Text style={styles.loadingText}>No active lost reports</Text>
+          </View>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.publicScroll}>
+            {publicReports.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.publicCard}
+                activeOpacity={0.85}
+                onPress={() => setSelectedItem(item)}
+              >
+                <View style={styles.publicImageBox}>
+                  {item.photo_url ? (
+                    <Image
+                      source={{ uri: item.photo_url }}
+                      style={styles.publicImage}
+                      blurRadius={12}
+                    />
+                  ) : (
+                    <Ionicons name="image-outline" size={22} color="#9ca3af" />
+                  )}
+                </View>
+                <Text style={styles.publicItemName} numberOfLines={1}>{item.item_name}</Text>
+                <Text style={styles.publicCategory}>{item.category}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </ScrollView>
+
+      <Modal
+        visible={!!selectedItem}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setSelectedItem(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setSelectedItem(null)}
+        >
+          <View style={styles.modalCard}>
+            <View style={styles.modalHandle} />
+
+            {selectedItem && (
+              <>
+                <View style={styles.modalIconBox}>
+                  {selectedItem.photo_url ? (
+                    <Image source={{ uri: selectedItem.photo_url }} style={styles.modalImage} blurRadius={12} />
+                  ) : (
+                    <Ionicons name="image-outline" size={30} color="#9ca3af" />
+                  )}
+                </View>
+                <Text style={styles.modalItemName}>{selectedItem.item_name}</Text>
+                <Text style={styles.modalItemLocation}>Last seen: {selectedItem.location_lost}</Text>
+                <Text style={styles.modalItemDate}>{formatDate(selectedItem.date_lost)}</Text>
+
+                <View style={styles.modalNote}>
+                  <Ionicons name="information-circle-outline" size={16} color="#1e40af" style={{ marginBottom: 4 }} />
+                  <Text style={styles.modalNoteText}>
+                    Recognize this item? Report it as found — our AI will automatically check for a match.
+                  </Text>
+                </View>
+
+                <TouchableOpacity onPress={() => setSelectedItem(null)} style={styles.modalCloseButton}>
+                  <Text style={styles.modalCloseText}>Close</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
           <Ionicons name="home" size={22} color={NAVY} />
           <Text style={styles.navLabelActive}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Browse")}>
-          <Ionicons name="search-outline" size={22} color="#9ca3af" />
-          <Text style={styles.navLabel}>Browse</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ClaimStatus")}>
           <Ionicons name="document-text-outline" size={22} color="#9ca3af" />
@@ -262,9 +371,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 4,
   },
   sectionTitle: { fontSize: 16, fontWeight: "900", color: "#1f2937" },
+  sectionCount: { fontSize: 11, color: "#9ca3af", fontWeight: "700" },
+  sectionSubtitle: { fontSize: 11, color: "#9ca3af", marginBottom: 14 },
   loadingText: { color: "#9ca3af", fontSize: 13, marginTop: 8 },
   emptyBox: {
     alignItems: "center",
@@ -274,8 +385,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#f0f0f0",
     gap: 6,
+    marginBottom: 10,
   },
-  reportsList: { gap: 10 },
+  reportsList: { gap: 10, marginBottom: 28 },
   reportCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -299,6 +411,57 @@ const styles = StyleSheet.create({
   reportTextBox: { flex: 1 },
   reportName: { fontSize: 13.5, fontWeight: "800", color: "#374151" },
   reportStatus: { fontSize: 11, color: "#9ca3af", marginTop: 2 },
+  publicScroll: { marginBottom: 6 },
+  publicCard: {
+    width: 110,
+    marginRight: 12,
+    backgroundColor: "white",
+    borderRadius: 14,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
+  },
+  publicImageBox: {
+    width: "100%",
+    height: 80,
+    borderRadius: 10,
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+    marginBottom: 6,
+  },
+  publicImage: { width: "100%", height: "100%" },
+  publicItemName: { fontSize: 11.5, fontWeight: "800", color: "#374151" },
+  publicCategory: { fontSize: 9.5, color: "#9ca3af", marginTop: 2 },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(13,19,63,0.6)", justifyContent: "flex-end" },
+  modalCard: {
+    backgroundColor: "white",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    paddingBottom: 36,
+    alignItems: "center",
+  },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#e5e7eb", marginBottom: 20 },
+  modalIconBox: {
+    width: 70,
+    height: 70,
+    borderRadius: 18,
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 14,
+    overflow: "hidden",
+  },
+  modalImage: { width: "100%", height: "100%" },
+  modalItemName: { fontSize: 17, fontWeight: "900", color: NAVY, marginBottom: 4 },
+  modalItemLocation: { fontSize: 13, color: "#9ca3af" },
+  modalItemDate: { fontSize: 11.5, color: "#c1c7d6", marginBottom: 18, marginTop: 2 },
+  modalNote: { backgroundColor: "#eff6ff", borderRadius: 14, padding: 14, marginBottom: 20, width: "100%", alignItems: "center" },
+  modalNoteText: { fontSize: 12, color: "#1e40af", lineHeight: 17, textAlign: "center" },
+  modalCloseButton: { paddingVertical: 6 },
+  modalCloseText: { color: "#9ca3af", fontWeight: "700", fontSize: 13 },
   bottomNav: {
     flexDirection: "row",
     backgroundColor: "white",
