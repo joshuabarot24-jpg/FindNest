@@ -16,6 +16,7 @@ class UploadController extends Controller
             'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:10240',
             'folder' => 'nullable|string',
             'analyze' => 'nullable|boolean',
+            'item_hint' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -54,7 +55,7 @@ class UploadController extends Controller
 
         if ($request->boolean('analyze', true)) {
             $descriptionService = new ItemDescriptionService();
-            $analysis = $descriptionService->analyzeImage($uploadedFile['secure_url']);
+            $analysis = $descriptionService->analyzeImage($uploadedFile['secure_url'], $request->item_hint);
 
             if (!$analysis['success']) {
                 Cloudinary::uploadApi()->destroy($uploadedFile['public_id']);
@@ -62,6 +63,15 @@ class UploadController extends Controller
             }
 
             if (!$analysis['item_detected']) {
+                if ($analysis['multiple_items'] ?? false) {
+                    return response()->json([
+                        'message' => $analysis['message'],
+                        'multiple_items' => true,
+                        'items_found' => $analysis['items_found'],
+                        'url' => $uploadedFile['secure_url'],
+                        'public_id' => $uploadedFile['public_id'],
+                    ], 422);
+                }
                 Cloudinary::uploadApi()->destroy($uploadedFile['public_id']);
                 return response()->json(['message' => $analysis['message']], 422);
             }

@@ -14,19 +14,21 @@ class ItemDescriptionService
         $this->apiKey = env('GEMINI_API_KEY');
     }
 
-    public function analyzeImage(string $imageUrl): array
+    public function analyzeImage(string $imageUrl, ?string $itemHint = null): array
     {
         try {
             $imageContent = file_get_contents($imageUrl);
             $base64Image = base64_encode($imageContent);
 
+            $promptText = $itemHint
+                ? 'Look at this image carefully. The user has specifically identified that they want details about: "' . $itemHint . '". Focus ONLY on that specific item, ignoring any other items also visible in the frame. The item may be worn on the body or attached to something (e.g. a watch on a wrist, a ring on a finger, earbuds in hand). Generate a structured description AND a short, specific item name (e.g. "Black Nike Backpack", "Silver Apple Watch") under 6 words. Respond with ONLY a JSON object in this exact format, no other text, no markdown: {"item_detected": true, "item_name": "short specific item name", "category": "one of: Electronics, Personal Belongings, ID/Cards, Keys, School Supplies, Accessories, Others", "primary_color": "string or empty", "secondary_color": "string or empty", "brand_or_markings": "string or empty", "materials": "string or empty", "distinctive_features": "string or empty", "summary": "one paragraph description"}'
+                : 'Look at this image carefully. First, determine if it shows one or more physical, identifiable lost-and-found type items (such as electronics, wallets, bags, clothing, accessories, keys, ID cards, school supplies, water bottles, etc). The item(s) may be worn on a person\'s body or attached to something (e.g. a watch on a wrist, a ring on a finger, earbuds in hand, an ID on a lanyard) — these still count as valid identifiable items; focus on the items, not the person. Screenshots, selfies with no item focus, documents, or unrelated random photos do NOT count. List EVERY distinct identifiable item you can clearly see, even if there are several (for example, a watch, a ring, and earbuds together would be 3 separate items). If the image shows a cluttered background with an excessive number of unrelated items (roughly 15 or more), treat this as too cluttered to process and set too_cluttered to true instead of listing everything. Respond with ONLY a JSON object in this exact format, no other text, no markdown: {"item_detected": true or false, "too_cluttered": true or false, "items_found": ["short name of item 1", "short name of item 2"], "item_name": "short specific item name if only ONE item was found, or empty string if zero, multiple, or cluttered", "category": "one of: Electronics, Personal Belongings, ID/Cards, Keys, School Supplies, Accessories, Others, or empty string", "primary_color": "string or empty", "secondary_color": "string or empty", "brand_or_markings": "string or empty", "materials": "string or empty", "distinctive_features": "string or empty", "summary": "one paragraph description, only filled if exactly one item was found"}';
+
             $response = Http::timeout(20)->retry(3, 2000)->post($this->apiUrl . '?key=' . $this->apiKey, [
                 'contents' => [
                     [
                         'parts' => [
-                            [
-                               'text' => 'Look at this image carefully. First, determine if it shows a physical, identifiable lost-and-found type item (such as electronics, wallets, bags, clothing, accessories, keys, ID cards, school supplies, water bottles, etc). The item may be photographed alone, or it may be worn on a person\'s body or attached to something (e.g. a watch on a wrist, a bag on a shoulder, an ID on a lanyard, a phone in a hand) — these still count as a valid identifiable item; focus on and describe the item itself, not the person. Screenshots, selfies with no item focus, documents, or unrelated random photos do NOT count as identifiable items. Second, count how many distinct separate lost-and-found-type items are clearly visible in the photo (not counting the background or unrelated clutter). If more than one distinct item is the clear subject of the photo (e.g. several unrelated items laid out together), this is NOT acceptable for a single item report. If a single clear item IS shown, generate a structured description AND a short, specific item name a student would naturally type themselves (e.g. "Black Nike Backpack", "Silver Apple Watch", "Blue Umbrella with Wooden Handle") — include a distinguishing color or brand if visible, keep it under 6 words. Respond with ONLY a JSON object in this exact format, no other text, no markdown: {"item_detected": true or false, "multiple_items_detected": true or false, "item_name": "short specific item name, or empty string if not detected", "category": "one of: Electronics, Personal Belongings, ID/Cards, Keys, School Supplies, Accessories, Others, or empty string if not detected", "primary_color": "string or empty", "secondary_color": "string or empty", "brand_or_markings": "string or empty", "materials": "string or empty", "distinctive_features": "string describing scratches, stickers, keychains, or other unique details, or empty", "summary": "one paragraph natural language description combining all details, or empty if no item detected"}'
-                            ],
+                            ['text' => $promptText],
                             [
                                 'inline_data' => [
                                     'mime_type' => 'image/jpeg',
@@ -64,6 +66,14 @@ class ItemDescriptionService
                 ];
             }
 
+            if (($result['too_cluttered'] ?? false) === true) {
+                return [
+                    'success' => true,
+                    'item_detected' => false,
+                    'message' => 'This photo shows too many items to identify clearly. Please upload a photo focused on fewer items.',
+                ];
+            }
+
             if ($result['item_detected'] !== true) {
                 return [
                     'success' => true,
@@ -72,11 +82,14 @@ class ItemDescriptionService
                 ];
             }
 
-            if (($result['multiple_items_detected'] ?? false) === true) {
+            $itemsFound = $result['items_found'] ?? [];
+            if (!$itemHint && count($itemsFound) > 1) {
                 return [
                     'success' => true,
                     'item_detected' => false,
-                    'message' => 'This photo appears to show multiple items. Please upload a photo focused on just one item at a time.',
+                    'multiple_items' => true,
+                    'items_found' => $itemsFound,
+                    'message' => 'We detected multiple items in this photo. Please select which one you are reporting.',
                 ];
             }
 
