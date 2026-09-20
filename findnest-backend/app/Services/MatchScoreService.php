@@ -116,7 +116,7 @@ class MatchScoreService
                     [
                         'parts' => [
                             [
-                                'text' => "Compare these two item descriptions and rate how likely they describe the SAME physical item, on a scale of 0 to 100. Consider color, brand, material, distinctive markings, and overall similarity. Respond with ONLY a JSON object in this exact format, no other text: {\"similarity_score\": number from 0 to 100}\n\nDescription A: {$descriptionA}\n\nDescription B: {$descriptionB}"
+                                'text' => "Compare these two item descriptions carefully and determine how likely they describe the SAME physical item. Weigh these factors: (1) category and type of item — must be genuinely compatible, (2) primary and secondary color — exact or very close matches score higher, (3) brand or markings if mentioned in either description, (4) material, (5) distinctive features like scratches, dents, stickers, or keychains — these are strong identity signals if they match. If key identifying details conflict (e.g. one says black, the other says white; one mentions a specific brand the other contradicts), score this significantly lower even if the general item type matches. Rate the overall similarity on a scale of 0 to 100, where 90-100 means near-certain same item, 70-89 means likely same item with minor uncertainty, 40-69 means possible but uncertain, and below 40 means unlikely to be the same item. Respond with ONLY a JSON object in this exact format, no other text: {\"similarity_score\": number from 0 to 100}\n\nDescription A: {$descriptionA}\n\nDescription B: {$descriptionB}"
                             ]
                         ]
                     ]
@@ -195,7 +195,7 @@ class MatchScoreService
             $claimantImage = base64_encode(file_get_contents($claimantPhotoUrl));
             $foundImage = base64_encode(file_get_contents($foundItemPhotoUrl));
 
-            $response = \Illuminate\Support\Facades\Http::timeout(20)->retry(3, 2000)->post($this->apiUrl . '?key=' . $this->apiKey, [
+            $response = Http::timeout(20)->retry(3, 2000)->post($this->apiUrl . '?key=' . $this->apiKey, [
                 'contents' => [
                     [
                         'parts' => [
@@ -220,7 +220,7 @@ class MatchScoreService
             ]);
 
             if (!$response->successful()) {
-                \Illuminate\Support\Facades\Log::error('Claim photo comparison failed: ' . $response->body());
+                Log::error('Claim photo comparison failed: ' . $response->body());
                 return null;
             }
 
@@ -231,7 +231,7 @@ class MatchScoreService
 
             return is_array($result) && isset($result['similarity_score']) ? (int) $result['similarity_score'] : null;
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Claim photo comparison exception: ' . $e->getMessage());
+            Log::error('Claim photo comparison exception: ' . $e->getMessage());
             return null;
         }
     }
