@@ -30,7 +30,12 @@ class FoundItemController extends Controller
             'ai_description' => 'nullable|string',
             'location_found' => 'required|string',
             'date_found' => 'required|date',
+            'approx_time' => 'nullable|string',
+            'primary_color' => 'nullable|string',
+            'brand_model' => 'nullable|string',
             'photo_url' => 'nullable|string',
+            'photo_urls' => 'nullable|array',
+            'photo_urls.*' => 'string',
             'storage_location' => 'nullable|string',
         ]);
 
@@ -46,7 +51,11 @@ class FoundItemController extends Controller
             'ai_description' => $request->ai_description,
             'location_found' => $request->location_found,
             'date_found' => $request->date_found,
+            'approx_time' => $request->approx_time,
+            'primary_color' => $request->primary_color,
+            'brand_model' => $request->brand_model,
             'photo_url' => $request->photo_url,
+            'photo_urls' => $request->photo_urls ?? ($request->photo_url ? [$request->photo_url] : null),
             'storage_location' => $request->storage_location,
             'status' => 'unclaimed',
         ]);
