@@ -32,7 +32,7 @@ api.interceptors.response.use(
 
 export async function logoutUser() {
   try {
-    await api.post("/logout");
+    await api.post("/auth/logout");
   } catch (err) {
     console.error("Logout API call failed:", err);
   }
