@@ -37,6 +37,35 @@ const STRANDS = [
 ];
 
 const JHS_GRADES = ["Grade 7", "Grade 8", "Grade 9", "Grade 10"];
+const COLLEGE_YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
+
+const NAME_REGEX = /^[A-Za-z\s.'-]*$/;
+const DIGITS_REGEX = /^[0-9]*$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+const COMMON_DOMAIN_TYPOS: Record<string, string> = {
+  "gmail.co": "gmail.com",
+  "gmail.cm": "gmail.com",
+  "gmail.con": "gmail.com",
+  "yahoo.co": "yahoo.com",
+  "yahoo.cm": "yahoo.com",
+  "outlook.co": "outlook.com",
+};
+
+function checkEmailDomainTypo(email: string): string | null {
+  const domain = email.split("@")[1]?.toLowerCase();
+  if (domain && COMMON_DOMAIN_TYPOS[domain]) {
+    return `Did you mean ${email.split("@")[0]}@${COMMON_DOMAIN_TYPOS[domain]}?`;
+  }
+  return null;
+}
+
+function filterLettersOnly(value: string) {
+  return value.replace(/[^A-Za-z\s.'-]/g, "");
+}
+
+function filterDigitsOnly(value: string) {
+  return value.replace(/[^0-9]/g, "");
+}
 
 function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || "?";
@@ -53,7 +82,7 @@ export default function UserManagement() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const [studentSubTab, setStudentSubTab] = useState<"all" | "college" | "senior_high_school" | "junior_high_school">("all");
+  const [studentSubTab, setStudentSubTab] = useState<"all" | "college" | "senior_high_school" | "junior_high_school" | "revoked">("all");
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [approvingPassword, setApprovingPassword] = useState(false);
@@ -100,8 +129,9 @@ export default function UserManagement() {
   }, []);
 
   const baseFiltered = useMemo(() => {
-    if (studentSubTab === "all") return users;
-    return users.filter((u) => u.education_level === studentSubTab);
+    if (studentSubTab === "all") return users.filter((u) => u.is_active);
+    if (studentSubTab === "revoked") return users.filter((u) => !u.is_active);
+    return users.filter((u) => u.education_level === studentSubTab && u.is_active);
   }, [users, studentSubTab]);
 
   const filtered = useMemo(() => {
@@ -164,7 +194,26 @@ export default function UserManagement() {
     setEditingUser(user);
   }
 
+  function validateForm(): string | null {
+    if (!formData.name.trim()) return "Full name is required.";
+    if (!NAME_REGEX.test(formData.name)) return "Full name must contain letters only.";
+    if (!EMAIL_REGEX.test(formData.email.trim())) return "Please enter a complete, valid email address.";
+    const typoWarning = checkEmailDomainTypo(formData.email.trim());
+    if (typoWarning) return typoWarning;
+    if (!formData.password && !editingUser) return "Password is required.";
+    if (formData.school_id && !DIGITS_REGEX.test(formData.school_id)) return "School ID must contain numbers only.";
+    if (formData.education_level === "junior_high_school" && formData.course && !NAME_REGEX.test(formData.course)) {
+      return "Section must contain letters only.";
+    }
+    return null;
+  }
+
   async function handleCreateSubmit() {
+    const validationError = validateForm();
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
     setFormError("");
     setFormLoading(true);
     try {
@@ -187,6 +236,11 @@ export default function UserManagement() {
 
   async function handleEditSubmit() {
     if (!editingUser) return;
+    const validationError = validateForm();
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
     setFormError("");
     setFormLoading(true);
     try {
@@ -255,6 +309,12 @@ export default function UserManagement() {
       setApprovingPassword(false);
     }
   }
+
+  const tabLabel = (tab: string) => {
+    if (tab === "all") return "All";
+    if (tab === "revoked") return "Revoked";
+    return educationLabel(tab);
+  };
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] flex">
@@ -357,7 +417,7 @@ export default function UserManagement() {
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <p className="text-gray-400 text-sm font-medium">Inactive Students</p>
+            <p className="text-gray-400 text-sm font-medium">Revoked Students</p>
             <p className="text-4xl font-black text-red-500 mt-1">{inactiveCount}</p>
           </div>
 
@@ -368,17 +428,19 @@ export default function UserManagement() {
         </div>
 
         <div className="flex items-center gap-2 mb-6 flex-wrap">
-          {(["all", "college", "senior_high_school", "junior_high_school"] as const).map((level) => (
+          {(["all", "college", "senior_high_school", "junior_high_school", "revoked"] as const).map((level) => (
             <button
               key={level}
               onClick={() => setStudentSubTab(level)}
               className={`px-5 py-2.5 rounded-xl text-sm font-bold transition ${
                 studentSubTab === level
-                  ? "bg-[#1a237e] text-white shadow-md"
+                  ? level === "revoked"
+                    ? "bg-red-500 text-white shadow-md"
+                    : "bg-[#1a237e] text-white shadow-md"
                   : "bg-white text-gray-500 border border-gray-200 hover:border-[#1a237e] hover:text-[#1a237e]"
               }`}
             >
-              {level === "all" ? "All" : educationLabel(level)}
+              {tabLabel(level)}
             </button>
           ))}
         </div>
@@ -386,7 +448,7 @@ export default function UserManagement() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <h2 className="font-black text-gray-700 text-lg">
-              {studentSubTab === "all" ? "All Students" : educationLabel(studentSubTab) + " Students"}
+              {tabLabel(studentSubTab)} Students
             </h2>
             <input
               type="text"
@@ -563,7 +625,7 @@ export default function UserManagement() {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, name: filterLettersOnly(e.target.value) })}
                   placeholder="e.g. Juan Dela Cruz"
                   autoComplete="off"
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
@@ -618,9 +680,10 @@ export default function UserManagement() {
                 </label>
                 <input
                   type="text"
+                  inputMode="numeric"
                   value={formData.school_id}
-                  onChange={(e) => setFormData({ ...formData, school_id: e.target.value })}
-                  placeholder="e.g. 2022-10043"
+                  onChange={(e) => setFormData({ ...formData, school_id: filterDigitsOnly(e.target.value) })}
+                  placeholder="e.g. 202210043"
                   autoComplete="off"
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 />
@@ -640,13 +703,16 @@ export default function UserManagement() {
                   </div>
                   <div>
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Year Level</label>
-                    <input
-                      type="text"
+                    <select
                       value={formData.year_level}
                       onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
-                      placeholder="e.g. 3rd Year or Irregular"
                       className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                    />
+                    >
+                      <option value="">Select Year Level</option>
+                      {COLLEGE_YEARS.map((y) => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
                   </div>
                 </>
               )}
@@ -682,19 +748,31 @@ export default function UserManagement() {
               )}
 
               {formData.education_level === "junior_high_school" && (
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Grade Level</label>
-                  <select
-                    value={formData.year_level}
-                    onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
-                    className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                  >
-                    <option value="">Select Grade Level</option>
-                    {JHS_GRADES.map((g) => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
-                </div>
+                <>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Section</label>
+                    <input
+                      type="text"
+                      value={formData.course}
+                      onChange={(e) => setFormData({ ...formData, course: filterLettersOnly(e.target.value) })}
+                      placeholder="e.g. Newton"
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Grade Level</label>
+                    <select
+                      value={formData.year_level}
+                      onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    >
+                      <option value="">Select Grade Level</option>
+                      {JHS_GRADES.map((g) => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
               )}
 
               {formError && (
@@ -771,7 +849,7 @@ export default function UserManagement() {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, name: filterLettersOnly(e.target.value) })}
                   autoComplete="off"
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 />
@@ -810,8 +888,9 @@ export default function UserManagement() {
                 </label>
                 <input
                   type="text"
+                  inputMode="numeric"
                   value={formData.school_id}
-                  onChange={(e) => setFormData({ ...formData, school_id: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, school_id: filterDigitsOnly(e.target.value) })}
                   autoComplete="off"
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 />
@@ -831,13 +910,16 @@ export default function UserManagement() {
                   </div>
                   <div>
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Year Level</label>
-                    <input
-                      type="text"
+                    <select
                       value={formData.year_level}
                       onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
-                      placeholder="e.g. 3rd Year or Irregular"
                       className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                    />
+                    >
+                      <option value="">Select Year Level</option>
+                      {COLLEGE_YEARS.map((y) => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
                   </div>
                 </>
               )}
@@ -873,19 +955,30 @@ export default function UserManagement() {
               )}
 
               {formData.education_level === "junior_high_school" && (
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Grade Level</label>
-                  <select
-                    value={formData.year_level}
-                    onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
-                    className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
-                  >
-                    <option value="">Select Grade Level</option>
-                    {JHS_GRADES.map((g) => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
-                </div>
+                <>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Section</label>
+                    <input
+                      type="text"
+                      value={formData.course}
+                      onChange={(e) => setFormData({ ...formData, course: filterLettersOnly(e.target.value) })}
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Grade Level</label>
+                    <select
+                      value={formData.year_level}
+                      onChange={(e) => setFormData({ ...formData, year_level: e.target.value })}
+                      className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                    >
+                      <option value="">Select Grade Level</option>
+                      {JHS_GRADES.map((g) => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
               )}
 
               {formError && (
