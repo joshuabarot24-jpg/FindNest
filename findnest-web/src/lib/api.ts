@@ -30,4 +30,15 @@ api.interceptors.response.use(
   }
 );
 
+export async function logoutUser() {
+  try {
+    await api.post("/logout");
+  } catch (err) {
+    console.error("Logout API call failed:", err);
+  }
+  localStorage.removeItem("findnest_token");
+  localStorage.removeItem("findnest_user");
+  window.location.href = "/";
+}
+
 export default api;
