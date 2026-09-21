@@ -103,7 +103,7 @@ class MatchScoreService
             'ip_address' => request()->ip() ?? 'system',
         ]);
 
-        if ($finalScore >= $threshold) {
+        if ($finalScore >= 75) {
             $this->notifyStudent($report, $found, $finalScore, $match->id);
         }
     }
