@@ -87,11 +87,21 @@ export default function SystemManagement() {
     }
   };
 
+  const fetchMaintenanceMode = async () => {
+    try {
+      const response = await api.get("/system/maintenance-mode");
+      setMaintenanceMode(response.data.maintenance_mode);
+    } catch (err) {
+      console.error("Error fetching maintenance mode:", err);
+    }
+  };
+
   useEffect(() => {
     fetchSettings();
     fetchStats();
     fetchLogs();
     fetchBackups();
+    fetchMaintenanceMode();
   }, []);
 
   async function handleSaveSensitivity() {
@@ -134,15 +144,22 @@ export default function SystemManagement() {
     setShowMaintenanceConfirm(true);
   }
 
-  function confirmMaintenanceToggle() {
+  async function confirmMaintenanceToggle() {
     const next = !maintenanceMode;
-    setMaintenanceMode(next);
-    setShowMaintenanceConfirm(false);
-    setToast(
-      next
-        ? "Maintenance mode enabled. Students and admins are locked out."
-        : "Maintenance mode disabled. System is back online."
-    );
+    try {
+      await api.post("/system/maintenance-mode", { maintenance_mode: next });
+      setMaintenanceMode(next);
+      setShowMaintenanceConfirm(false);
+      setToast(
+        next
+          ? "Maintenance mode enabled. Students and admins are locked out."
+          : "Maintenance mode disabled. System is back online."
+      );
+    } catch (err) {
+      console.error("Error toggling maintenance mode:", err);
+      setToast("Failed to update maintenance mode.");
+      setShowMaintenanceConfirm(false);
+    }
   }
 
   function formatTime(dateStr: string) {
