@@ -24,6 +24,29 @@ const PRIVILEGE_OPTIONS = [
   { key: "support_inbox", label: "Support Inbox" },
 ];
 
+const NAME_REGEX = /^[A-Za-z\s.'-]*$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+const COMMON_DOMAIN_TYPOS: Record<string, string> = {
+  "gmail.co": "gmail.com",
+  "gmail.cm": "gmail.com",
+  "gmail.con": "gmail.com",
+  "yahoo.co": "yahoo.com",
+  "yahoo.cm": "yahoo.com",
+  "outlook.co": "outlook.com",
+};
+
+function filterLettersOnly(value: string) {
+  return value.replace(/[^A-Za-z\s.'-]/g, "");
+}
+
+function checkEmailDomainTypo(email: string): string | null {
+  const domain = email.split("@")[1]?.toLowerCase();
+  if (domain && COMMON_DOMAIN_TYPOS[domain]) {
+    return `Did you mean ${email.split("@")[0]}@${COMMON_DOMAIN_TYPOS[domain]}?`;
+  }
+  return null;
+}
+
 function getInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || "?";
 }
@@ -152,9 +175,21 @@ export default function AdminManagement() {
     }));
   }
 
+  function validateAssignForm(): string | null {
+    if (!formData.name.trim()) return "Personnel name is required.";
+    if (!NAME_REGEX.test(formData.name)) return "Personnel name must contain letters only.";
+    if (!EMAIL_REGEX.test(formData.email.trim())) return "Please enter a complete, valid email address.";
+    const typoWarning = checkEmailDomainTypo(formData.email.trim());
+    if (typoWarning) return typoWarning;
+    if (!formData.password.trim()) return "Password is required.";
+    if (formData.password.length < 8) return "Password must be at least 8 characters.";
+    return null;
+  }
+
   async function handleAssignSubmit() {
-    if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim()) {
-      setFormError("Name, email, and password are required.");
+    const validationError = validateAssignForm();
+    if (validationError) {
+      setFormError(validationError);
       return;
     }
     setFormError("");
@@ -179,6 +214,14 @@ export default function AdminManagement() {
 
   async function handleEditSubmit() {
     if (!editingAdmin) return;
+    if (!formData.name.trim() || !NAME_REGEX.test(formData.name)) {
+      setFormError("Personnel name must contain letters only.");
+      return;
+    }
+    if (!EMAIL_REGEX.test(formData.email.trim())) {
+      setFormError("Please enter a complete, valid email address.");
+      return;
+    }
     setFormError("");
     setFormLoading(true);
     try {
@@ -503,7 +546,7 @@ export default function AdminManagement() {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, name: filterLettersOnly(e.target.value) })}
                   placeholder="e.g. Juan Dela Cruz"
                   autoComplete="off"
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
@@ -615,7 +658,7 @@ export default function AdminManagement() {
                   <input
                     type="text"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, name: filterLettersOnly(e.target.value) })}
                     autoComplete="off"
                     className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                   />
