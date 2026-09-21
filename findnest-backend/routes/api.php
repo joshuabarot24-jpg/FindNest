@@ -143,5 +143,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/system-stats', [SystemStatsController::class, 'index']);
     Route::get('/system-settings', [SystemStatsController::class, 'getSettings']);
     Route::put('/system-settings', [SystemStatsController::class, 'updateSettings']);
+    Route::post('/system/backup', [SystemStatsController::class, 'backupNow']);
+    Route::get('/system/backups', [SystemStatsController::class, 'listBackups']);
+    Route::get('/system/backups/{filename}', [SystemStatsController::class, 'downloadBackup']);
 
 });
