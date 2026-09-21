@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect } from "react";
 import api, { logoutUser } from "@/lib/api";
 
 type ItemStatus = "unclaimed" | "claimed" | "for_disposal" | "confiscated" | "found_item";
+type LostStatus = "searching" | "matched" | "returned";
 
 interface FoundItem {
   id: number;
@@ -17,6 +18,19 @@ interface FoundItem {
   created_at: string;
 }
 
+interface LostItem {
+  id: number;
+  item_name: string;
+  category: string;
+  location_lost: string;
+  status: LostStatus;
+  photo_url: string | null;
+  description: string | null;
+  date_lost: string | null;
+  created_at: string;
+  user?: { name: string; email: string } | null;
+}
+
 const CATEGORY_OPTIONS = [
   "Electronics", "Personal Belongings", "ID/Cards", "Keys",
   "School Supplies", "Accessories", "Books", "Vapes", "Others",
@@ -24,12 +38,15 @@ const CATEGORY_OPTIONS = [
 
 const PAGE_SIZE = 5;
 
-function statusStyles(status: ItemStatus) {
+function statusStyles(status: string) {
   switch (status) {
     case "claimed": return { dot: "bg-green-500", badge: "bg-green-50 text-green-700", label: "Claimed" };
     case "unclaimed": return { dot: "bg-blue-500", badge: "bg-blue-50 text-blue-700", label: "Unclaimed" };
     case "confiscated": return { dot: "bg-purple-500", badge: "bg-purple-50 text-purple-700", label: "Confiscated" };
     case "found_item": return { dot: "bg-teal-500", badge: "bg-teal-50 text-teal-700", label: "Found Item" };
+    case "searching": return { dot: "bg-yellow-500", badge: "bg-yellow-50 text-yellow-700", label: "Searching" };
+    case "matched": return { dot: "bg-indigo-500", badge: "bg-indigo-50 text-indigo-700", label: "Matched" };
+    case "returned": return { dot: "bg-green-500", badge: "bg-green-50 text-green-700", label: "Returned" };
     case "for_disposal":
     default: return { dot: "bg-red-500", badge: "bg-red-50 text-red-600", label: "For Disposal" };
   }
@@ -40,13 +57,17 @@ function formatDateTime(dateStr: string) {
 }
 
 export default function ItemManagement() {
-  const [items, setItems] = useState<FoundItem[]>([]);
+  const [mainTab, setMainTab] = useState<"found" | "lost">("found");
+
+  const [foundItems, setFoundItems] = useState<FoundItem[]>([]);
+  const [lostItems, setLostItems] = useState<LostItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
   const [showAddModal, setShowAddModal] = useState(false);
-  const [viewingItem, setViewingItem] = useState<FoundItem | null>(null);
+  const [viewingFoundItem, setViewingFoundItem] = useState<FoundItem | null>(null);
+  const [viewingLostItem, setViewingLostItem] = useState<LostItem | null>(null);
   const [deletingItem, setDeletingItem] = useState<FoundItem | null>(null);
 
   const [formName, setFormName] = useState("");
@@ -71,44 +92,77 @@ export default function ItemManagement() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const fetchItems = async () => {
+  const fetchFoundItems = async () => {
     try {
       const res = await api.get("/found-items");
-      setItems(res.data.records || []);
+      setFoundItems(res.data.records || []);
     } catch (err: any) {
       if (err.response?.status === 403) {
         setAccessDenied(true);
       } else {
         console.error("Error fetching found items:", err);
       }
-    } finally {
-      setLoading(false);
     }
   };
 
-  useEffect(() => { fetchItems(); }, []);
+  const fetchLostItems = async () => {
+    try {
+      const res = await api.get("/lost-items");
+      setLostItems(res.data.reports || []);
+    } catch (err: any) {
+      if (err.response?.status === 403) {
+        setAccessDenied(true);
+      } else {
+        console.error("Error fetching lost items:", err);
+      }
+    }
+  };
 
-  const filtered = useMemo(() => {
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([fetchFoundItems(), fetchLostItems()]).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [mainTab, search]);
+
+  const filteredFound = useMemo(() => {
     const q = search.toLowerCase();
-    return items.filter(
+    return foundItems.filter(
       (i) =>
         i.item_name.toLowerCase().includes(q) ||
         i.category.toLowerCase().includes(q) ||
         (i.storage_location || "").toLowerCase().includes(q)
     );
-  }, [items, search]);
+  }, [foundItems, search]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const filteredLost = useMemo(() => {
+    const q = search.toLowerCase();
+    return lostItems.filter(
+      (i) =>
+        i.item_name.toLowerCase().includes(q) ||
+        i.category.toLowerCase().includes(q) ||
+        (i.location_lost || "").toLowerCase().includes(q)
+    );
+  }, [lostItems, search]);
+
+  const activeFiltered = mainTab === "found" ? filteredFound : filteredLost;
+  const totalPages = Math.max(1, Math.ceil(activeFiltered.length / PAGE_SIZE));
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [totalPages, page]);
 
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const paginatedFound = filteredFound.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const paginatedLost = filteredLost.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const unclaimedCount = items.filter((i) => i.status === "unclaimed").length;
-  const claimedCount = items.filter((i) => i.status === "claimed").length;
-  const disposalCount = items.filter((i) => i.status === "for_disposal").length;
+  const unclaimedCount = foundItems.filter((i) => i.status === "unclaimed").length;
+  const claimedCount = foundItems.filter((i) => i.status === "claimed").length;
+  const disposalCount = foundItems.filter((i) => i.status === "for_disposal").length;
+  const searchingCount = lostItems.filter((i) => i.status === "searching").length;
+  const matchedCount = lostItems.filter((i) => i.status === "matched").length;
+  const returnedCount = lostItems.filter((i) => i.status === "returned").length;
 
   function resetForm() {
     setFormName("");
@@ -170,7 +224,7 @@ export default function ItemManagement() {
       resetForm();
       setPage(1);
       setToast(`${formName.trim()} was added.`);
-      fetchItems();
+      fetchFoundItems();
     } catch (err: any) {
       setFormError(err.response?.data?.message || Object.values(err.response?.data?.errors || {}).flat().join(", ") || "Failed to add item.");
     } finally {
@@ -184,8 +238,8 @@ export default function ItemManagement() {
       await api.delete(`/found-items/${deletingItem.id}`);
       setToast(`${deletingItem.item_name} was deleted.`);
       setDeletingItem(null);
-      setViewingItem(null);
-      fetchItems();
+      setViewingFoundItem(null);
+      fetchFoundItems();
     } catch (err) {
       console.error("Error deleting item:", err);
     }
@@ -271,44 +325,88 @@ export default function ItemManagement() {
             <h1 className="text-3xl font-black text-[#1a237e]">Item Management</h1>
             <p className="text-gray-400 text-sm mt-1">Review, approve and manage all lost and found item reports</p>
           </div>
+          {mainTab === "found" && (
+            <button
+              onClick={() => { resetForm(); setShowAddModal(true); }}
+              className="flex items-center gap-2 bg-[#1a237e] hover:bg-[#283593] text-white font-bold px-6 py-3 rounded-2xl transition shadow-lg hover:-translate-y-0.5 transform"
+            >
+              + Add Item
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 mb-6">
           <button
-            onClick={() => { resetForm(); setShowAddModal(true); }}
-            className="flex items-center gap-2 bg-[#1a237e] hover:bg-[#283593] text-white font-bold px-6 py-3 rounded-2xl transition shadow-lg hover:-translate-y-0.5 transform"
+            onClick={() => setMainTab("found")}
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition ${
+              mainTab === "found"
+                ? "bg-[#1a237e] text-white shadow-md"
+                : "bg-white text-gray-500 border border-gray-200 hover:border-[#1a237e] hover:text-[#1a237e]"
+            }`}
           >
-            + Add Item
+            Found Items
+          </button>
+          <button
+            onClick={() => setMainTab("lost")}
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition ${
+              mainTab === "lost"
+                ? "bg-[#1a237e] text-white shadow-md"
+                : "bg-white text-gray-500 border border-gray-200 hover:border-[#1a237e] hover:text-[#1a237e]"
+            }`}
+          >
+            Lost Item Reports
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <p className="text-gray-400 text-sm font-medium">Unclaimed Items</p>
-            <p className="text-4xl font-black text-[#1a237e] mt-1">{unclaimedCount}</p>
+        {mainTab === "found" ? (
+          <div className="grid grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <p className="text-gray-400 text-sm font-medium">Unclaimed Items</p>
+              <p className="text-4xl font-black text-[#1a237e] mt-1">{unclaimedCount}</p>
+            </div>
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <p className="text-gray-400 text-sm font-medium">Claimed Items</p>
+              <p className="text-4xl font-black text-green-600 mt-1">{claimedCount}</p>
+            </div>
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <p className="text-gray-400 text-sm font-medium">For Disposal</p>
+              <p className="text-4xl font-black text-red-500 mt-1">{disposalCount}</p>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <p className="text-gray-400 text-sm font-medium">Claimed Items</p>
-            <p className="text-4xl font-black text-green-600 mt-1">{claimedCount}</p>
+        ) : (
+          <div className="grid grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <p className="text-gray-400 text-sm font-medium">Searching</p>
+              <p className="text-4xl font-black text-yellow-500 mt-1">{searchingCount}</p>
+            </div>
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <p className="text-gray-400 text-sm font-medium">Matched</p>
+              <p className="text-4xl font-black text-indigo-500 mt-1">{matchedCount}</p>
+            </div>
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <p className="text-gray-400 text-sm font-medium">Returned</p>
+              <p className="text-4xl font-black text-green-600 mt-1">{returnedCount}</p>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <p className="text-gray-400 text-sm font-medium">For Disposal</p>
-            <p className="text-4xl font-black text-red-500 mt-1">{disposalCount}</p>
-          </div>
-        </div>
+        )}
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-            <h2 className="font-black text-gray-700 text-lg">All Items</h2>
+            <h2 className="font-black text-gray-700 text-lg">
+              {mainTab === "found" ? "All Found Items" : "All Lost Item Reports"}
+            </h2>
             <input
               type="text"
               placeholder="Search by name, category, or location..."
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => setSearch(e.target.value)}
               className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm w-72"
             />
           </div>
 
           {loading ? (
             <div className="text-center py-16 text-gray-400 text-sm">Loading items...</div>
-          ) : (
+          ) : mainTab === "found" ? (
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
@@ -322,7 +420,7 @@ export default function ItemManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {paginated.map((item) => {
+                {paginatedFound.map((item) => {
                   const styles = statusStyles(item.status);
                   return (
                     <tr key={item.id} className="hover:bg-gray-50 transition">
@@ -355,7 +453,61 @@ export default function ItemManagement() {
                         <p className="text-gray-400 text-xs">{formatDateTime(item.created_at)}</p>
                       </td>
                       <td className="px-6 py-4">
-                        <button onClick={() => setViewingItem(item)} className="bg-blue-50 hover:bg-[#1a237e] hover:text-white text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg transition">View</button>
+                        <button onClick={() => setViewingFoundItem(item)} className="bg-blue-50 hover:bg-[#1a237e] hover:text-white text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg transition">View</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Photo</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Item Name</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Category</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Reported By</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Logged</th>
+                  <th className="text-left px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {paginatedLost.map((item) => {
+                  const styles = statusStyles(item.status);
+                  return (
+                    <tr key={item.id} className="hover:bg-gray-50 transition">
+                      <td className="px-6 py-4">
+                        <div className="w-12 h-12 bg-gray-100 rounded-xl overflow-hidden flex items-center justify-center">
+                          {item.photo_url ? (
+                            <img src={item.photo_url} alt={item.item_name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs">N/A</div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="font-bold text-gray-700">{item.item_name}</p>
+                        <p className="text-gray-400 text-xs mt-0.5">ID: LST-{String(item.id).padStart(3, "0")}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="bg-blue-50 text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg">{item.category}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-gray-500 text-sm">{item.user?.name || "—"}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${styles.dot}`} />
+                          <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${styles.badge}`}>{styles.label}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-gray-400 text-xs">{formatDateTime(item.created_at)}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button onClick={() => setViewingLostItem(item)} className="bg-blue-50 hover:bg-[#1a237e] hover:text-white text-[#1a237e] text-xs font-bold px-3 py-1.5 rounded-lg transition">View</button>
                       </td>
                     </tr>
                   );
@@ -364,7 +516,7 @@ export default function ItemManagement() {
             </table>
           )}
 
-          {!loading && filtered.length === 0 && (
+          {!loading && activeFiltered.length === 0 && (
             <div className="text-center py-16 text-gray-400">
               <p className="font-bold text-lg">No items found</p>
               <p className="text-sm mt-1">Try searching with a different keyword</p>
@@ -373,7 +525,7 @@ export default function ItemManagement() {
 
           <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
             <p className="text-gray-400 text-sm">
-              Showing {filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}&ndash;{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} items
+              Showing {activeFiltered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}&ndash;{Math.min(page * PAGE_SIZE, activeFiltered.length)} of {activeFiltered.length} items
             </p>
             <div className="flex items-center gap-2">
               <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 border border-gray-200 rounded-lg text-gray-400 text-sm hover:border-[#1a237e] hover:text-[#1a237e] transition disabled:opacity-40 disabled:cursor-not-allowed">Previous</button>
@@ -474,54 +626,106 @@ export default function ItemManagement() {
         </div>
       )}
 
-      {viewingItem && (
+      {viewingFoundItem && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
           <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 p-8 max-h-[85vh] overflow-y-auto">
-            <button onClick={() => setViewingItem(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none">&times;</button>
+            <button onClick={() => setViewingFoundItem(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none">&times;</button>
             <div className="w-full h-48 rounded-2xl overflow-hidden bg-gray-100 mb-5 flex items-center justify-center">
-              {viewingItem.photo_url ? (
-                <img src={viewingItem.photo_url} alt={viewingItem.item_name} className="w-full h-full object-cover" />
+              {viewingFoundItem.photo_url ? (
+                <img src={viewingFoundItem.photo_url} alt={viewingFoundItem.item_name} className="w-full h-full object-cover" />
               ) : (
                 <div className="text-gray-400 text-sm">No Photo Available</div>
               )}
             </div>
-            <h2 className="text-xl font-black text-[#1a237e]">{viewingItem.item_name}</h2>
-            <p className="text-gray-400 text-xs mb-4">ID: ITM-{String(viewingItem.id).padStart(3, "0")}</p>
+            <h2 className="text-xl font-black text-[#1a237e]">{viewingFoundItem.item_name}</h2>
+            <p className="text-gray-400 text-xs mb-4">ID: ITM-{String(viewingFoundItem.id).padStart(3, "0")}</p>
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                 <span className="text-gray-400 font-medium">Category</span>
-                <span className="font-bold text-gray-700">{viewingItem.category}</span>
+                <span className="font-bold text-gray-700">{viewingFoundItem.category}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                 <span className="text-gray-400 font-medium">Location Found</span>
-                <span className="font-bold text-gray-700">{viewingItem.location_found}</span>
+                <span className="font-bold text-gray-700">{viewingFoundItem.location_found}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                 <span className="text-gray-400 font-medium">Storage Location</span>
-                <span className="font-bold text-gray-700">{viewingItem.storage_location || "—"}</span>
+                <span className="font-bold text-gray-700">{viewingFoundItem.storage_location || "—"}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                 <span className="text-gray-400 font-medium">Date Found</span>
-                <span className="font-bold text-gray-700">{viewingItem.date_found || "—"}</span>
+                <span className="font-bold text-gray-700">{viewingFoundItem.date_found || "—"}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                 <span className="text-gray-400 font-medium">Logged</span>
-                <span className="font-bold text-gray-700 text-xs">{formatDateTime(viewingItem.created_at)}</span>
+                <span className="font-bold text-gray-700 text-xs">{formatDateTime(viewingFoundItem.created_at)}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                 <span className="text-gray-400 font-medium">Status</span>
-                <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${statusStyles(viewingItem.status).badge}`}>{statusStyles(viewingItem.status).label}</span>
+                <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${statusStyles(viewingFoundItem.status).badge}`}>{statusStyles(viewingFoundItem.status).label}</span>
               </div>
-              {viewingItem.description && (
+              {viewingFoundItem.description && (
                 <div className="p-3 bg-gray-50 rounded-xl">
                   <span className="text-gray-400 font-medium text-sm block mb-1">Description</span>
-                  <span className="font-bold text-gray-700 text-sm">{viewingItem.description}</span>
+                  <span className="font-bold text-gray-700 text-sm">{viewingFoundItem.description}</span>
                 </div>
               )}
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setDeletingItem(viewingItem)} className="flex-1 bg-red-50 hover:bg-red-500 hover:text-white text-red-500 font-bold py-3 rounded-2xl transition">Delete</button>
-              <button onClick={() => setViewingItem(null)} className="flex-1 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition">Close</button>
+              <button onClick={() => setDeletingItem(viewingFoundItem)} className="flex-1 bg-red-50 hover:bg-red-500 hover:text-white text-red-500 font-bold py-3 rounded-2xl transition">Delete</button>
+              <button onClick={() => setViewingFoundItem(null)} className="flex-1 bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewingLostItem && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 p-8 max-h-[85vh] overflow-y-auto">
+            <button onClick={() => setViewingLostItem(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none">&times;</button>
+            <div className="w-full h-48 rounded-2xl overflow-hidden bg-gray-100 mb-5 flex items-center justify-center">
+              {viewingLostItem.photo_url ? (
+                <img src={viewingLostItem.photo_url} alt={viewingLostItem.item_name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="text-gray-400 text-sm">No Photo Available</div>
+              )}
+            </div>
+            <h2 className="text-xl font-black text-[#1a237e]">{viewingLostItem.item_name}</h2>
+            <p className="text-gray-400 text-xs mb-4">ID: LST-{String(viewingLostItem.id).padStart(3, "0")}</p>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-gray-400 font-medium">Category</span>
+                <span className="font-bold text-gray-700">{viewingLostItem.category}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-gray-400 font-medium">Reported By</span>
+                <span className="font-bold text-gray-700">{viewingLostItem.user?.name || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-gray-400 font-medium">Location Lost</span>
+                <span className="font-bold text-gray-700">{viewingLostItem.location_lost}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-gray-400 font-medium">Date Lost</span>
+                <span className="font-bold text-gray-700">{viewingLostItem.date_lost || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-gray-400 font-medium">Logged</span>
+                <span className="font-bold text-gray-700 text-xs">{formatDateTime(viewingLostItem.created_at)}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <span className="text-gray-400 font-medium">Status</span>
+                <span className={`text-xs font-bold px-3 py-1.5 rounded-lg ${statusStyles(viewingLostItem.status).badge}`}>{statusStyles(viewingLostItem.status).label}</span>
+              </div>
+              {viewingLostItem.description && (
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <span className="text-gray-400 font-medium text-sm block mb-1">Description</span>
+                  <span className="font-bold text-gray-700 text-sm">{viewingLostItem.description}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setViewingLostItem(null)} className="w-full bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition">Close</button>
             </div>
           </div>
         </div>
