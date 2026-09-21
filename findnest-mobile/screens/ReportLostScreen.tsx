@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Image,
   Modal,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,22 +16,28 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view
 import api from "../lib/api";
 
 const categories = ["Electronics", "Personal Belongings", "ID/Cards", "Keys", "School Supplies", "Accessories", "Others"];
-
+const MAX_PHOTOS = 4;
 const NAVY = "#1a237e";
+
+interface PhotoItem {
+  preview: string;
+  url: string | null;
+  uploading: boolean;
+}
 
 export default function ReportLostScreen({ navigation }: any) {
   const [itemName, setItemName] = useState("");
   const [itemNameAiFilled, setItemNameAiFilled] = useState(false);
   const [category, setCategory] = useState("Electronics");
   const [othersSpecify, setOthersSpecify] = useState("");
+  const [primaryColor, setPrimaryColor] = useState("");
+  const [brandModel, setBrandModel] = useState("");
   const [description, setDescription] = useState("");
   const [aiFilled, setAiFilled] = useState(false);
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -40,12 +47,42 @@ export default function ReportLostScreen({ navigation }: any) {
   const [submitError, setSubmitError] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const uploadPhoto = async (uri: string) => {
-    setPhotoPreview(uri);
+  const [itemChoices, setItemChoices] = useState<string[]>([]);
+  const [choosingItemUrl, setChoosingItemUrl] = useState<string | null>(null);
+  const [resolvingChoice, setResolvingChoice] = useState(false);
+
+  const anyUploading = photos.some((p) => p.uploading);
+  const uploadedUrls = photos.filter((p) => p.url).map((p) => p.url as string);
+
+  const applyAiFields = (data: any) => {
+    if (data.ai_item_name) {
+      setItemName(data.ai_item_name);
+      setItemNameAiFilled(true);
+    }
+    if (data.ai_category && categories.includes(data.ai_category)) {
+      setCategory(data.ai_category);
+    }
+    if (data.ai_description) {
+      setDescription(data.ai_description);
+      setAiFilled(true);
+    }
+    if (data.ai_details?.primary_color) {
+      setPrimaryColor(data.ai_details.primary_color);
+    }
+    if (data.ai_details?.brand_or_markings) {
+      setBrandModel(data.ai_details.brand_or_markings);
+    }
+  };
+
+  const uploadOne = async (uri: string) => {
+    if (photos.length >= MAX_PHOTOS) return;
+
     setPhotoError(false);
     setPhotoErrorMessage("");
-    setPhotoUrl(null);
-    setUploading(true);
+    const isFirstPhoto = photos.length === 0;
+    const idx = photos.length;
+
+    setPhotos((prev) => [...prev, { preview: uri, url: null, uploading: true }]);
 
     try {
       const formData = new FormData();
@@ -55,31 +92,55 @@ export default function ReportLostScreen({ navigation }: any) {
       const res = await api.post("/upload/image", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setPhotoUrl(res.data.url);
 
-      if (res.data.ai_item_name) {
-        setItemName(res.data.ai_item_name);
-        setItemNameAiFilled(true);
-      } else {
-        setItemNameAiFilled(false);
-      }
-      if (res.data.ai_category && categories.includes(res.data.ai_category)) {
-        setCategory(res.data.ai_category);
-      }
-      if (res.data.ai_description) {
-        setDescription(res.data.ai_description);
-        setAiFilled(true);
-      } else {
-        setAiFilled(false);
+      setPhotos((prev) => {
+        const next = [...prev];
+        next[idx] = { ...next[idx], url: res.data.url, uploading: false };
+        return next;
+      });
+
+      if (isFirstPhoto) {
+        applyAiFields(res.data);
       }
     } catch (err: any) {
+      if (err.response?.data?.multiple_items && isFirstPhoto) {
+        setPhotos((prev) => {
+          const next = [...prev];
+          next[idx] = { ...next[idx], url: err.response.data.url, uploading: false };
+          return next;
+        });
+        setItemChoices(err.response.data.items_found || []);
+        setChoosingItemUrl(err.response.data.url);
+        return;
+      }
       console.error("Photo upload failed:", JSON.stringify(err.response?.data));
-      setPhotoPreview(null);
-      setPhotoError(true);
+      setPhotos((prev) => prev.filter((_, i2) => i2 !== idx));
       setPhotoErrorMessage(err.response?.data?.message || "Photo upload failed. Please try again.");
-    } finally {
-      setUploading(false);
+      setPhotoError(true);
     }
+  };
+
+  const handleChooseItem = async (choice: string) => {
+    if (!choosingItemUrl) return;
+    setResolvingChoice(true);
+    try {
+      const res = await api.post("/upload/analyze-existing", {
+        url: choosingItemUrl,
+        item_hint: choice,
+      });
+      applyAiFields(res.data);
+    } catch (err: any) {
+      console.error("Failed to analyze chosen item:", err);
+      setPhotoErrorMessage("Could not analyze the selected item. You can still fill the fields manually.");
+    } finally {
+      setChoosingItemUrl(null);
+      setItemChoices([]);
+      setResolvingChoice(false);
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
   const pickFromGallery = async () => {
@@ -88,7 +149,7 @@ export default function ReportLostScreen({ navigation }: any) {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
     });
-    if (!result.canceled) uploadPhoto(result.assets[0].uri);
+    if (!result.canceled) uploadOne(result.assets[0].uri);
   };
 
   const takePhoto = async () => {
@@ -98,15 +159,13 @@ export default function ReportLostScreen({ navigation }: any) {
       setPhotoError(true);
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({
-      quality: 0.7,
-    });
-    if (!result.canceled) uploadPhoto(result.assets[0].uri);
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+    if (!result.canceled) uploadOne(result.assets[0].uri);
   };
 
   const handleReview = () => {
     if (!itemName.trim()) return;
-    if (!photoUrl) {
+    if (uploadedUrls.length === 0) {
       setPhotoError(true);
       return;
     }
@@ -135,7 +194,11 @@ export default function ReportLostScreen({ navigation }: any) {
         description: description,
         location_lost: location.trim(),
         date_lost: date,
-        photo_url: photoUrl,
+        approx_time: time,
+        primary_color: primaryColor,
+        brand_model: brandModel,
+        photo_url: uploadedUrls[0] || null,
+        photo_urls: uploadedUrls,
       });
       setShowConfirm(false);
       setSubmitted(true);
@@ -185,30 +248,44 @@ export default function ReportLostScreen({ navigation }: any) {
             <Text style={styles.pageSubtitle}>Help us help you find it faster</Text>
 
             <Text style={styles.label}>
-              Upload Photo <Text style={styles.requiredMark}>*</Text>
+              Upload Photos <Text style={styles.requiredMark}>*</Text>
+              <Text style={styles.hintText}> (up to {MAX_PHOTOS}, different angles help)</Text>
             </Text>
-            <TouchableOpacity
-              style={[styles.uploadBox, photoError && styles.uploadBoxError]}
-              onPress={() => setShowPhotoOptions(true)}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <Text style={styles.uploadText}>Analyzing photo with AI...</Text>
-              ) : photoPreview ? (
-                <>
-                  <Image source={{ uri: photoPreview }} style={styles.previewImage} />
-                  {photoUrl && <Text style={styles.uploadedText}>Photo uploaded and analyzed</Text>}
-                </>
-              ) : (
-                <>
-                  <Ionicons name="camera-outline" size={30} color={photoError ? "#ef4444" : "#9ca3af"} style={{ marginBottom: 8 }} />
-                  <Text style={[styles.uploadText, photoError && styles.uploadTextError]}>Add a Photo</Text>
-                  <Text style={[styles.uploadSubtext, photoError && styles.uploadSubtextError]}>Choose from gallery or take a picture</Text>
-                </>
-              )}
-            </TouchableOpacity>
+
+            {photos.length > 0 && (
+              <View style={styles.photoGrid}>
+                {photos.map((p, idx) => (
+                  <View key={idx} style={styles.photoThumbWrap}>
+                    <Image source={{ uri: p.preview }} style={styles.photoThumb} />
+                    {p.uploading && (
+                      <View style={styles.photoThumbLoading}>
+                        <Text style={styles.photoThumbLoadingText}>...</Text>
+                      </View>
+                    )}
+                    {!p.uploading && (
+                      <TouchableOpacity style={styles.photoRemoveBtn} onPress={() => removePhoto(idx)}>
+                        <Text style={styles.photoRemoveBtnText}>×</Text>
+                      </TouchableOpacity>
+                    )}
+                    {idx === 0 && <Text style={styles.mainBadge}>MAIN</Text>}
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {photos.length < MAX_PHOTOS && (
+              <TouchableOpacity
+                style={[styles.uploadBox, photoError && styles.uploadBoxError]}
+                onPress={() => setShowPhotoOptions(true)}
+              >
+                <Ionicons name="camera-outline" size={26} color={photoError ? "#ef4444" : "#9ca3af"} style={{ marginBottom: 6 }} />
+                <Text style={[styles.uploadText, photoError && styles.uploadTextError]}>
+                  {photos.length === 0 ? "Add a Photo" : `Add more (${MAX_PHOTOS - photos.length} left)`}
+                </Text>
+              </TouchableOpacity>
+            )}
             {photoError && (
-              <Text style={styles.errorText}>{photoErrorMessage || "A photo is required before you can submit your report."}</Text>
+              <Text style={styles.errorText}>{photoErrorMessage || "At least one photo is required before you can submit your report."}</Text>
             )}
 
             <View style={styles.labelRow}>
@@ -225,7 +302,7 @@ export default function ReportLostScreen({ navigation }: any) {
 
             <View style={styles.labelRow}>
               <Text style={styles.label}>Category</Text>
-              {photoUrl && <Text style={styles.autoTag}>auto-detected, editable</Text>}
+              {uploadedUrls.length > 0 && <Text style={styles.autoTag}>auto-detected, editable</Text>}
             </View>
             <TouchableOpacity style={styles.selectBox} onPress={() => setShowCategoryPicker(true)}>
               <Text style={styles.selectText}>{category}</Text>
@@ -244,6 +321,34 @@ export default function ReportLostScreen({ navigation }: any) {
                 />
               </>
             )}
+
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>
+                Primary Color(s) {!primaryColor && <Text style={styles.requiredMark}>*</Text>}
+              </Text>
+              {!!primaryColor && <Text style={styles.autoTag}>auto-detected, editable</Text>}
+            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="If AI couldn't detect this, fill in manually (e.g. Black, Silver)"
+              placeholderTextColor="#9ca3af"
+              value={primaryColor}
+              onChangeText={setPrimaryColor}
+            />
+
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>
+                Brand & Model {!brandModel && <Text style={styles.requiredMark}>*</Text>}
+              </Text>
+              {!!brandModel && <Text style={styles.autoTag}>auto-detected, editable</Text>}
+            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="If AI couldn't detect this, fill in manually (e.g. Apple iPhone 15)"
+              placeholderTextColor="#9ca3af"
+              value={brandModel}
+              onChangeText={setBrandModel}
+            />
 
             <View style={styles.labelRow}>
               <Text style={styles.label}>
@@ -292,11 +397,11 @@ export default function ReportLostScreen({ navigation }: any) {
             {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
             <TouchableOpacity
-              style={[styles.submitButton, (!itemName.trim() || !photoUrl || uploading) && styles.submitButtonDisabled]}
+              style={[styles.submitButton, (!itemName.trim() || uploadedUrls.length === 0 || anyUploading) && styles.submitButtonDisabled]}
               onPress={handleReview}
-              disabled={!itemName.trim() || !photoUrl || uploading}
+              disabled={!itemName.trim() || uploadedUrls.length === 0 || anyUploading}
             >
-              <Text style={styles.submitButtonText}>{uploading ? "Waiting for photo analysis..." : "Review Report"}</Text>
+              <Text style={styles.submitButtonText}>{anyUploading ? "Waiting for photo analysis..." : "Review Report"}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -346,6 +451,29 @@ export default function ReportLostScreen({ navigation }: any) {
         </TouchableOpacity>
       </Modal>
 
+      <Modal visible={!!choosingItemUrl} animationType="slide" transparent onRequestClose={() => { setChoosingItemUrl(null); setItemChoices([]); }}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Multiple Items Detected</Text>
+            <Text style={styles.confirmSubtitle}>We found several items in your photo. Which one did you lose?</Text>
+            {resolvingChoice ? (
+              <Text style={styles.uploadText}>Analyzing your selection...</Text>
+            ) : (
+              <ScrollView style={{ maxHeight: 300 }}>
+                {itemChoices.map((choice, idx) => (
+                  <TouchableOpacity key={idx} style={styles.categoryOption} onPress={() => handleChooseItem(choice)}>
+                    <Text style={styles.categoryOptionText}>{choice}</Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity onPress={() => { setChoosingItemUrl(null); setItemChoices([]); }} style={{ paddingVertical: 14, alignItems: "center" }}>
+                  <Text style={{ color: "#9ca3af", fontWeight: "700", fontSize: 13 }}>None of these — I'll fill in manually</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={showConfirm} animationType="slide" transparent onRequestClose={() => setShowConfirm(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.confirmCard}>
@@ -355,9 +483,12 @@ export default function ReportLostScreen({ navigation }: any) {
             <View style={styles.confirmBox}>
               <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Item: </Text>{itemName}</Text>
               <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Category: </Text>{category === "Others" ? othersSpecify : category}</Text>
+              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Primary Color(s): </Text>{primaryColor || "Not specified"}</Text>
+              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Brand & Model: </Text>{brandModel || "Not specified"}</Text>
               <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Description: </Text>{description}</Text>
               <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Location: </Text>{location}</Text>
               <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Date: </Text>{date} {time ? `at ${time}` : ""}</Text>
+              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Photos: </Text>{uploadedUrls.length} attached</Text>
             </View>
 
             <View style={styles.confirmButtonRow}>
@@ -407,21 +538,26 @@ const styles = StyleSheet.create({
   pageSubtitle: { fontSize: 12.5, color: "#9ca3af", marginBottom: 22 },
   labelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   label: { fontSize: 12.5, fontWeight: "800", color: "#374151" },
+  hintText: { fontSize: 10.5, fontWeight: "600", color: "#9ca3af" },
   autoTag: { fontSize: 10.5, fontWeight: "700", color: "#22c55e" },
   requiredMark: { color: "#ef4444" },
   input: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13, fontSize: 13.5, color: "#374151", marginBottom: 16 },
   textArea: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, fontSize: 13.5, color: "#374151", minHeight: 100, marginBottom: 16 },
   selectBox: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 16 },
   selectText: { fontSize: 13.5, color: "#374151", fontWeight: "600" },
-  uploadBox: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderStyle: "dashed", borderRadius: 16, paddingVertical: 30, alignItems: "center", marginBottom: 8 },
+  photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
+  photoThumbWrap: { width: "23%", aspectRatio: 1, position: "relative" },
+  photoThumb: { width: "100%", height: "100%", borderRadius: 12, resizeMode: "cover" },
+  photoThumbLoading: { position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 12, justifyContent: "center", alignItems: "center" },
+  photoThumbLoadingText: { color: "white", fontWeight: "800" },
+  photoRemoveBtn: { position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: "#ef4444", justifyContent: "center", alignItems: "center" },
+  photoRemoveBtnText: { color: "white", fontWeight: "900", fontSize: 13, lineHeight: 16 },
+  mainBadge: { position: "absolute", bottom: 2, left: 2, backgroundColor: NAVY, color: "white", fontSize: 8, fontWeight: "800", paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4, overflow: "hidden" },
+  uploadBox: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderStyle: "dashed", borderRadius: 16, paddingVertical: 24, alignItems: "center", marginBottom: 8 },
   uploadBoxError: { borderColor: "#ef4444", backgroundColor: "#fef2f2" },
   uploadText: { fontSize: 13.5, fontWeight: "700", color: "#374151" },
   uploadTextError: { color: "#ef4444" },
-  uploadedText: { fontSize: 11, fontWeight: "700", color: "#22c55e", marginTop: 8 },
-  uploadSubtext: { fontSize: 11, color: "#9ca3af", marginTop: 3 },
-  uploadSubtextError: { color: "#f87171" },
   errorText: { fontSize: 11.5, fontWeight: "800", color: "#ef4444", marginBottom: 14 },
-  previewImage: { width: "100%", height: 160, borderRadius: 12, resizeMode: "cover" },
   submitButton: { backgroundColor: "#ef4444", borderRadius: 16, paddingVertical: 16, alignItems: "center" },
   submitButtonDisabled: { backgroundColor: "#fca5a5" },
   submitButtonText: { color: "white", fontWeight: "900", fontSize: 15 },
