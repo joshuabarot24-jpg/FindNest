@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import api from "@/lib/api";
+import api, { logoutUser } from "@/lib/api";
 
 interface LogEntry {
   action: string;
@@ -227,11 +227,7 @@ export default function SystemManagement() {
           </div>
 
           <button
-            onClick={() => {
-              localStorage.removeItem("findnest_token");
-              localStorage.removeItem("findnest_user");
-              window.location.href = "/";
-            }}
+            onClick={logoutUser}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-200 hover:bg-white/10 transition font-medium w-full text-left"
           >
             <span>Logout</span>
