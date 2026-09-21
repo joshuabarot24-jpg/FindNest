@@ -60,12 +60,14 @@ class MatchScoreService
 
         $temporalSpatialScore = $this->calculateTemporalSpatialScore($report, $found);
 
-        $finalScore = round(
-            ($descriptionScore * 0.35) +
+        $baseScore = ($descriptionScore * 0.35) +
             ($photoScore * 0.35) +
             ($categoryScore * 0.15) +
-            ($temporalSpatialScore * 0.15)
-        );
+            ($temporalSpatialScore * 0.15);
+
+        $bonusPoints = $this->calculateBonusPoints($report, $found);
+
+        $finalScore = min(100, round($baseScore + $bonusPoints));
 
         $threshold = (int) \App\Models\SystemSetting::get('match_confidence_threshold', 75);
         $matchStatus = $finalScore < $threshold ? null : 'pending';
@@ -191,6 +193,39 @@ class MatchScoreService
                 ['type' => 'ai_match', 'report_id' => (string) $report->id]
             );
         }
+    }
+
+    protected function calculateBonusPoints(LostItemReport $report, FoundItemRecord $found): int
+    {
+        $bonus = 0;
+
+        if (!empty($report->item_name) && !empty($found->item_name)) {
+            similar_text(strtolower($report->item_name), strtolower($found->item_name), $namePercent);
+            if ($namePercent >= 70) {
+                $bonus += 10;
+            }
+        }
+
+        if (!empty($report->brand_model) && !empty($found->brand_model)) {
+            $brandA = strtolower(trim($report->brand_model));
+            $brandB = strtolower(trim($found->brand_model));
+            if ($brandA === $brandB || str_contains($brandA, $brandB) || str_contains($brandB, $brandA)) {
+                $bonus += 10;
+            }
+        }
+
+        if (!empty($report->primary_color) && !empty($found->primary_color)) {
+            if (strtolower(trim($report->primary_color)) === strtolower(trim($found->primary_color))) {
+                $bonus += 5;
+            }
+        }
+
+        $daysDiff = abs(Carbon::parse($report->date_lost)->diffInDays(Carbon::parse($found->date_found)));
+        if ($daysDiff <= 1) {
+            $bonus += 5;
+        }
+
+        return $bonus;
     }
 
     public function compareClaimPhotos(string $claimantPhotoUrl, string $foundItemPhotoUrl): ?int
