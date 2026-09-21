@@ -18,7 +18,9 @@ export default function SystemManagement() {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [showMaintenanceConfirm, setShowMaintenanceConfirm] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
-  const [lastBackup, setLastBackup] = useState("Today");
+  const [lastBackup, setLastBackup] = useState("Never");
+  const [backups, setBackups] = useState<{ filename: string; size_kb: number; created_at: number }[]>([]);
+  const [showBackupsList, setShowBackupsList] = useState(false);
 
   const [totalRecords, setTotalRecords] = useState(0);
   const [dbSizeGb, setDbSizeGb] = useState(0);
@@ -72,10 +74,24 @@ export default function SystemManagement() {
     }
   };
 
+  const fetchBackups = async () => {
+    try {
+      const response = await api.get("/system/backups");
+      const list = response.data.backups || [];
+      setBackups(list);
+      if (list.length > 0) {
+        setLastBackup(new Date(list[0].created_at * 1000).toLocaleString());
+      }
+    } catch (err) {
+      console.error("Error fetching backups:", err);
+    }
+  };
+
   useEffect(() => {
     fetchSettings();
     fetchStats();
     fetchLogs();
+    fetchBackups();
   }, []);
 
   async function handleSaveSensitivity() {
@@ -92,14 +108,26 @@ export default function SystemManagement() {
     }
   }
 
-  function handleBackupNow() {
+  async function handleBackupNow() {
     if (isBackingUp) return;
     setIsBackingUp(true);
-    setTimeout(() => {
-      setLastBackup("Today");
+    try {
+      const response = await api.post("/system/backup");
+      setLastBackup(new Date(response.data.created_at).toLocaleString());
+      setToast(`Backup completed — ${response.data.record_count.lost_item_reports} lost reports, ${response.data.record_count.claims} claims saved.`);
+      fetchBackups();
+    } catch (err) {
+      console.error("Backup failed:", err);
+      setToast("Backup failed. Please try again.");
+    } finally {
       setIsBackingUp(false);
-      setToast("Backup completed successfully.");
-    }, 1500);
+    }
+  }
+
+  function downloadBackup(filename: string) {
+    const token = localStorage.getItem("findnest_token");
+    const baseUrl = api.defaults.baseURL;
+    window.open(`${baseUrl}/system/backups/${filename}?token=${token}`, "_blank");
   }
 
   function requestMaintenanceToggle() {
@@ -316,6 +344,15 @@ export default function SystemManagement() {
                 {isBackingUp ? "Backing Up..." : "Backup Records Now"}
               </button>
 
+              {backups.length > 0 && (
+                <button
+                  onClick={() => setShowBackupsList(true)}
+                  className="w-full text-sm font-bold text-[#1a237e] hover:underline"
+                >
+                  View Backup History ({backups.length})
+                </button>
+              )}
+
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                 <div>
                   <p className="font-bold text-gray-700 text-sm">Maintenance Mode</p>
@@ -400,6 +437,42 @@ export default function SystemManagement() {
               >
                 {maintenanceMode ? "Disable" : "Enable"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBackupsList && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d1757]/70 backdrop-blur-sm">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 p-8 max-h-[80vh] flex flex-col">
+            <button
+              onClick={() => setShowBackupsList(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-2xl font-bold leading-none"
+            >
+              &times;
+            </button>
+
+            <h2 className="text-2xl font-black text-[#1a237e] mb-1">Backup History</h2>
+            <p className="text-gray-400 text-sm mb-6">Download any previous backup file</p>
+
+            <div className="overflow-y-auto divide-y divide-gray-50 border border-gray-100 rounded-2xl">
+              {backups.map((b) => (
+                <div key={b.filename} className="flex items-center justify-between px-5 py-4">
+                  <div>
+                    <p className="font-semibold text-gray-700 text-sm">{b.filename}</p>
+                    <p className="text-gray-400 text-xs mt-0.5">{new Date(b.created_at * 1000).toLocaleString()} &middot; {b.size_kb} KB</p>
+                  </div>
+                  <button
+                    onClick={() => downloadBackup(b.filename)}
+                    className="text-xs font-bold text-[#1a237e] hover:underline shrink-0"
+                  >
+                    Download
+                  </button>
+                </div>
+              ))}
+              {backups.length === 0 && (
+                <div className="px-6 py-16 text-center text-gray-400 text-sm">No backups yet.</div>
+              )}
             </div>
           </div>
         </div>
