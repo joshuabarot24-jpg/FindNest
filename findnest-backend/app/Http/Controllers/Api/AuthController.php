@@ -36,7 +36,10 @@ class AuthController extends Controller
             return response()->json(['message' => 'Account is deactivated'], 403);
         }
 
-        $user->tokens()->delete();
+        if ($user->tokens()->count() > 0) {
+            return response()->json(['message' => 'This account is already logged in on another device or browser. Please log out there first.'], 409);
+        }
+
         $token = $user->createToken('super-admin-token')->plainTextToken;
 
         AuditLog::create([
@@ -92,7 +95,10 @@ class AuthController extends Controller
             return response()->json(['message' => 'Your account has been suspended by the Super Admin. Please contact them for assistance.'], 403);
         }
 
-        $user->tokens()->delete();
+        if ($user->tokens()->count() > 0) {
+            return response()->json(['message' => 'This account is already logged in on another device or browser. Please log out there first.'], 409);
+        }
+
         $token = $user->createToken('admin-token')->plainTextToken;
 
         AuditLog::create([
@@ -204,12 +210,15 @@ class AuthController extends Controller
             return response()->json(['message' => 'OTP has expired. Please request a new one.'], 401);
         }
 
+        if ($user->tokens()->count() > 0) {
+            return response()->json(['message' => 'This account is already logged in on another device or browser. Please log out there first.'], 409);
+        }
+
         $user->update([
             'otp_code' => null,
             'otp_expires_at' => null,
         ]);
 
-        $user->tokens()->delete();
         $token = $user->createToken('student-token')->plainTextToken;
 
         AuditLog::create([
