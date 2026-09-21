@@ -71,6 +71,10 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
+        if (\App\Models\SystemSetting::get('maintenance_mode', '0') === '1') {
+            return response()->json(['message' => 'The system is currently under maintenance. Please try again later.'], 503);
+        }
+
         $user = User::where('email', $request->email)
             ->where('role', 'admin')
             ->first();
@@ -120,6 +124,10 @@ class AuthController extends Controller
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        if (\App\Models\SystemSetting::get('maintenance_mode', '0') === '1') {
+            return response()->json(['message' => 'The system is currently under maintenance. Please try again later.'], 503);
         }
 
         $user = User::where('school_id', $request->school_id)

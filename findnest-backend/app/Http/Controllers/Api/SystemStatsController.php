@@ -139,4 +139,39 @@ class SystemStatsController extends Controller
         $fullPath = \Illuminate\Support\Facades\Storage::disk('local')->path($path);
         return response()->download($fullPath, $filename);
     }
+
+    public function getMaintenanceMode()
+    {
+        return response()->json([
+            'maintenance_mode' => SystemSetting::get('maintenance_mode', '0') === '1',
+        ]);
+    }
+
+    public function toggleMaintenanceMode(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'maintenance_mode' => 'required|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        SystemSetting::set('maintenance_mode', $request->boolean('maintenance_mode') ? '1' : '0');
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => $request->boolean('maintenance_mode') ? 'Maintenance Mode Enabled' : 'Maintenance Mode Disabled',
+            'target_type' => 'system_settings',
+            'target_id' => 0,
+            'details' => 'System maintenance mode ' . ($request->boolean('maintenance_mode') ? 'enabled' : 'disabled'),
+            'performed_by' => 'Super Admin: ' . $request->user()->name,
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json([
+            'message' => 'Maintenance mode updated',
+            'maintenance_mode' => $request->boolean('maintenance_mode'),
+        ]);
+    }
 }
