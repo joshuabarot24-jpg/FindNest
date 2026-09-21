@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import api from "@/lib/api";
+import api, { logoutUser } from "@/lib/api";
 
 interface User {
   id: number;
@@ -114,9 +114,7 @@ export default function ProfilePage() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("findnest_token");
-    localStorage.removeItem("findnest_user");
-    window.location.href = "/";
+    logoutUser();
   };
 
   function trustScoreColor(score: number) {
