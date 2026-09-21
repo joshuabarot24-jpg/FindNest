@@ -36,7 +36,7 @@ class AuthController extends Controller
             return response()->json(['message' => 'Account is deactivated'], 403);
         }
 
-        if ($user->tokens()->count() > 0) {
+        if ($user->tokens()->where('created_at', '>', now()->subMinutes(480))->count() > 0) {
             return response()->json(['message' => 'This account is already logged in on another device or browser. Please log out there first.'], 409);
         }
 
@@ -95,7 +95,7 @@ class AuthController extends Controller
             return response()->json(['message' => 'Your account has been suspended by the Super Admin. Please contact them for assistance.'], 403);
         }
 
-        if ($user->tokens()->count() > 0) {
+        if ($user->tokens()->where('created_at', '>', now()->subMinutes(480))->count() > 0) {
             return response()->json(['message' => 'This account is already logged in on another device or browser. Please log out there first.'], 409);
         }
 
@@ -210,7 +210,7 @@ class AuthController extends Controller
             return response()->json(['message' => 'OTP has expired. Please request a new one.'], 401);
         }
 
-        if ($user->tokens()->count() > 0) {
+        if ($user->tokens()->where('created_at', '>', now()->subMinutes(480))->count() > 0) {
             return response()->json(['message' => 'This account is already logged in on another device or browser. Please log out there first.'], 409);
         }
 
