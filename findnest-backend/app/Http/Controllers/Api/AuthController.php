@@ -36,6 +36,7 @@ class AuthController extends Controller
             return response()->json(['message' => 'Account is deactivated'], 403);
         }
 
+        $user->tokens()->delete();
         $token = $user->createToken('super-admin-token')->plainTextToken;
 
         AuditLog::create([
@@ -91,6 +92,7 @@ class AuthController extends Controller
             return response()->json(['message' => 'Your account has been suspended by the Super Admin. Please contact them for assistance.'], 403);
         }
 
+        $user->tokens()->delete();
         $token = $user->createToken('admin-token')->plainTextToken;
 
         AuditLog::create([
@@ -207,6 +209,7 @@ class AuthController extends Controller
             'otp_expires_at' => null,
         ]);
 
+        $user->tokens()->delete();
         $token = $user->createToken('student-token')->plainTextToken;
 
         AuditLog::create([
