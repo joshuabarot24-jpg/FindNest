@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { setAuth } from "@/lib/auth";
 
@@ -15,6 +15,22 @@ export default function StudentLoginPage() {
   const [otpError, setOtpError] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        setStudentId("");
+        setPassword("");
+        setStep("login");
+        setMaskedEmail("");
+        setOtp(["", "", "", "", "", ""]);
+        setOtpError("");
+        setError("");
+      }
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,6 +154,7 @@ export default function StudentLoginPage() {
                     value={studentId}
                     onChange={(e) => setStudentId(e.target.value)}
                     placeholder="e.g. 2022-10043"
+                    autoComplete="off"
                     className="w-full pl-5 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none transition text-gray-700"
                     required
                   />
@@ -154,6 +171,7 @@ export default function StudentLoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
+                    autoComplete="off"
                     className="w-full pl-5 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none transition text-gray-700"
                     required
                   />
