@@ -126,6 +126,8 @@ export default function ClaimStatusScreen({ navigation }: any) {
   const [proofDescription, setProofDescription] = useState("");
   const [claimSubmitting, setClaimSubmitting] = useState(false);
   const [claimError, setClaimError] = useState("");
+  const [claimPhotos, setClaimPhotos] = useState<{ preview: string; url: string | null; uploading: boolean }[]>([]);
+  const CLAIM_MAX_PHOTOS = 4;
 
   const [appealingClaim, setAppealingClaim] = useState<Claim | null>(null);
   const [appealMessage, setAppealMessage] = useState("");
@@ -170,6 +172,45 @@ export default function ClaimStatusScreen({ navigation }: any) {
     fetchPendingMatches();
   }, []);
 
+  const claimUploadedUrls = claimPhotos.filter((p) => p.url).map((p) => p.url as string);
+  const claimAnyUploading = claimPhotos.some((p) => p.uploading);
+
+  const pickClaimPhoto = async () => {
+    if (claimPhotos.length >= CLAIM_MAX_PHOTOS) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+    });
+    if (result.canceled) return;
+
+    const uri = result.assets[0].uri;
+    const idx = claimPhotos.length;
+    setClaimPhotos((prev) => [...prev, { preview: uri, url: null, uploading: true }]);
+
+    try {
+      const formData = new FormData();
+      formData.append("image", { uri, name: "claim.jpg", type: "image/jpeg" } as any);
+      formData.append("folder", "appeal-evidence");
+
+      const res = await api.post("/upload/image", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setClaimPhotos((prev) => {
+        const next = [...prev];
+        next[idx] = { ...next[idx], url: res.data.url, uploading: false };
+        return next;
+      });
+    } catch (err: any) {
+      console.error("Claim photo upload failed:", err);
+      setClaimPhotos((prev) => prev.filter((_, i2) => i2 !== idx));
+      setClaimError(err.response?.data?.message || "Photo upload failed. Please try again.");
+    }
+  };
+
+  const removeClaimPhoto = (index: number) => {
+    setClaimPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmitClaim = async () => {
     if (!claimingMatch) return;
     if (!proofDescription.trim()) {
@@ -182,9 +223,12 @@ export default function ClaimStatusScreen({ navigation }: any) {
       await api.post("/claims", {
         match_id: claimingMatch.id,
         proof_description: proofDescription.trim(),
+        proof_photo_url: claimUploadedUrls[0] || null,
+        proof_photo_urls: claimUploadedUrls,
       });
       setClaimingMatch(null);
       setProofDescription("");
+      setClaimPhotos([]);
       fetchClaims();
       fetchPendingMatches();
     } catch (err: any) {
@@ -340,7 +384,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
                 </View>
                 <TouchableOpacity
                   style={styles.submitClaimButton}
-                  onPress={() => { setClaimingMatch(match); setProofDescription(""); setClaimError(""); }}
+                  onPress={() => { setClaimingMatch(match); setProofDescription(""); setClaimError(""); setClaimPhotos([]); }}
                 >
                   <Text style={styles.submitClaimButtonText}>Submit Claim</Text>
                 </TouchableOpacity>
@@ -485,10 +529,38 @@ export default function ClaimStatusScreen({ navigation }: any) {
                 textAlignVertical="top"
               />
 
+              <Text style={styles.fieldLabel}>Evidence Photos (Optional, up to {CLAIM_MAX_PHOTOS})</Text>
+              {claimPhotos.length > 0 && (
+                <View style={styles.claimPhotoGrid}>
+                  {claimPhotos.map((p, idx) => (
+                    <View key={idx} style={styles.claimPhotoThumbWrap}>
+                      <Image source={{ uri: p.preview }} style={styles.claimPhotoThumb} />
+                      {p.uploading && (
+                        <View style={styles.claimPhotoThumbLoading}>
+                          <Text style={{ color: "white", fontWeight: "800" }}>...</Text>
+                        </View>
+                      )}
+                      {!p.uploading && (
+                        <TouchableOpacity style={styles.claimPhotoRemoveBtn} onPress={() => removeClaimPhoto(idx)}>
+                          <Text style={styles.claimPhotoRemoveBtnText}>×</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )}
+              {claimPhotos.length < CLAIM_MAX_PHOTOS && (
+                <TouchableOpacity style={styles.appealPhotoBox} onPress={pickClaimPhoto}>
+                  <Text style={styles.appealPhotoText}>
+                    {claimPhotos.length === 0 ? "Tap to add evidence photos" : `Add more (${CLAIM_MAX_PHOTOS - claimPhotos.length} left)`}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               {claimError ? <Text style={styles.errorText}>{claimError}</Text> : null}
 
-              <TouchableOpacity style={styles.primaryButton} onPress={handleSubmitClaim} disabled={claimSubmitting}>
-                <Text style={styles.primaryButtonText}>{claimSubmitting ? "Submitting..." : "Submit Claim"}</Text>
+              <TouchableOpacity style={styles.primaryButton} onPress={handleSubmitClaim} disabled={claimSubmitting || claimAnyUploading}>
+                <Text style={styles.primaryButtonText}>{claimSubmitting ? "Submitting..." : claimAnyUploading ? "Uploading photos..." : "Submit Claim"}</Text>
               </TouchableOpacity>
             </View>
           </KeyboardAwareScrollView>
@@ -709,6 +781,12 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 12, fontWeight: "800", color: "#374151", marginBottom: 8 },
   textArea: { backgroundColor: "#f8f9fc", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, padding: 14, fontSize: 13, color: "#374151", minHeight: 90, marginBottom: 12 },
   appealPhotoBox: { backgroundColor: "#f8f9fc", borderWidth: 1.5, borderColor: "#e5e7eb", borderStyle: "dashed", borderRadius: 14, padding: 16, alignItems: "center", marginBottom: 12 },
+  claimPhotoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
+  claimPhotoThumbWrap: { width: 64, height: 64, position: "relative" },
+  claimPhotoThumb: { width: "100%", height: "100%", borderRadius: 12, resizeMode: "cover" },
+  claimPhotoThumbLoading: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 12, justifyContent: "center", alignItems: "center" },
+  claimPhotoRemoveBtn: { position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: "#ef4444", justifyContent: "center", alignItems: "center" },
+  claimPhotoRemoveBtnText: { color: "white", fontWeight: "900", fontSize: 13, lineHeight: 16 },
   appealPhotoText: { fontSize: 11.5, color: "#9ca3af", textAlign: "center" },
   appealPhotoPreview: { width: 100, height: 100, borderRadius: 12, resizeMode: "cover" },
   appealPhotoUploadedText: { fontSize: 10.5, fontWeight: "700", color: "#22c55e", marginTop: 6 },
