@@ -88,7 +88,7 @@ export default function StudentLoginScreen({ navigation }: any) {
         otp: otp,
       });
       await setAuth(response.data.token, response.data.user);
-      navigation.navigate("Home");
+      navigation.reset({ index: 0, routes: [{ name: "Home" }] });
     } catch (err: any) {
       setOtpError(err.response?.data?.message || "Invalid OTP code");
       setOtp("");
