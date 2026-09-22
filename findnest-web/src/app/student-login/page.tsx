@@ -17,8 +17,22 @@ export default function StudentLoginPage() {
   const [resendTimer, setResendTimer] = useState(0);
 
   useEffect(() => {
+    const forceLogoutIfSessionExists = async () => {
+      const existingToken = localStorage.getItem("findnest_token");
+      if (existingToken) {
+        try {
+          await api.post("/auth/logout");
+        } catch (err) {
+          console.error("Forced logout on login page failed:", err);
+        }
+        localStorage.removeItem("findnest_token");
+        localStorage.removeItem("findnest_user");
+      }
+    };
+
     setStudentId("");
     setPassword("");
+    forceLogoutIfSessionExists();
     const clearTimer = setTimeout(() => {
       setStudentId("");
       setPassword("");
@@ -33,6 +47,7 @@ export default function StudentLoginPage() {
         setOtp(["", "", "", "", "", ""]);
         setOtpError("");
         setError("");
+        forceLogoutIfSessionExists();
       }
     };
     window.addEventListener("pageshow", handlePageShow);
