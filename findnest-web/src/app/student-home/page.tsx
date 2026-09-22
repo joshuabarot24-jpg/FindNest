@@ -58,6 +58,14 @@ export default function StudentHome() {
   const [matchNotification, setMatchNotification] = useState<NotificationItem | null>(null);
   const [showNotification, setShowNotification] = useState(true);
 
+  const markNotificationRead = async (id: number) => {
+    try {
+      await api.post(`/notifications/${id}/read`);
+    } catch (err) {
+      console.error("Error marking notification as read:", err);
+    }
+  };
+
   useEffect(() => {
     const storedUser = localStorage.getItem("findnest_user");
     if (storedUser) {
@@ -144,11 +152,15 @@ export default function StudentHome() {
               <p className="text-green-600 text-sm">{matchNotification.message}</p>
             </div>
             <div className="flex items-center gap-2">
-              <a href={`/matched-item?matchId=${matchNotification.match_id}`} className="text-sm font-bold text-[#1a237e] hover:underline">
+              <a
+                href={`/matched-item?matchId=${matchNotification.match_id}`}
+                onClick={() => { markNotificationRead(matchNotification.id); setShowNotification(false); }}
+                className="text-sm font-bold text-[#1a237e] hover:underline"
+              >
                 View Match
               </a>
               <button
-                onClick={() => setShowNotification(false)}
+                onClick={() => { markNotificationRead(matchNotification.id); setShowNotification(false); }}
                 className="text-green-400 hover:text-green-600 transition font-bold text-sm px-2"
               >
                 Dismiss
