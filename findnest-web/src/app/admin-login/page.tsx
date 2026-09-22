@@ -12,6 +12,13 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    setUsername("");
+    setPassword("");
+    const clearTimer = setTimeout(() => {
+      setUsername("");
+      setPassword("");
+    }, 150);
+
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
         setUsername("");
@@ -19,7 +26,10 @@ export default function AdminLoginPage() {
       }
     };
     window.addEventListener("pageshow", handlePageShow);
-    return () => window.removeEventListener("pageshow", handlePageShow);
+    return () => {
+      clearTimeout(clearTimer);
+      window.removeEventListener("pageshow", handlePageShow);
+    };
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -63,7 +73,7 @@ export default function AdminLoginPage() {
           <p className="text-gray-400 text-sm mt-1 text-center">Secure Access for School Personnel</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-5">
+        <form onSubmit={handleLogin} className="space-y-5" autoComplete="off">
 
           <div>
             <label className="block text-sm font-bold text-gray-600 mb-2">
@@ -76,6 +86,7 @@ export default function AdminLoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter your username"
                 autoComplete="off"
+                name="fnd-user-field"
                 className="w-full pl-5 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ffd700] focus:outline-none transition text-gray-700"
                 required
               />
@@ -92,7 +103,8 @@ export default function AdminLoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
-                autoComplete="off"
+                autoComplete="new-password"
+                name="fnd-pass-field"
                 className="w-full pl-5 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ffd700] focus:outline-none transition text-gray-700"
                 required
               />
