@@ -84,8 +84,10 @@ export default function NotificationsPage() {
     }
   };
 
-  const handleNotifPress = (n: NotificationItem) => {
-    if (!n.is_read) handleMarkAsRead(n.id);
+  const handleNotifPress = async (n: NotificationItem) => {
+    if (!n.is_read) {
+      await handleMarkAsRead(n.id);
+    }
     const t = n.type.toLowerCase();
     if (t.includes("support")) {
       window.location.href = "/support";
