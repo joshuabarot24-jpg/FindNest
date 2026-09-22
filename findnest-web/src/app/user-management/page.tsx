@@ -82,7 +82,7 @@ export default function UserManagement() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const [studentSubTab, setStudentSubTab] = useState<"all" | "college" | "senior_high_school" | "junior_high_school" | "revoked">("all");
+  const [studentSubTab, setStudentSubTab] = useState<"all" | "college" | "senior_high_school" | "junior_high_school" | "revoked" | "password_requests">("all");
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [approvingPassword, setApprovingPassword] = useState(false);
@@ -131,6 +131,7 @@ export default function UserManagement() {
   const baseFiltered = useMemo(() => {
     if (studentSubTab === "all") return users.filter((u) => u.is_active);
     if (studentSubTab === "revoked") return users.filter((u) => !u.is_active);
+    if (studentSubTab === "password_requests") return users.filter((u) => u.password_change_requested);
     return users.filter((u) => u.education_level === studentSubTab && u.is_active);
   }, [users, studentSubTab]);
 
@@ -201,6 +202,7 @@ export default function UserManagement() {
     const typoWarning = checkEmailDomainTypo(formData.email.trim());
     if (typoWarning) return typoWarning;
     if (!formData.password && !editingUser) return "Password is required.";
+    if (formData.password && formData.password.length < 8) return "Password must be at least 8 characters.";
     if (formData.school_id && !DIGITS_REGEX.test(formData.school_id)) return "School ID must contain numbers only.";
     if (formData.education_level === "junior_high_school" && formData.course && !NAME_REGEX.test(formData.course)) {
       return "Section must contain letters only.";
@@ -245,7 +247,11 @@ export default function UserManagement() {
     setFormLoading(true);
     try {
       await api.put(`/users/${editingUser.id}`, formData);
-      setToast(`${formData.name}'s account was updated.`);
+      setToast(
+        formData.password
+          ? `${formData.name}'s account was updated and password was changed.`
+          : `${formData.name}'s account was updated.`
+      );
       setEditingUser(null);
       resetForm();
       fetchUsers();
@@ -313,6 +319,7 @@ export default function UserManagement() {
   const tabLabel = (tab: string) => {
     if (tab === "all") return "All";
     if (tab === "revoked") return "Revoked";
+    if (tab === "password_requests") return "Password Requests";
     return educationLabel(tab);
   };
 
@@ -424,7 +431,7 @@ export default function UserManagement() {
         </div>
 
         <div className="flex items-center gap-2 mb-6 flex-wrap">
-          {(["all", "college", "senior_high_school", "junior_high_school", "revoked"] as const).map((level) => (
+          {(["all", "college", "senior_high_school", "junior_high_school", "revoked", "password_requests"] as const).map((level) => (
             <button
               key={level}
               onClick={() => setStudentSubTab(level)}
@@ -432,6 +439,8 @@ export default function UserManagement() {
                 studentSubTab === level
                   ? level === "revoked"
                     ? "bg-red-500 text-white shadow-md"
+                    : level === "password_requests"
+                    ? "bg-orange-500 text-white shadow-md"
                     : "bg-[#1a237e] text-white shadow-md"
                   : "bg-white text-gray-500 border border-gray-200 hover:border-[#1a237e] hover:text-[#1a237e]"
               }`}
@@ -444,7 +453,7 @@ export default function UserManagement() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <h2 className="font-black text-gray-700 text-lg">
-              {tabLabel(studentSubTab)} Students
+              {tabLabel(studentSubTab)} {studentSubTab !== "password_requests" && "Students"}
             </h2>
             <input
               type="text"
@@ -459,6 +468,53 @@ export default function UserManagement() {
             <div className="text-center py-16 text-gray-400">
               <p className="font-bold">Loading students...</p>
             </div>
+          ) : studentSubTab === "password_requests" ? (
+            paginated.length === 0 ? (
+              <div className="text-center py-16 text-gray-400">
+                <p className="font-bold text-lg">No pending password requests</p>
+                <p className="text-sm mt-1">Requests from students will appear here</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {paginated.map((user) => (
+                  <div key={user.id} className="px-6 py-5 flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-4 flex-1">
+                      <div className="w-11 h-11 bg-gradient-to-br from-[#1a237e] to-[#1565c0] rounded-xl flex items-center justify-center text-white font-black text-lg shadow-sm shrink-0">
+                        {getInitial(user.name)}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-gray-700">{user.name}</p>
+                        <p className="text-gray-400 text-xs mt-0.5">{user.email} &middot; {user.school_id || "—"}</p>
+                        <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 mt-3">
+                          <p className="text-orange-700 text-xs font-bold uppercase mb-1">Student&apos;s Message</p>
+                          <p className="text-orange-600 text-sm">{user.password_change_reason || "No reason provided."}</p>
+                        </div>
+                        {user.password_change_approved && (
+                          <p className="text-green-600 text-xs font-bold mt-2">✓ Approved — waiting for student to set their new password.</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      {!user.password_change_approved && (
+                        <button
+                          onClick={() => handleApprovePasswordChange(user)}
+                          disabled={approvingPassword}
+                          className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition disabled:opacity-50 whitespace-nowrap"
+                        >
+                          {approvingPassword ? "Approving..." : "Approve Request"}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => openEditModal(user)}
+                        className="bg-blue-50 hover:bg-[#1a237e] hover:text-white text-[#1a237e] text-xs font-bold px-4 py-2 rounded-lg transition whitespace-nowrap"
+                      >
+                        Set Password Manually
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
           ) : (
             <table className="w-full">
               <thead>
@@ -551,7 +607,7 @@ export default function UserManagement() {
             </table>
           )}
 
-          {!loading && filtered.length === 0 && (
+          {!loading && studentSubTab !== "password_requests" && filtered.length === 0 && (
             <div className="text-center py-16 text-gray-400">
               <p className="font-bold text-lg">No students found</p>
               <p className="text-sm mt-1">Try searching with a different keyword</p>
@@ -824,7 +880,7 @@ export default function UserManagement() {
                   {editingUser.password_change_reason || "No reason provided."}
                 </p>
                 {editingUser.password_change_approved ? (
-                  <p className="text-green-600 text-xs font-bold">Approved — waiting for student to set a new password.</p>
+                  <p className="text-green-600 text-xs font-bold">Approved — waiting for student to set a new password. Or set it manually below.</p>
                 ) : (
                   <button
                     onClick={() => handleApprovePasswordChange(editingUser)}
@@ -862,6 +918,21 @@ export default function UserManagement() {
                   autoComplete="off"
                   className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
                 />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  New Password (leave blank to keep current)
+                </label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Minimum 8 characters"
+                  autoComplete="new-password"
+                  className="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-[#1a237e] text-gray-700 text-sm"
+                />
+                <p className="text-xs text-gray-400 mt-1">Give this password directly to the student.</p>
               </div>
 
               <div>
