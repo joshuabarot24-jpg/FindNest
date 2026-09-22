@@ -22,6 +22,7 @@ class Claim extends Model
         'appeal_status',
         'appeal_submitted_at',
         'appeal_photo_url',
+        'proof_photo_urls' => 'array',
     ];
 
     protected $casts = [
@@ -30,6 +31,7 @@ class Claim extends Model
         'collected_at' => 'datetime',
         'reminder_sent' => 'boolean',
         'appeal_submitted_at' => 'datetime',
+        'proof_photo_urls' => 'array',
     ];
 
     public function match()

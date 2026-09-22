@@ -62,6 +62,8 @@ class ClaimController extends Controller
             'match_id' => 'required|exists:ai_matches,id',
             'proof_description' => 'required|string',
             'proof_photo_url' => 'nullable|string',
+            'proof_photo_urls' => 'nullable|array',
+            'proof_photo_urls.*' => 'string',
         ]);
 
         if ($validator->fails()) {
@@ -81,6 +83,7 @@ class ClaimController extends Controller
             'student_id' => $request->user()->id,
             'proof_description' => $request->proof_description,
             'proof_photo_url' => $request->proof_photo_url,
+            'proof_photo_urls' => $request->proof_photo_urls ?? ($request->proof_photo_url ? [$request->proof_photo_url] : null),
             'claim_status' => 'pending',
         ]);
 
