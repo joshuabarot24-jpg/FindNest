@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { setAuth } from "@/lib/auth";
 
@@ -10,6 +10,17 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        setUsername("");
+        setPassword("");
+      }
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -64,6 +75,7 @@ export default function AdminLoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter your username"
+                autoComplete="off"
                 className="w-full pl-5 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ffd700] focus:outline-none transition text-gray-700"
                 required
               />
@@ -80,6 +92,7 @@ export default function AdminLoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
+                autoComplete="off"
                 className="w-full pl-5 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ffd700] focus:outline-none transition text-gray-700"
                 required
               />
