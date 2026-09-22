@@ -12,8 +12,22 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    const forceLogoutIfSessionExists = async () => {
+      const existingToken = localStorage.getItem("findnest_token");
+      if (existingToken) {
+        try {
+          await api.post("/auth/logout");
+        } catch (err) {
+          console.error("Forced logout on login page failed:", err);
+        }
+        localStorage.removeItem("findnest_token");
+        localStorage.removeItem("findnest_user");
+      }
+    };
+
     setUsername("");
     setPassword("");
+    forceLogoutIfSessionExists();
     const clearTimer = setTimeout(() => {
       setUsername("");
       setPassword("");
@@ -23,6 +37,7 @@ export default function LoginPage() {
       if (event.persisted) {
         setUsername("");
         setPassword("");
+        forceLogoutIfSessionExists();
       }
     };
     window.addEventListener("pageshow", handlePageShow);
