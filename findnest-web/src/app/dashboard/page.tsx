@@ -12,7 +12,7 @@ interface ActivityItem {
 }
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({ found_today: 0, pending_claims: 0, ai_success: 92 });
+  const [stats, setStats] = useState({ found_today: 0, lost_today: 0, pending_claims: 0, total_reports: 0 });
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [previewItem, setPreviewItem] = useState<ActivityItem | null>(null);
@@ -32,12 +32,14 @@ export default function Dashboard() {
 
         const today = new Date().toISOString().split("T")[0];
         const foundToday = foundItems.filter((i: any) => i.created_at?.startsWith(today)).length;
+        const lostToday = lostItems.filter((i: any) => i.created_at?.startsWith(today)).length;
         const pendingClaims = claims.filter((c: any) => c.claim_status === "pending").length;
+        const totalReports = foundItems.length + lostItems.length;
 
-        setStats({ found_today: foundToday, pending_claims: pendingClaims, ai_success: 92 });
+        setStats({ found_today: foundToday, lost_today: lostToday, pending_claims: pendingClaims, total_reports: totalReports });
 
         const activity = [
-          ...foundItems.slice(0, 6).map((i: any) => ({
+          ...foundItems.map((i: any) => ({
             item: i.item_name,
             status: "Found at " + i.location_found,
             time: new Date(i.created_at).toLocaleString(),
@@ -45,7 +47,7 @@ export default function Dashboard() {
             photo_url: i.photo_url || null,
             reported_by: i.admin?.name || "Unknown Admin",
           })),
-          ...lostItems.slice(0, 5).map((i: any) => ({
+          ...lostItems.map((i: any) => ({
             item: i.item_name,
             status: "Reported Lost",
             time: new Date(i.created_at).toLocaleString(),
@@ -55,7 +57,7 @@ export default function Dashboard() {
           })),
         ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
 
-        setRecentActivity(activity);
+        setRecentActivity(activity.slice(0, 12));
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       } finally {
@@ -132,13 +134,21 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">Today</span>
             </div>
             <p className="text-4xl font-black text-[#1a237e]">{stats.found_today}</p>
             <p className="text-gray-400 text-sm mt-1">Items Found Today</p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded-full">Today</span>
+            </div>
+            <p className="text-4xl font-black text-red-500">{stats.lost_today}</p>
+            <p className="text-gray-400 text-sm mt-1">Items Lost Today</p>
           </div>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
@@ -151,10 +161,10 @@ export default function Dashboard() {
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">AI Matching</span>
+              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">All Time</span>
             </div>
-            <p className="text-4xl font-black text-green-600">{stats.ai_success}%</p>
-            <p className="text-gray-400 text-sm mt-1">AI Match Success</p>
+            <p className="text-4xl font-black text-[#1a237e]">{stats.total_reports}</p>
+            <p className="text-gray-400 text-sm mt-1">Total Reports</p>
           </div>
         </div>
 
