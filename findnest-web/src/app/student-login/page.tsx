@@ -17,6 +17,13 @@ export default function StudentLoginPage() {
   const [resendTimer, setResendTimer] = useState(0);
 
   useEffect(() => {
+    setStudentId("");
+    setPassword("");
+    const clearTimer = setTimeout(() => {
+      setStudentId("");
+      setPassword("");
+    }, 150);
+
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
         setStudentId("");
@@ -29,7 +36,10 @@ export default function StudentLoginPage() {
       }
     };
     window.addEventListener("pageshow", handlePageShow);
-    return () => window.removeEventListener("pageshow", handlePageShow);
+    return () => {
+      clearTimeout(clearTimer);
+      window.removeEventListener("pageshow", handlePageShow);
+    };
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -142,7 +152,7 @@ export default function StudentLoginPage() {
               <p className="text-gray-400 text-sm mt-1">Use your school credentials</p>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-5">
+            <form onSubmit={handleLogin} className="space-y-5" autoComplete="off">
 
               <div>
                 <label className="block text-sm font-bold text-gray-600 mb-2">
@@ -155,6 +165,7 @@ export default function StudentLoginPage() {
                     onChange={(e) => setStudentId(e.target.value)}
                     placeholder="e.g. 2022-10043"
                     autoComplete="off"
+                    name="fnd-user-field"
                     className="w-full pl-5 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none transition text-gray-700"
                     required
                   />
@@ -171,7 +182,8 @@ export default function StudentLoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    autoComplete="off"
+                    autoComplete="new-password"
+                    name="fnd-pass-field"
                     className="w-full pl-5 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:outline-none transition text-gray-700"
                     required
                   />
