@@ -60,8 +60,19 @@ export default function NotificationsPage() {
     }
   };
 
+  const markAllReadSilently = async () => {
+    try {
+      await api.post("/notifications/read-all");
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    } catch (err) {
+      console.error("Error marking all as read:", err);
+    }
+  };
+
   useEffect(() => {
-    fetchNotifications();
+    fetchNotifications().then(() => {
+      markAllReadSilently();
+    });
   }, []);
 
   const handleMarkAsRead = async (id: number) => {
