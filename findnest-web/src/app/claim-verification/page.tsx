@@ -102,6 +102,7 @@ export default function ClaimVerification() {
   const [toast, setToast] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
   const [comparingClaim, setComparingClaim] = useState<Claim | null>(null);
+  const [viewingEvidence, setViewingEvidence] = useState<Claim | null>(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -484,10 +485,13 @@ export default function ClaimVerification() {
                   <span className="text-sm text-gray-600 font-medium">Layer 2 &mdash; Found Item Report</span>
                   <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">{viewingClaim.match ? "Match Linked" : "No Match"}</span>
                 </div>
-                <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                  <span className="text-sm text-gray-600 font-medium">Layer 3 &mdash; Evidence Photo + Description</span>
+                <button
+                  onClick={() => setViewingEvidence(viewingClaim)}
+                  className="w-full flex items-center justify-between py-2 border-b border-gray-200 hover:bg-blue-50 transition rounded-lg px-2 -mx-2"
+                >
+                  <span className="text-sm text-gray-600 font-medium">Layer 3 &mdash; Evidence Photo + Description <span className="text-blue-500 text-xs">(click to see evidence)</span></span>
                   <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">{viewingClaim.proof_description ? "Submitted" : "Not Submitted"}</span>
-                </div>
+                </button>
                 <button
                   onClick={() => setComparingClaim(viewingClaim)}
                   className="w-full flex items-center justify-between py-2 border-b border-gray-200 hover:bg-blue-50 transition rounded-lg px-2 -mx-2"
@@ -625,6 +629,54 @@ export default function ClaimVerification() {
               (viewingClaim.claim_status === "approved" && viewingClaim.collected_at)) && (
               <button onClick={() => setViewingClaim(null)} className="w-full mt-6 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 rounded-2xl transition">Close</button>
             )}
+          </div>
+        </div>
+      )}
+
+      {viewingEvidence && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#0d1757]/80 backdrop-blur-sm px-4">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 max-h-[85vh] overflow-y-auto">
+            <button
+              onClick={() => setViewingEvidence(null)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition text-xl font-bold leading-none z-10"
+            >
+              &times;
+            </button>
+
+            <h2 className="text-xl font-black text-[#1a237e] mb-1">Claimant&apos;s Evidence</h2>
+            <p className="text-gray-400 text-sm mb-6">What the student submitted to prove ownership of their reported lost item</p>
+
+            <div className="bg-gray-50 rounded-2xl p-4 mb-4">
+              <p className="text-xs font-bold text-gray-400 uppercase mb-2">Original Lost Report</p>
+              <div className="flex items-center gap-4">
+                {viewingEvidence.match?.lost_report?.photo_url && (
+                  <img src={viewingEvidence.match.lost_report.photo_url} alt="Lost item" className="w-16 h-16 object-cover rounded-xl flex-shrink-0" />
+                )}
+                <div>
+                  <p className="font-black text-gray-700 text-sm">{viewingEvidence.match?.lost_report?.item_name || "—"}</p>
+                  <p className="text-gray-400 text-xs mt-1">Lost at: {viewingEvidence.match?.lost_report?.location_lost}</p>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs font-bold text-gray-400 uppercase mb-2">Claim Evidence Photo</p>
+            {viewingEvidence.proof_photo_url ? (
+              <img src={viewingEvidence.proof_photo_url} alt="Claim evidence" className="w-full max-h-64 object-cover rounded-2xl mb-4" />
+            ) : (
+              <div className="w-full h-32 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 text-sm mb-4">No evidence photo submitted</div>
+            )}
+
+            <p className="text-xs font-bold text-gray-400 uppercase mb-2">Claimant&apos;s Written Description</p>
+            <p className="text-gray-700 bg-gray-50 rounded-xl p-4 text-sm leading-relaxed mb-4">
+              {viewingEvidence.proof_description || "No description provided."}
+            </p>
+
+            <button
+              onClick={() => setViewingEvidence(null)}
+              className="w-full bg-[#1a237e] hover:bg-[#283593] text-white font-bold py-3 rounded-2xl transition"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
