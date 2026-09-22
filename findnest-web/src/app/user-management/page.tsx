@@ -873,26 +873,6 @@ export default function UserManagement() {
               </div>
             </div>
 
-            {editingUser.password_change_requested && (
-              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-5">
-                <p className="text-orange-700 font-bold text-sm mb-1">Password Change Requested</p>
-                <p className="text-orange-600 text-xs mb-3">
-                  {editingUser.password_change_reason || "No reason provided."}
-                </p>
-                {editingUser.password_change_approved ? (
-                  <p className="text-green-600 text-xs font-bold">Approved — waiting for student to set a new password. Or set it manually below.</p>
-                ) : (
-                  <button
-                    onClick={() => handleApprovePasswordChange(editingUser)}
-                    disabled={approvingPassword}
-                    className="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2.5 rounded-xl transition disabled:opacity-50"
-                  >
-                    {approvingPassword ? "Approving..." : "Approve Password Change"}
-                  </button>
-                )}
-              </div>
-            )}
-
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">
