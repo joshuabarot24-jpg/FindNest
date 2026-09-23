@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "findnest-mobile",
+    "name": "FindNest",
     "slug": "findnest-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,13 +10,18 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.findnest.mobile",
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -28,7 +33,13 @@
           "photosPermission": "Allow FindNest to access your photos to attach a photo to your report.",
           "cameraPermission": "Allow FindNest to access your camera to take a photo of your item."
         }
-      ]
-    ]
+      ],
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ca56006a-5e96-4f47-a05d-9f85df4ad353"
+      }
+    }
   }
 }
