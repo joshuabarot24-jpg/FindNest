@@ -4,10 +4,10 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Image,
   ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 const NAVY = "#1a237e";
@@ -38,7 +38,11 @@ export default function LandingScreen({ navigation }: any) {
 
         <View style={styles.header}>
           <View style={styles.logoBox}>
-            <Image source={require("../assets/icon.png")} style={styles.logo} />
+            <Image 
+              source={require("../assets/icon.png")} 
+              style={styles.logo} 
+              defaultSource={require("../assets/icon.png")}
+            />
           </View>
           <Text style={styles.brand}>
             FIND<Text style={styles.brandAccent}>NEST</Text>
