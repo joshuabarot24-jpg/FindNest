@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
@@ -21,6 +22,30 @@ export default function StudentLoginScreen({ navigation }: any) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const restoreDraft = async () => {
+      try {
+        const draft = await AsyncStorage.getItem("findnest_login_draft");
+        if (draft) {
+          const { studentId: savedId, password: savedPw } = JSON.parse(draft);
+          if (savedId) setStudentId(savedId);
+          if (savedPw) setPassword(savedPw);
+        }
+      } catch (err) {
+        console.error("Failed to restore login draft:", err);
+      }
+    };
+    restoreDraft();
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem("findnest_login_draft", JSON.stringify({ studentId, password })).catch(() => {});
+  }, [studentId, password]);
+
+  const clearLoginDraft = () => {
+    AsyncStorage.removeItem("findnest_login_draft").catch(() => {});
+  };
 
   const [step, setStep] = useState<"login" | "otp" | "forgot" | "reset">("login");
   const [maskedEmail, setMaskedEmail] = useState("");
