@@ -161,7 +161,7 @@ export default function HomeScreen({ navigation }: any) {
                     <Image
                       source={{ uri: item.photo_url }}
                       style={styles.publicImage}
-                      blurRadius={12}
+                      blurRadius={25}
                     />
                   ) : (
                     <Ionicons name="image-outline" size={22} color="#9ca3af" />
@@ -193,7 +193,7 @@ export default function HomeScreen({ navigation }: any) {
               <>
                 <View style={styles.modalIconBox}>
                   {selectedItem.photo_url ? (
-                    <Image source={{ uri: selectedItem.photo_url }} style={styles.modalImage} blurRadius={12} />
+                    <Image source={{ uri: selectedItem.photo_url }} style={styles.modalImage} blurRadius={25} />
                   ) : (
                     <Ionicons name="image-outline" size={30} color="#9ca3af" />
                   )}

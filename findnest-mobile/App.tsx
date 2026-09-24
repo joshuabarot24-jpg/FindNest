@@ -22,13 +22,13 @@ export default function App() {
         <Stack.Navigator initialRouteName="Landing" screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Landing" component={LandingScreen} />
           <Stack.Screen name="StudentLogin" component={StudentLoginScreen} />
-          <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="Profile" component={ProfileScreen} />
-          <Stack.Screen name="Support" component={SupportScreen} />
-          <Stack.Screen name="Notifications" component={NotificationsScreen} />
-          <Stack.Screen name="ReportLost" component={ReportLostScreen} />
-          <Stack.Screen name="ReportFound" component={ReportFoundScreen} />
-          <Stack.Screen name="ClaimStatus" component={ClaimStatusScreen} />
+          <Stack.Screen name="Home" component={HomeScreen} options={{ animation: "fade" }} />
+          <Stack.Screen name="Profile" component={ProfileScreen} options={{ animation: "fade" }} />
+          <Stack.Screen name="Support" component={SupportScreen} options={{ animation: "fade" }} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: "fade" }} />
+          <Stack.Screen name="ReportLost" component={ReportLostScreen} options={{ animation: "fade" }} />
+          <Stack.Screen name="ReportFound" component={ReportFoundScreen} options={{ animation: "fade" }} />
+          <Stack.Screen name="ClaimStatus" component={ClaimStatusScreen} options={{ animation: "fade" }} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
