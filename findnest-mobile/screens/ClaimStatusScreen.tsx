@@ -191,6 +191,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
       const formData = new FormData();
       formData.append("image", { uri, name: "claim.jpg", type: "image/jpeg" } as any);
       formData.append("folder", "appeal-evidence");
+      formData.append("analyze", "false");
 
       const res = await api.post("/upload/image", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -251,6 +252,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
       const formData = new FormData();
       formData.append("image", { uri, name: "appeal.jpg", type: "image/jpeg" } as any);
       formData.append("folder", "appeal-evidence");
+      formData.append("analyze", "false");
 
       const res = await api.post("/upload/image", formData, {
         headers: { "Content-Type": "multipart/form-data" },
