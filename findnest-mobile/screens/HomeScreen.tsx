@@ -161,7 +161,7 @@ export default function HomeScreen({ navigation }: any) {
                     <Image
                       source={{ uri: item.photo_url }}
                       style={styles.publicImage}
-                      blurRadius={25}
+                      blurRadius={40}
                     />
                   ) : (
                     <Ionicons name="image-outline" size={22} color="#9ca3af" />
