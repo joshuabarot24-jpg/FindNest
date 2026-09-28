@@ -44,6 +44,8 @@ export default function ProfileScreen({ navigation }: any) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [setPasswordLoading, setSetPasswordLoading] = useState(false);
   const [setPasswordError, setSetPasswordError] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const fetchProfile = async () => {
     try {
@@ -236,24 +238,40 @@ export default function ProfileScreen({ navigation }: any) {
                     : "Your Super Admin approved your request. Set a new password only you will know."}
                 </Text>
               </View>
-              <Text style={styles.fieldLabel}>New Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="At least 8 characters"
-                placeholderTextColor="#9ca3af"
-                secureTextEntry
-                value={newPassword}
-                onChangeText={setNewPassword}
-              />
+                            <Text style={styles.fieldLabel}>New Password</Text>
+              <View style={styles.passwordWrap}>
+                <TextInput
+                  style={[styles.input, { marginBottom: 0, paddingRight: 46 }]}
+                  placeholder="At least 8 characters"
+                  placeholderTextColor="#9ca3af"
+                  secureTextEntry={!showNewPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  maxLength={50}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                />
+                <TouchableOpacity style={styles.eyeButton} onPress={() => setShowNewPassword((v) => !v)}>
+                  <Ionicons name={showNewPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
               <Text style={styles.fieldLabel}>Confirm New Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Re-enter new password"
-                placeholderTextColor="#9ca3af"
-                secureTextEntry
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-              />
+              <View style={styles.passwordWrap}>
+                <TextInput
+                  style={[styles.input, { marginBottom: 0, paddingRight: 46 }]}
+                  placeholder="Re-enter new password"
+                  placeholderTextColor="#9ca3af"
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  maxLength={50}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                />
+                <TouchableOpacity style={styles.eyeButton} onPress={() => setShowConfirmPassword((v) => !v)}>
+                  <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
               {setPasswordError ? <Text style={styles.errorText}>{setPasswordError}</Text> : null}
               <TouchableOpacity
                 style={styles.actionButton}
@@ -348,6 +366,8 @@ const styles = StyleSheet.create({
   detailDivider: { height: 1, backgroundColor: "#f3f4f6" },
   fieldLabel: { fontSize: 11.5, fontWeight: "800", color: "#374151", marginBottom: 6 },
   input: { backgroundColor: "#f8f9fc", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 13, color: "#374151", marginBottom: 14 },
+  passwordWrap: { marginBottom: 14, justifyContent: "center" },
+  eyeButton: { position: "absolute", right: 12, top: 0, bottom: 0, justifyContent: "center", paddingHorizontal: 4 },
   textArea: { backgroundColor: "#f8f9fc", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 12, padding: 14, fontSize: 13, color: "#374151", minHeight: 80, marginBottom: 12 },
   errorText: { color: "#ef4444", fontSize: 11.5, fontWeight: "700", marginBottom: 10 },
   successText: { color: "#16a34a", fontSize: 11.5, fontWeight: "700", marginBottom: 10 },
