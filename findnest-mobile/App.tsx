@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { View, ActivityIndicator } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { getAuth } from "./lib/auth";
 import LandingScreen from "./screens/LandingScreen";
 import StudentLoginScreen from "./screens/StudentLoginScreen";
 import HomeScreen from "./screens/HomeScreen";
@@ -16,10 +18,32 @@ import ClaimStatusScreen from "./screens/ClaimStatusScreen";
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+  const [initialRoute, setInitialRoute] = useState<"Landing" | "Home" | null>(null);
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const { token, user } = await getAuth();
+        setInitialRoute(token && user?.role === "student" ? "Home" : "Landing");
+      } catch {
+        setInitialRoute("Landing");
+      }
+    };
+    restoreSession();
+  }, []);
+
+  if (initialRoute === null) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#1a237e" }}>
+        <ActivityIndicator size="large" color="#ffd700" />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <Stack.Navigator initialRouteName="Landing" screenOptions={{ headerShown: false }}>
+        <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Landing" component={LandingScreen} />
           <Stack.Screen name="StudentLogin" component={StudentLoginScreen} />
           <Stack.Screen name="Home" component={HomeScreen} options={{ animation: "fade" }} />
