@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { getAuth } from "./lib/auth";
+import { navigationRef } from "./lib/navigation";
 import LandingScreen from "./screens/LandingScreen";
 import StudentLoginScreen from "./screens/StudentLoginScreen";
 import HomeScreen from "./screens/HomeScreen";
@@ -42,7 +43,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Landing" component={LandingScreen} />
           <Stack.Screen name="StudentLogin" component={StudentLoginScreen} />
