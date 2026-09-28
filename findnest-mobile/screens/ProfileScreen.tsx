@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -27,6 +28,7 @@ interface User {
   password_change_requested: boolean;
   password_change_approved: boolean;
   password_change_reason: string | null;
+  password_is_temporary?: boolean;
 }
 
 export default function ProfileScreen({ navigation }: any) {
@@ -100,6 +102,7 @@ export default function ProfileScreen({ navigation }: any) {
       });
       setNewPassword("");
       setConfirmPassword("");
+      Alert.alert("Password Updated", "Your new password is saved. Use it the next time you log in.");
       fetchProfile();
     } catch (err: any) {
       setSetPasswordError(
@@ -217,16 +220,20 @@ export default function ProfileScreen({ navigation }: any) {
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Password</Text>
           <Text style={styles.sectionSubtitle}>
-            {user?.password_change_approved
+              {user?.password_is_temporary
+              ? "You are using a temporary password — set your own now"
+              : user?.password_change_approved
               ? "Your request was approved — set your new password below"
               : "Passwords are changed by the Super Admin after your request is reviewed"}
           </Text>
 
-          {user?.password_change_approved ? (
+            {user?.password_is_temporary || user?.password_change_approved ? (
             <>
               <View style={styles.approvedNote}>
                 <Text style={styles.approvedNoteText}>
-                  Your Super Admin approved your request. Set a new password only you will know.
+                  {user?.password_is_temporary
+                    ? "Your account was created with a temporary password. Set one only you will know. After this, further changes need Super Admin approval."
+                    : "Your Super Admin approved your request. Set a new password only you will know."}
                 </Text>
               </View>
               <Text style={styles.fieldLabel}>New Password</Text>
