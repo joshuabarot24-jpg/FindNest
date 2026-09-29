@@ -35,7 +35,7 @@ export default function ReportFoundScreen({ navigation }: any) {
   const [description, setDescription] = useState("");
   const [aiFilled, setAiFilled] = useState(false);
   const [location, setLocation] = useState("");
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(() => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }));
   const [time, setTime] = useState("");
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
@@ -383,13 +383,10 @@ export default function ReportFoundScreen({ navigation }: any) {
             />
 
             <Text style={styles.label}>Date Found</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="YYYY-MM-DD e.g. 2026-09-20"
-              placeholderTextColor="#9ca3af"
-              value={date}
-              onChangeText={setDate}
-            />
+            <View style={styles.lockedDateBox}>
+              <Text style={styles.lockedDateText}>{date}</Text>
+              <Text style={styles.lockedDateHint}>Today only — items should be reported as soon as they're found</Text>
+            </View>
 
             <Text style={styles.label}>Approx. Time Found</Text>
             <TextInput
@@ -555,10 +552,13 @@ const styles = StyleSheet.create({
   pageSubtitle: { fontSize: 12.5, color: "#9ca3af", marginBottom: 22 },
   labelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   label: { fontSize: 12.5, fontWeight: "800", color: "#374151" },
-  hintText: { fontSize: 10.5, fontWeight: "600", color: "#9ca3af" },
+  hintText: { fontSize: 10.5, fontWeight: "600", color: "#9ca3af" }, 
   autoTag: { fontSize: 10.5, fontWeight: "700", color: "#22c55e" },
   requiredMark: { color: "#ef4444" },
   input: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13, fontSize: 13.5, color: "#374151", marginBottom: 16 },
+  lockedDateBox: { backgroundColor: "#f3f4f6", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13, marginBottom: 16 },
+  lockedDateText: { fontSize: 13.5, color: "#374151", fontWeight: "700" },
+  lockedDateHint: { fontSize: 10.5, color: "#9ca3af", marginTop: 3 },
   textArea: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, fontSize: 13.5, color: "#374151", minHeight: 100, marginBottom: 16 },
   selectBox: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 16 },
   selectText: { fontSize: 13.5, color: "#374151", fontWeight: "600" },
