@@ -7,10 +7,21 @@ import {
   Image,
   ScrollView,
   Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../lib/api";
+
+const FAQ_ITEMS = [
+  { q: "How do I report a lost item?", a: "Tap 'Report Lost' on Home, upload a clear photo, and our AI will auto-fill the details. Confirm the category, date, and location, then submit." },
+  { q: "How do I know if my item was found?", a: "You'll get a notification when the AI finds a possible match above the confidence threshold. Tap it to view the matched item and submit a claim." },
+  { q: "How does the claim process work?", a: "After submitting a claim with a description and evidence photos, you may be asked a few verification questions. Admin reviews everything and makes the final decision." },
+  { q: "What if my claim gets rejected?", a: "You can appeal with additional evidence. Your appeal will be reviewed by an administrator for a final decision." },
+  { q: "Where do I pick up my item once approved?", a: "Visit the Guidance Office to collect it from Ms. Shelly S. Durban within the given pickup window shown on your Claim Status page." },
+];
 
 interface LostReport {
   id: number;
@@ -48,6 +59,28 @@ export default function HomeScreen({ navigation }: any) {
   const [publicReports, setPublicReports] = useState<PublicLostReport[]>([]);
   const [publicLoading, setPublicLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<PublicLostReport | null>(null);
+  const insets = useSafeAreaInsets();
+  const [chatbotOpen, setChatbotOpen] = useState(false);
+  const [chatHistory, setChatHistory] = useState<{ role: "user" | "bot"; text: string }[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatThinking, setChatThinking] = useState(false);
+    const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+
+  const handleAskChatbot = async () => {
+    const question = chatInput.trim();
+    if (!question) return;
+    setChatHistory((prev) => [...prev, { role: "user", text: question }]);
+    setChatInput("");
+    setChatThinking(true);
+    try {
+      const res = await api.post("/support/ask", { question });
+      setChatHistory((prev) => [...prev, { role: "bot", text: res.data.answer }]);
+    } catch (err) {
+      setChatHistory((prev) => [...prev, { role: "bot", text: "Sorry, something went wrong. Please try again or send us a message below." }]);
+    } finally {
+      setChatThinking(false);
+    }
+  };
 
   useEffect(() => {
 
@@ -216,6 +249,90 @@ export default function HomeScreen({ navigation }: any) {
             )}
           </View>
         </TouchableOpacity>
+            </Modal>
+
+      {!chatbotOpen && (
+        <TouchableOpacity
+          style={[styles.chatbotFab, { bottom: 75 + insets.bottom }]}
+          activeOpacity={0.85}
+          onPress={() => setChatbotOpen(true)}
+        >
+          <Ionicons name="chatbubble-ellipses" size={22} color="white" />
+        </TouchableOpacity>
+      )}
+
+      <Modal visible={chatbotOpen} animationType="slide" transparent onRequestClose={() => setChatbotOpen(false)}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.chatModalOverlay}
+        >
+          <View style={styles.chatPanel}>
+            <View style={styles.chatHeader}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <View style={styles.chatHeaderIcon}>
+                  <Ionicons name="chatbubble-ellipses" size={18} color="white" />
+                </View>
+                <View>
+                  <Text style={styles.chatHeaderTitle}>FindNest Assistant</Text>
+                  <Text style={styles.chatHeaderSubtitle}>Ask me how FindNest works</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setChatbotOpen(false)}>
+                <Ionicons name="close" size={24} color="rgba(255,255,255,0.8)" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.chatBody} contentContainerStyle={{ padding: 14 }}>
+              {chatHistory.length === 0 ? (
+                <View>
+                  <Text style={styles.faqSectionLabel}>Common Questions</Text>
+                  {FAQ_ITEMS.map((item, idx) => (
+                    <View key={idx} style={styles.faqItem}>
+                      <TouchableOpacity style={styles.faqQuestionRow} onPress={() => setOpenFaqIndex(openFaqIndex === idx ? null : idx)}>
+                        <Text style={styles.faqQuestion}>{item.q}</Text>
+                        <Ionicons name={openFaqIndex === idx ? "chevron-up" : "chevron-down"} size={16} color="#9ca3af" />
+                      </TouchableOpacity>
+                      {openFaqIndex === idx && <Text style={styles.faqAnswer}>{item.a}</Text>}
+                    </View>
+                  ))}
+                  <Text style={styles.faqOrAsk}>Or ask me your own question below!</Text>
+                </View>
+              ) : (
+                chatHistory.map((msg, idx) => (
+                  <View key={idx} style={[styles.chatBubbleWrap, msg.role === "user" ? { alignItems: "flex-end" } : { alignItems: "flex-start" }]}>
+                    <View style={[styles.chatBubble, msg.role === "user" ? styles.chatBubbleUser : styles.chatBubbleBot]}>
+                      <Text style={msg.role === "user" ? styles.chatBubbleUserText : styles.chatBubbleBotText}>{msg.text}</Text>
+                    </View>
+                  </View>
+                ))
+              )}
+              {chatThinking && (
+                <View style={[styles.chatBubbleWrap, { alignItems: "flex-start" }]}>
+                  <View style={[styles.chatBubble, styles.chatBubbleBot]}>
+                    <Text style={styles.chatBubbleBotText}>Typing...</Text>
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+
+            <View style={styles.chatInputRow}>
+              <TextInput
+                style={styles.chatInput}
+                placeholder="Type your question..."
+                placeholderTextColor="#9ca3af"
+                value={chatInput}
+                onChangeText={setChatInput}
+                onSubmitEditing={handleAskChatbot}
+              />
+              <TouchableOpacity style={styles.chatSendButton} onPress={handleAskChatbot} disabled={chatThinking || !chatInput.trim()}>
+                <Text style={styles.chatSendButtonText}>Ask</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity onPress={() => { setChatbotOpen(false); navigation.navigate("Support"); }}>
+              <Text style={styles.chatFallbackLink}>Still need help? Send a message to the office</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <View style={styles.bottomNav}>
@@ -428,4 +545,29 @@ const styles = StyleSheet.create({
   navItem: { flex: 1, alignItems: "center", gap: 3 },
   navLabel: { fontSize: 10, color: "#9ca3af", fontWeight: "600" },
   navLabelActive: { fontSize: 10, color: NAVY, fontWeight: "800" },
+  chatbotFab: { position: "absolute", right: 20, width: 52, height: 52, borderRadius: 26, backgroundColor: NAVY, alignItems: "center", justifyContent: "center", elevation: 6, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 5 },
+  chatModalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(13,19,63,0.5)" },
+  chatPanel: { backgroundColor: "white", borderTopLeftRadius: 24, borderTopRightRadius: 24, height: "75%", overflow: "hidden" },
+  chatHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: NAVY, paddingHorizontal: 18, paddingVertical: 16 },
+  chatHeaderIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
+  chatHeaderTitle: { color: "white", fontSize: 13.5, fontWeight: "800" },
+  chatHeaderSubtitle: { color: "#c7d2fe", fontSize: 10.5 },
+  chatBody: { flex: 1, backgroundColor: "#f8f9fc" },
+  faqSectionLabel: { fontSize: 10, fontWeight: "800", color: "#9ca3af", textTransform: "uppercase", marginBottom: 8 },
+  faqItem: { backgroundColor: "white", borderWidth: 1, borderColor: "#f0f0f0", borderRadius: 12, marginBottom: 8, overflow: "hidden" },
+  faqQuestionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 12 },
+  faqQuestion: { fontSize: 12, fontWeight: "700", color: "#374151", flex: 1, paddingRight: 8 },
+  faqAnswer: { fontSize: 11.5, color: "#6b7280", lineHeight: 16, paddingHorizontal: 12, paddingBottom: 12 },
+  faqOrAsk: { fontSize: 11.5, color: "#9ca3af", textAlign: "center", marginTop: 8 },
+  chatBubbleWrap: { marginBottom: 8 },
+  chatBubble: { borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9, maxWidth: "85%" },
+  chatBubbleUser: { backgroundColor: NAVY },
+  chatBubbleBot: { backgroundColor: "white", borderWidth: 1, borderColor: "#f0f0f0" },
+  chatBubbleUserText: { color: "white", fontSize: 12.5, lineHeight: 17 },
+  chatBubbleBotText: { color: "#374151", fontSize: 12.5, lineHeight: 17 },
+  chatInputRow: { flexDirection: "row", gap: 8, padding: 12, borderTopWidth: 1, borderTopColor: "#f0f0f0" },
+  chatInput: { flex: 1, backgroundColor: "#f8f9fc", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 12, paddingHorizontal: 14, fontSize: 12.5, color: "#374151" },
+  chatSendButton: { backgroundColor: NAVY, borderRadius: 12, paddingHorizontal: 16, justifyContent: "center" },
+  chatSendButtonText: { color: "white", fontWeight: "800", fontSize: 12 },
+  chatFallbackLink: { color: NAVY, fontSize: 10.5, fontWeight: "700", textAlign: "center", paddingBottom: 14 },
 });
