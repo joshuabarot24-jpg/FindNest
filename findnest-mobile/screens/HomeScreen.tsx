@@ -14,6 +14,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../lib/api";
+import { useAutoRefresh } from "../lib/useAutoRefresh";
 
 const FAQ_ITEMS = [
   { q: "How do I report a lost item?", a: "Tap 'Report Lost' on Home, upload a clear photo, and our AI will auto-fill the details. Confirm the category, date, and location, then submit." },
@@ -82,35 +83,39 @@ export default function HomeScreen({ navigation }: any) {
     }
   };
 
+  const fetchPublicReports = async () => {
+    try {
+      const response = await api.get("/lost-items", { params: { status: "searching" } });
+      setPublicReports(response.data.reports || []);
+    } catch (err) {
+      console.error("Error fetching public reports:", err);
+    } finally {
+      setPublicLoading(false);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await api.get("/notifications");
+      const notifications: NotificationItem[] = response.data.notifications || [];
+      const unreadMatch = notifications.find(
+        (n) => !n.is_read && n.type?.toLowerCase().includes("match")
+      );
+      setMatchNotification(unreadMatch || null);
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+    }
+  };
+
   useEffect(() => {
-
-    const fetchPublicReports = async () => {
-      try {
-        const response = await api.get("/lost-items", { params: { status: "searching" } });
-        setPublicReports(response.data.reports || []);
-      } catch (err) {
-        console.error("Error fetching public reports:", err);
-      } finally {
-        setPublicLoading(false);
-      }
-    };
-
-    const fetchNotifications = async () => {
-      try {
-        const response = await api.get("/notifications");
-        const notifications: NotificationItem[] = response.data.notifications || [];
-        const unreadMatch = notifications.find(
-          (n) => !n.is_read && n.type?.toLowerCase().includes("match")
-        );
-        setMatchNotification(unreadMatch || null);
-      } catch (err) {
-        console.error("Error fetching notifications:", err);
-      }
-    };
-
     fetchPublicReports();
     fetchNotifications();
   }, []);
+
+  useAutoRefresh(() => {
+    fetchPublicReports();
+    fetchNotifications();
+  });
 
 
   return (
