@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import api from "../lib/api";
+import { useAutoRefresh } from "../lib/useAutoRefresh";
 
 const NAVY = "#1a237e";
 
@@ -171,6 +172,11 @@ export default function ClaimStatusScreen({ navigation }: any) {
     fetchClaims();
     fetchPendingMatches();
   }, []);
+
+  useAutoRefresh(() => {
+    fetchClaims();
+    fetchPendingMatches();
+  });
 
   const claimUploadedUrls = claimPhotos.filter((p) => p.url).map((p) => p.url as string);
   const claimAnyUploading = claimPhotos.some((p) => p.uploading);
