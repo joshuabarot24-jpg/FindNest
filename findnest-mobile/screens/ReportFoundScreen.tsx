@@ -304,7 +304,6 @@ export default function ReportFoundScreen({ navigation }: any) {
 
             <Text style={styles.label}>
               Upload Photos <Text style={styles.requiredMark}>*</Text>
-              <Text style={styles.hintText}> (up to {MAX_PHOTOS}, different angles help)</Text>
             </Text>
 
             {photos.length > 0 && (
