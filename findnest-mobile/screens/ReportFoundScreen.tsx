@@ -67,6 +67,19 @@ export default function ReportFoundScreen({ navigation }: any) {
   const [dateObj, setDateObj] = useState<Date>(MAX_DATE);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [time, setTime] = useState("");
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
+  const handleTimeChange = (event: any, selected?: Date) => {
+    setShowTimePicker(Platform.OS === "ios");
+    if (selected) {
+      const hours = selected.getHours();
+      const minutes = selected.getMinutes();
+      const period = hours >= 12 ? "PM" : "AM";
+      const displayHour = hours % 12 === 0 ? 12 : hours % 12;
+      const displayMinutes = minutes.toString().padStart(2, "0");
+      setTime(`${displayHour}:${displayMinutes} ${period}`);
+    }
+  };
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
@@ -442,13 +455,23 @@ export default function ReportFoundScreen({ navigation }: any) {
             )}
 
             <Text style={styles.label}>Approx. Time Found</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. 2:30 PM"
-              placeholderTextColor="#9ca3af"
-              value={time}
-              onChangeText={setTime}
-            />
+            <TouchableOpacity style={[styles.dateInputBox, { marginBottom: 20 }]} onPress={() => setShowTimePicker(true)}>
+              <Text style={[styles.dateInputText, !time && { color: "#9ca3af", fontWeight: "400" }]}>{time || "Select a time"}</Text>
+              <Ionicons name="time-outline" size={18} color="#9ca3af" />
+            </TouchableOpacity>
+            {showTimePicker && (
+              <DateTimePicker
+                value={new Date()}
+                mode="time"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={handleTimeChange}
+              />
+            )}
+            {Platform.OS === "ios" && showTimePicker && (
+              <TouchableOpacity style={styles.iosDoneButton} onPress={() => setShowTimePicker(false)}>
+                <Text style={styles.iosDoneButtonText}>Done</Text>
+              </TouchableOpacity>
+            )}
 
             <View style={styles.surrenderNote}>
               <Text style={styles.surrenderNoteTitle}>Surrender Reminder!</Text>
