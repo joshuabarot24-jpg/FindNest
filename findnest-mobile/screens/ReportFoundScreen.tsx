@@ -8,16 +8,45 @@ import {
   Image,
   Modal,
   ScrollView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import api from "../lib/api";
 
 const categories = ["Electronics", "Personal Belongings", "ID/Cards", "Keys", "School Supplies", "Accessories", "Others"];
 const MAX_PHOTOS = 4;
 const NAVY = "#1a237e";
+
+function getManilaDateObj(daysAgo: number) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+
+  const y = parseInt(parts.find((p) => p.type === "year")!.value, 10);
+  const m = parseInt(parts.find((p) => p.type === "month")!.value, 10);
+  const d = parseInt(parts.find((p) => p.type === "day")!.value, 10);
+
+  const result = new Date(y, m - 1, d);
+  result.setDate(result.getDate() - daysAgo);
+  return result;
+}
+
+function toDateString(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+const MIN_DATE = getManilaDateObj(2);
+const MAX_DATE = getManilaDateObj(0);
 
 interface PhotoItem {
   preview: string;
@@ -35,7 +64,8 @@ export default function ReportFoundScreen({ navigation }: any) {
   const [description, setDescription] = useState("");
   const [aiFilled, setAiFilled] = useState(false);
   const [location, setLocation] = useState("");
-  const [date, setDate] = useState(() => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }));
+  const [dateObj, setDateObj] = useState<Date>(MAX_DATE);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [time, setTime] = useState("");
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
@@ -51,8 +81,18 @@ export default function ReportFoundScreen({ navigation }: any) {
   const [choosingItemUrl, setChoosingItemUrl] = useState<string | null>(null);
   const [resolvingChoice, setResolvingChoice] = useState(false);
 
+  const date = toDateString(dateObj);
+
   const anyUploading = photos.some((p) => p.uploading);
   const uploadedUrls = photos.filter((p) => p.url).map((p) => p.url as string);
+
+  const handleDateChange = (event: any, selected?: Date) => {
+    setShowDatePicker(Platform.OS === "ios");
+    if (selected) {
+      const clamped = selected < MIN_DATE ? MIN_DATE : selected > MAX_DATE ? MAX_DATE : selected;
+      setDateObj(clamped);
+    }
+  };
 
   const applyAiFields = (data: any) => {
     if (data.ai_item_name) {
@@ -175,10 +215,6 @@ export default function ReportFoundScreen({ navigation }: any) {
     }
     if (!location.trim()) {
       setSubmitError("Location found is required.");
-      return;
-    }
-    if (!date.trim()) {
-      setSubmitError("Date found is required.");
       return;
     }
     setSubmitError("");
@@ -383,10 +419,27 @@ export default function ReportFoundScreen({ navigation }: any) {
             />
 
             <Text style={styles.label}>Date Found</Text>
-            <View style={styles.lockedDateBox}>
-              <Text style={styles.lockedDateText}>{date}</Text>
-              <Text style={styles.lockedDateHint}>Today only — items should be reported as soon as they're found</Text>
-            </View>
+            <TouchableOpacity style={styles.dateInputBox} onPress={() => setShowDatePicker(true)}>
+              <Text style={styles.dateInputText}>{date}</Text>
+              <Ionicons name="calendar-outline" size={18} color="#9ca3af" />
+            </TouchableOpacity>
+            <Text style={styles.lockedDateHint}>Only today or up to 2 days ago can be selected</Text>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={dateObj}
+                mode="date"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                minimumDate={MIN_DATE}
+                maximumDate={MAX_DATE}
+                onChange={handleDateChange}
+              />
+            )}
+            {Platform.OS === "ios" && showDatePicker && (
+              <TouchableOpacity style={styles.iosDoneButton} onPress={() => setShowDatePicker(false)}>
+                <Text style={styles.iosDoneButtonText}>Done</Text>
+              </TouchableOpacity>
+            )}
 
             <Text style={styles.label}>Approx. Time Found</Text>
             <TextInput
@@ -552,13 +605,15 @@ const styles = StyleSheet.create({
   pageSubtitle: { fontSize: 12.5, color: "#9ca3af", marginBottom: 22 },
   labelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   label: { fontSize: 12.5, fontWeight: "800", color: "#374151" },
-  hintText: { fontSize: 10.5, fontWeight: "600", color: "#9ca3af" }, 
+  hintText: { fontSize: 10.5, fontWeight: "600", color: "#9ca3af" },
   autoTag: { fontSize: 10.5, fontWeight: "700", color: "#22c55e" },
   requiredMark: { color: "#ef4444" },
   input: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13, fontSize: 13.5, color: "#374151", marginBottom: 16 },
-  lockedDateBox: { backgroundColor: "#f3f4f6", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13, marginBottom: 16 },
-  lockedDateText: { fontSize: 13.5, color: "#374151", fontWeight: "700" },
-  lockedDateHint: { fontSize: 10.5, color: "#9ca3af", marginTop: 3 },
+  dateInputBox: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13 },
+  dateInputText: { fontSize: 13.5, color: "#374151", fontWeight: "700" },
+  lockedDateHint: { fontSize: 10.5, color: "#9ca3af", marginTop: 6, marginBottom: 16 },
+  iosDoneButton: { backgroundColor: NAVY, borderRadius: 12, paddingVertical: 10, alignItems: "center", marginBottom: 16 },
+  iosDoneButtonText: { color: "white", fontWeight: "800", fontSize: 13 },
   textArea: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, fontSize: 13.5, color: "#374151", minHeight: 100, marginBottom: 16 },
   selectBox: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 16 },
   selectText: { fontSize: 13.5, color: "#374151", fontWeight: "600" },
