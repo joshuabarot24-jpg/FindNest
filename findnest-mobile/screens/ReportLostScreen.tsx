@@ -18,7 +18,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view
 import api from "../lib/api";
 
 const categories = ["Electronics", "Personal Belongings", "ID/Cards", "Keys", "School Supplies", "Accessories", "Others"];
-const MAX_PHOTOS = 4;
+const MAX_PHOTOS = 1;
 const NAVY = "#1a237e";
 
 function getManilaDateObj(daysAgo: number) {
