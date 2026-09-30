@@ -9,6 +9,7 @@ import {
   Modal,
   ScrollView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -299,7 +300,8 @@ export default function ReportLostScreen({ navigation }: any) {
                     <Image source={{ uri: p.preview }} style={styles.photoThumb} />
                     {p.uploading && (
                       <View style={styles.photoThumbLoading}>
-                        <Text style={styles.photoThumbLoadingText}>...</Text>
+                      <ActivityIndicator size="small" color="white" />
+                        <Text style={styles.photoThumbLoadingText}>Analyzing photo...</Text>
                       </View>
                     )}
                     {!p.uploading && (
@@ -617,8 +619,8 @@ const styles = StyleSheet.create({
   photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
   photoThumbWrap: { width: "23%", aspectRatio: 1, position: "relative" },
   photoThumb: { width: "100%", height: "100%", borderRadius: 12, resizeMode: "cover" },
-  photoThumbLoading: { position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 12, justifyContent: "center", alignItems: "center" },
-  photoThumbLoadingText: { color: "white", fontWeight: "800" },
+photoThumbLoading: { position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 12, justifyContent: "center", alignItems: "center", gap: 4 },
+  photoThumbLoadingText: { color: "white", fontWeight: "800", fontSize: 8, textAlign: "center", paddingHorizontal: 2 },
   photoRemoveBtn: { position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: "#ef4444", justifyContent: "center", alignItems: "center" },
   photoRemoveBtnText: { color: "white", fontWeight: "900", fontSize: 13, lineHeight: 16 },
   mainBadge: { position: "absolute", bottom: 2, left: 2, backgroundColor: NAVY, color: "white", fontSize: 8, fontWeight: "800", paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4, overflow: "hidden" },
