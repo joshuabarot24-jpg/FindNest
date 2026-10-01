@@ -128,7 +128,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
   const [claimSubmitting, setClaimSubmitting] = useState(false);
   const [claimError, setClaimError] = useState("");
   const [claimPhotos, setClaimPhotos] = useState<{ preview: string; url: string | null; uploading: boolean }[]>([]);
-  const CLAIM_MAX_PHOTOS = 4;
+  const CLAIM_MAX_PHOTOS = 1;
 
   const [appealingClaim, setAppealingClaim] = useState<Claim | null>(null);
   const [appealMessage, setAppealMessage] = useState("");
@@ -558,9 +558,9 @@ export default function ClaimStatusScreen({ navigation }: any) {
                 </View>
               )}
               {claimPhotos.length < CLAIM_MAX_PHOTOS && (
-                <TouchableOpacity style={styles.appealPhotoBox} onPress={pickClaimPhoto}>
+                <TouchableOpacity style={styles.appealPhotoBox} onPress={pickClaimPhoto} disabled={claimAnyUploading}>
                   <Text style={styles.appealPhotoText}>
-                    {claimPhotos.length === 0 ? "Tap to add evidence photos" : `Add more (${CLAIM_MAX_PHOTOS - claimPhotos.length} left)`}
+                    {claimAnyUploading ? "Analyzing photo..." : claimPhotos.length === 0 ? "Tap to add evidence photos" : `Add more (${CLAIM_MAX_PHOTOS - claimPhotos.length} left)`}
                   </Text>
                 </TouchableOpacity>
               )}
