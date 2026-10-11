@@ -15,6 +15,7 @@ import * as ImagePicker from "expo-image-picker";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import api from "../lib/api";
 import { useAutoRefresh } from "../lib/useAutoRefresh";
+import { useForcePasswordChange } from "../lib/useForcePasswordChange";
 
 const NAVY = "#1a237e";
 
@@ -117,6 +118,7 @@ function daysRemaining(deadline: string): number {
 }
 
 export default function ClaimStatusScreen({ navigation }: any) {
+  useForcePasswordChange(navigation);
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
 

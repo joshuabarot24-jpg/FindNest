@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import api from "../lib/api";
 import { getAuth } from "../lib/auth";
+import { useForcePasswordChange } from "../lib/useForcePasswordChange";
 
 const NAVY = "#1a237e";
 
@@ -34,6 +35,7 @@ function formatTime(dateStr: string) {
 }
 
 export default function SupportScreen({ navigation }: any) {
+  useForcePasswordChange(navigation);  
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");

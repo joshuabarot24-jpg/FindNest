@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { useForcePasswordChange } from "../lib/useForcePasswordChange";
 import api from "../lib/api";
 
 const categories = ["Electronics", "Personal Belongings", "ID/Cards", "Keys", "School Supplies", "Accessories", "Others"];
@@ -48,6 +49,7 @@ interface PhotoItem {
 }
 
 export default function ReportLostScreen({ navigation }: any) {
+  useForcePasswordChange(navigation);
   const [itemName, setItemName] = useState("");
   const [itemNameAiFilled, setItemNameAiFilled] = useState(false);
   const [category, setCategory] = useState("Electronics");

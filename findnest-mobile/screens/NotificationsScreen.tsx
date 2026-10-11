@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../lib/api";
+import { useForcePasswordChange } from "../lib/useForcePasswordChange";
 
 interface NotificationItem {
   id: number;
@@ -55,6 +56,7 @@ function cardStyleFor(type: string) {
 const NAVY = "#1a237e";
 
 export default function NotificationsScreen({ navigation }: any) {
+  useForcePasswordChange(navigation);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 

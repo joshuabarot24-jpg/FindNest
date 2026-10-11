@@ -15,6 +15,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons";
 import api from "../lib/api";
 import { useAutoRefresh } from "../lib/useAutoRefresh";
+import { useForcePasswordChange } from "../lib/useForcePasswordChange";
 
 const FAQ_ITEMS = [
   { q: "How do I report a lost item?", a: "Tap 'Report Lost' on Home, upload a clear photo, and our AI will auto-fill the details. Confirm the category, date, and location, then submit." },
@@ -55,6 +56,7 @@ function formatDate(dateStr: string) {
 }
 
 export default function HomeScreen({ navigation }: any) {
+  useForcePasswordChange(navigation);
   const [matchNotification, setMatchNotification] = useState<NotificationItem | null>(null);
 
   const [publicReports, setPublicReports] = useState<PublicLostReport[]>([]);
