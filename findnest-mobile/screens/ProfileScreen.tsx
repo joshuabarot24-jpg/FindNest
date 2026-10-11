@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import api from "../lib/api";
 import { clearAuth } from "../lib/auth";
+import LogoutConfirmModal from "../components/LogoutConfirmModal";
 
 const NAVY = "#1a237e";
 
@@ -40,6 +41,8 @@ export default function ProfileScreen({ navigation }: any) {
   const [requestError, setRequestError] = useState("");
   const [requestSuccess, setRequestSuccess] = useState("");
 
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [setPasswordLoading, setSetPasswordLoading] = useState(false);
@@ -132,12 +135,11 @@ export default function ProfileScreen({ navigation }: any) {
     }
   };
 
-  // [UX] Ask before logging out
-  const handleLogout = () => {
-    Alert.alert("Log out", "Are you sure you want to log out of FindNest?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Log out", style: "destructive", onPress: doLogout },
-    ]);
+  // [UX] Ask before logging out (styled popup)
+  const handleLogout = () => setShowLogoutConfirm(true);
+  const confirmLogout = async () => {
+    setLoggingOut(true);
+    await doLogout();
   };
 
   function trustScoreColor(score: number) {
@@ -349,6 +351,12 @@ export default function ProfileScreen({ navigation }: any) {
           <Text style={styles.navLabelActive}>Profile</Text>
         </TouchableOpacity>
       </View>
+      <LogoutConfirmModal
+        visible={showLogoutConfirm}
+        busy={loggingOut}
+        onCancel={() => setShowLogoutConfirm(false)}
+        onConfirm={confirmLogout}
+      />
     </SafeAreaView>
   );
 }
