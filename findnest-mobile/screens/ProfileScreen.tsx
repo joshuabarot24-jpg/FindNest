@@ -121,15 +121,23 @@ export default function ProfileScreen({ navigation }: any) {
     }
   };
 
-  const handleLogout = async () => {
+  const doLogout = async () => {
     try {
       await api.post("/auth/logout");
     } catch (err) {
       console.error("Logout request failed:", err);
     } finally {
-      await clearAuth();
+        await clearAuth();
       navigation.reset({ index: 0, routes: [{ name: "Landing" }] });
     }
+  };
+
+  // [UX] Ask before logging out
+  const handleLogout = () => {
+    Alert.alert("Log out", "Are you sure you want to log out of FindNest?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Log out", style: "destructive", onPress: doLogout },
+    ]);
   };
 
   function trustScoreColor(score: number) {
