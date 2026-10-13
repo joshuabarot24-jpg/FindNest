@@ -57,6 +57,7 @@ export default function StudentLoginScreen({ navigation }: any) {
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState("");
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const [resetToken, setResetToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -143,7 +144,7 @@ export default function StudentLoginScreen({ navigation }: any) {
     setForgotLoading(true);
     try {
       await api.post("/auth/forgot-password", { email: forgotEmail.trim() });
-      setStep("reset");
+      setResetEmailSent(true);
     } catch (err: any) {
       setForgotError(err.response?.data?.message || "Something went wrong. Please try again.");
     } finally {
@@ -184,6 +185,7 @@ export default function StudentLoginScreen({ navigation }: any) {
 
   const backToLogin = () => {
     setStep("login");
+    setResetEmailSent(false);
     setForgotEmail("");
     setForgotError("");
     setResetToken("");
@@ -304,40 +306,57 @@ export default function StudentLoginScreen({ navigation }: any) {
           )}
 
           {step === "forgot" && (
-            <>
-              <Text style={styles.title}>Forgot Password</Text>
-              <Text style={styles.subtitle}>Enter your registered email to receive a reset code</Text>
+            resetEmailSent ? (
+              <>
+                <Text style={styles.title}>Check Your Email</Text>
+                <Text style={styles.subtitle}>
+                  We sent a reset link to {forgotEmail.trim()}. Open the email and tap the link to set your new password. The link expires in 60 minutes.
+                </Text>
 
-              <View style={styles.inputWrap}>
-                <Ionicons name="mail-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="your@email.com"
-                  placeholderTextColor="#9ca3af"
-                  value={forgotEmail}
-                  onChangeText={(text) => {
-                    setForgotEmail(text);
-                    if (forgotError) setForgotError("");
-                  }}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                />
-              </View>
+                <TouchableOpacity style={styles.button} onPress={backToLogin}>
+                  <Text style={styles.buttonText}>Back to Login</Text>
+                </TouchableOpacity>
 
-              {forgotError && <Text style={styles.errorText}>{forgotError}</Text>}
+                <TouchableOpacity onPress={() => setResetEmailSent(false)}>
+                  <Text style={styles.backText}>Didn&apos;t get it? Send again</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.title}>Forgot Password</Text>
+                <Text style={styles.subtitle}>Enter your registered email to receive a reset link</Text>
 
-              <TouchableOpacity
-                style={[styles.button, forgotLoading && styles.buttonDisabled]}
-                onPress={handleForgotSubmit}
-                disabled={forgotLoading}
-              >
-                <Text style={styles.buttonText}>{forgotLoading ? "Sending..." : "Send Reset Code"}</Text>
-              </TouchableOpacity>
+                <View style={styles.inputWrap}>
+                  <Ionicons name="mail-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="your@email.com"
+                    placeholderTextColor="#9ca3af"
+                    value={forgotEmail}
+                    onChangeText={(text) => {
+                      setForgotEmail(text);
+                      if (forgotError) setForgotError("");
+                    }}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                  />
+                </View>
 
-              <TouchableOpacity onPress={backToLogin}>
-                <Text style={styles.backText}>Back to Login</Text>
-              </TouchableOpacity>
-            </>
+                {forgotError && <Text style={styles.errorText}>{forgotError}</Text>}
+
+                <TouchableOpacity
+                  style={[styles.button, forgotLoading && styles.buttonDisabled]}
+                  onPress={handleForgotSubmit}
+                  disabled={forgotLoading}
+                >
+                  <Text style={styles.buttonText}>{forgotLoading ? "Sending..." : "Send Reset Link"}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={backToLogin}>
+                  <Text style={styles.backText}>Back to Login</Text>
+                </TouchableOpacity>
+              </>
+            )
           )}
 
           {step === "reset" && (
