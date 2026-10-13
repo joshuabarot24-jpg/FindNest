@@ -10,6 +10,7 @@ import {
   ScrollView,
   Platform,
   ActivityIndicator,
+  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -130,6 +131,7 @@ export default function ReportLostScreen({ navigation }: any) {
     const isFirstPhoto = photos.length === 0;
     const idx = photos.length;
 
+    Keyboard.dismiss();
     setPhotos((prev) => [...prev, { preview: uri, url: null, uploading: true }]);
 
     try {
@@ -473,7 +475,19 @@ export default function ReportLostScreen({ navigation }: any) {
             </TouchableOpacity>
           </>
         )}
+
       </KeyboardAwareScrollView>
+
+      {/* [UX] While a photo is being analyzed, block every touch on the form */}
+      {anyUploading && (
+        <View style={styles.analyzingOverlay} pointerEvents="auto">
+          <View style={styles.analyzingCard}>
+            <ActivityIndicator size="large" color="#1a237e" />
+            <Text style={styles.analyzingText}>Analyzing your photo...</Text>
+            <Text style={styles.analyzingSub}>Please wait. The form is locked until it finishes.</Text>
+          </View>
+        </View>
+      )}
 
       <Modal visible={showPhotoOptions} animationType="slide" transparent onRequestClose={() => setShowPhotoOptions(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowPhotoOptions(false)}>
@@ -594,6 +608,10 @@ export default function ReportLostScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  analyzingOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(255,255,255,0.75)", justifyContent: "center", alignItems: "center", zIndex: 50 },
+  analyzingCard: { backgroundColor: "white", borderRadius: 20, paddingVertical: 24, paddingHorizontal: 28, alignItems: "center", elevation: 6, shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 10, maxWidth: 300 },
+  analyzingText: { marginTop: 12, fontSize: 15, fontWeight: "800", color: "#1a237e" },
+  analyzingSub: { marginTop: 4, fontSize: 12, color: "#6b7280", textAlign: "center" },
   container: { flex: 1, backgroundColor: "#f8f9fc" },
   topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingVertical: 14, backgroundColor: "white", borderBottomWidth: 1, borderBottomColor: "#f0f0f0" },
   topBarLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
