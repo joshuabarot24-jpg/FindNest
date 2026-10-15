@@ -7,11 +7,13 @@ import {
   StyleSheet,
   Image,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import api from "../lib/api";
+import * as ImagePicker from "expo-image-picker";
 import { clearAuth } from "../lib/auth";
 import LogoutConfirmModal from "../components/LogoutConfirmModal";
 
@@ -30,6 +32,7 @@ interface User {
   password_change_approved: boolean;
   password_change_reason: string | null;
   password_is_temporary?: boolean;
+  profile_photo_url?: string | null;
 }
 
 export default function ProfileScreen({ navigation }: any) {
@@ -42,6 +45,7 @@ export default function ProfileScreen({ navigation }: any) {
   const [requestSuccess, setRequestSuccess] = useState("");
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -137,6 +141,61 @@ export default function ProfileScreen({ navigation }: any) {
 
   // [UX] Ask before logging out (styled popup)
   const handleLogout = () => setShowLogoutConfirm(true);
+
+  // Uploads the picked image (moderated, no item analysis), then saves the URL on the account
+  const uploadPhoto = async (uri: string) => {
+    setPhotoBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", { uri, name: "profile.jpg", type: "image/jpeg" } as any);
+      fd.append("folder", "profiles");
+      fd.append("analyze", "false");
+      const up = await api.post("/upload/image", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      await api.post("/profile/photo", { photo_url: up.data.url });
+      await fetchProfile();
+    } catch (err: any) {
+      Alert.alert("Photo not saved", err.response?.data?.message || "Could not upload the photo. Please try again.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const pickFromGallery = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.7 });
+    if (!result.canceled) uploadPhoto(result.assets[0].uri);
+  };
+
+  const takePhoto = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Camera permission needed", "Allow camera access to take a profile photo.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.7 });
+    if (!result.canceled) uploadPhoto(result.assets[0].uri);
+  };
+
+  const removePhoto = async () => {
+    setPhotoBusy(true);
+    try {
+      await api.delete("/profile/photo");
+      await fetchProfile();
+    } catch {
+      Alert.alert("Error", "Could not remove the photo.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const changePhoto = () => {
+    const options: any[] = [
+      { text: "Take a photo", onPress: takePhoto },
+      { text: "Choose from gallery", onPress: pickFromGallery },
+    ];
+    if (user?.profile_photo_url) options.push({ text: "Remove photo", style: "destructive", onPress: removePhoto });
+    options.push({ text: "Cancel", style: "cancel" });
+    Alert.alert("Profile photo", undefined, options);
+  };
   const confirmLogout = async () => {
     setLoggingOut(true);
     await doLogout();
@@ -189,9 +248,19 @@ export default function ProfileScreen({ navigation }: any) {
         extraScrollHeight={30}
       >
         <View style={styles.profileCard}>
-          <View style={styles.avatarBox}>
-            <Text style={styles.avatarInitial}>{user?.name?.charAt(0).toUpperCase() || "?"}</Text>
-          </View>
+          <TouchableOpacity style={styles.avatarBox} onPress={changePhoto} disabled={photoBusy} activeOpacity={0.8}>
+            {user?.profile_photo_url ? (
+              <Image source={{ uri: user.profile_photo_url }} style={{ width: "100%", height: "100%" }} />
+            ) : (
+              <Text style={styles.avatarInitial}>{user?.name?.charAt(0).toUpperCase() || "?"}</Text>
+            )}
+            {photoBusy && (
+              <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" }}>
+                <ActivityIndicator color="white" />
+              </View>
+            )}
+          </TouchableOpacity>
+          <Text style={{ color: "#1a237e", fontWeight: "700", fontSize: 12, marginBottom: 8 }}>Tap to change photo</Text>
           <Text style={styles.studentName}>{user?.name}</Text>
           <Text style={styles.studentInfo}>{user?.email}</Text>
 
