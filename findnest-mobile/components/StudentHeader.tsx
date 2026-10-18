@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   left: { width: 90, alignItems: "flex-start" },
   center: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   logo: { width: 30, height: 30, resizeMode: "contain" },
-  brand: { fontSize: 18, fontWeight: "900", color: GREEN },
+  brand: { fontFamily: "Montserrat_800ExtraBold", fontSize: 18, color: "#0B4F2C" },
   right: { width: 90, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 12 },
   badge: { position: "absolute", top: -4, right: -6, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center" },
   badgeText: { color: "white", fontSize: 9, fontWeight: "800" },
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   drawer: { width: 270, backgroundColor: GREEN, paddingHorizontal: 18 },
   drawerBrand: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 26 },
   drawerLogo: { width: 40, height: 40, resizeMode: "contain" },
-  drawerBrandText: { color: "white", fontSize: 22, fontWeight: "900" },
+  drawerBrandText: { fontFamily: "Montserrat_800ExtraBold", color: "white", fontSize: 22 },
   drawerItem: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14, paddingHorizontal: 10, borderRadius: 14 },
   drawerItemText: { color: "white", fontSize: 15, fontWeight: "700" },
 });

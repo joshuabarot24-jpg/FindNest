@@ -15,11 +15,14 @@ import NotificationsScreen from "./screens/NotificationsScreen";
 import ReportLostScreen from "./screens/ReportLostScreen"; 
 import ReportFoundScreen from "./screens/ReportFoundScreen";
 import ClaimStatusScreen from "./screens/ClaimStatusScreen";
+import { useFonts, Montserrat_800ExtraBold } from "@expo-google-fonts/montserrat";
+import { Inter_500Medium } from "@expo-google-fonts/inter";
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [initialRoute, setInitialRoute] = useState<"Landing" | "Home" | null>(null);
+  const [fontsLoaded] = useFonts({ Montserrat_800ExtraBold, Inter_500Medium });
 
   useEffect(() => {
     const restoreSession = async () => {
@@ -33,7 +36,7 @@ export default function App() {
     restoreSession();
   }, []);
 
-  if (initialRoute === null) {
+  if (initialRoute === null || !fontsLoaded) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#1a237e" }}>
         <ActivityIndicator size="large" color="#ffd700" />

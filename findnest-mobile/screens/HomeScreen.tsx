@@ -22,8 +22,8 @@ import { useUnreadCount } from "../lib/useUnreadCount";
 import StudentBottomNav from "../components/StudentBottomNav";
 
 const GREEN = "#0E4D34";
-const FOUND_GREEN = "#317A57";
-const LOST_RED = "#E5433A";
+const FOUND_GREEN = "#2E7D32";
+const LOST_RED = "#E53935";
 const MINT = "#EAF5EF";
 const CARD_BG = "#F3FAF6";
 const CARD_BORDER = "#BFE3CF";
@@ -88,6 +88,12 @@ export default function HomeScreen({ navigation }: any) {
   const [chatInput, setChatInput] = useState("");
   const [chatThinking, setChatThinking] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const [showMessageBox, setShowMessageBox] = useState(false);
+  const [isOverrideRequest, setIsOverrideRequest] = useState(false);
+  const [chatMessage, setChatMessage] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const [chatSent, setChatSent] = useState(false);
+  const [chatError, setChatError] = useState("");
 
   const handleAskChatbot = async () => {
     const question = chatInput.trim();
@@ -102,6 +108,26 @@ export default function HomeScreen({ navigation }: any) {
       setChatHistory((prev) => [...prev, { role: "bot", text: "Sorry, something went wrong. Please try again or send us a message below." }]);
     } finally {
       setChatThinking(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!chatMessage.trim()) {
+      setChatError("Please type a message first.");
+      return;
+    }
+    setChatError("");
+    setChatSending(true);
+    try {
+      await api.post("/support", { message: chatMessage.trim(), is_override_request: isOverrideRequest });
+      setChatMessage("");
+      setIsOverrideRequest(false);
+      setChatSent(true);
+      setTimeout(() => setChatSent(false), 3000);
+    } catch (err: any) {
+      setChatError(err.response?.data?.message || "Failed to send. Please try again.");
+    } finally {
+      setChatSending(false);
     }
   };
 
@@ -198,11 +224,27 @@ export default function HomeScreen({ navigation }: any) {
           source={require("../assets/landing-bg.jpg")}
           style={styles.hero}
           imageStyle={styles.heroImage}
-          resizeMode="contain"
+          resizeMode="cover"
         >
           <View style={styles.heroWash} />
           <View style={styles.heroContent}>
-            <Text style={styles.heroTitle}>NEVER LOST{"\n"}WHAT MATTERS{"\n"}MOST.</Text>
+            <View>
+              {[
+                { top: -2, left: 0 },
+                { top: 2, left: 0 },
+                { top: 0, left: -2 },
+                { top: 0, left: 2 },
+                { top: -1.5, left: -1.5 },
+                { top: -1.5, left: 1.5 },
+                { top: 1.5, left: -1.5 },
+                { top: 1.5, left: 1.5 },
+              ].map((o, i) => (
+                <Text key={i} style={[styles.heroTitle, styles.heroOutline, { top: o.top, left: o.left }]}>
+                  NEVER LOST{"\n"}WHAT MATTERS{"\n"}MOST.
+                </Text>
+              ))}
+              <Text style={styles.heroTitle}>NEVER LOST{"\n"}WHAT MATTERS{"\n"}MOST.</Text>
+            </View>
             <Text style={styles.heroText}>
               FindNest uses advanced AI image recognition to match lost and found items on campus. Submit a report, get notified instantly.
             </Text>
@@ -386,6 +428,17 @@ export default function HomeScreen({ navigation }: any) {
                     </View>
                   ))}
                   <Text style={styles.faqOrAsk}>Or ask me your own question below!</Text>
+                  <TouchableOpacity
+                    style={{ marginTop: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1.5, borderColor: GREEN, backgroundColor: "white", borderRadius: 999, paddingVertical: 11, paddingHorizontal: 16 }}
+                    activeOpacity={0.85}
+                    onPress={() => { setShowMessageBox(true); setIsOverrideRequest(true); }}
+                  >
+                    <Ionicons name="construct-outline" size={18} color={GREEN} />
+                    <Text style={{ color: GREEN, fontWeight: "800", fontSize: 12.5 }}>Request Manual AI Override</Text>
+                  </TouchableOpacity>
+                  <Text style={{ fontSize: 10.5, color: "#6b8f7c", textAlign: "center", marginTop: 6 }}>
+                    Photo unclear and the AI can't read it? Tap here to ask the office.
+                  </Text>
                 </View>
               ) : (
                 chatHistory.map((msg, idx) => (
@@ -418,9 +471,37 @@ export default function HomeScreen({ navigation }: any) {
                 <Text style={styles.chatSendButtonText}>Ask</Text>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={() => { setChatbotOpen(false); navigation.navigate("Support"); }}>
-              <Text style={styles.chatFallbackLink}>Still need help? Send a message to the office</Text>
+            <TouchableOpacity onPress={() => setShowMessageBox(!showMessageBox)}>
+              <Text style={styles.chatFallbackLink}>{showMessageBox ? "Hide" : "Still need help? Send a message to the office"}</Text>
             </TouchableOpacity>
+            {showMessageBox ? (
+              <View style={{ paddingHorizontal: 12, paddingBottom: 14 }}>
+                <TouchableOpacity style={{ flexDirection: "row", gap: 8, marginBottom: 8 }} onPress={() => setIsOverrideRequest(!isOverrideRequest)} activeOpacity={0.8}>
+                  <View style={{ width: 18, height: 18, borderRadius: 4, borderWidth: 1.5, borderColor: GREEN, backgroundColor: isOverrideRequest ? GREEN : "white", alignItems: "center", justifyContent: "center" }}>
+                    {isOverrideRequest ? <Ionicons name="checkmark" size={12} color="white" /> : null}
+                  </View>
+                  <Text style={{ flex: 1, fontSize: 10.5, color: "#6b7280", lineHeight: 15 }}>
+                    This is a request for a manual AI override. My photo is unclear and the AI cannot analyze it, so I need to fill in details manually.
+                  </Text>
+                </TouchableOpacity>
+                <TextInput
+                  style={{ backgroundColor: MINT, borderWidth: 1.5, borderColor: "#CFE6D8", borderRadius: 12, padding: 12, fontSize: 12.5, color: "#374151", minHeight: 70, marginBottom: 8 }}
+                  placeholder={isOverrideRequest ? "Explain why your photo isn't clear..." : "Type your message here..."}
+                  placeholderTextColor="#9ca3af"
+                  value={chatMessage}
+                  onChangeText={setChatMessage}
+                  multiline
+                  textAlignVertical="top"
+                />
+                {chatError ? <Text style={{ color: "#ef4444", fontSize: 10.5, fontWeight: "700", marginBottom: 6 }}>{chatError}</Text> : null}
+                {chatSent ? <Text style={{ color: "#16a34a", fontSize: 10.5, fontWeight: "700", marginBottom: 6 }}>Message sent!</Text> : null}
+                <TouchableOpacity style={{ backgroundColor: GREEN, borderRadius: 999, paddingVertical: 12, alignItems: "center", opacity: chatSending ? 0.5 : 1 }} onPress={handleSendMessage} disabled={chatSending}>
+                  <Text style={{ color: "white", fontWeight: "800", fontSize: 12.5 }}>
+                    {chatSending ? "Sending..." : isOverrideRequest ? "Send Override Request" : "Send Message to Office"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -444,7 +525,7 @@ const styles = StyleSheet.create({
   topSideLeft: { width: 90, alignItems: "flex-start" },
   topCenter: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   logoSmall: { width: 30, height: 30, resizeMode: "contain" },
-  brandText: { fontSize: 18, fontWeight: "900", color: GREEN },
+  brandText: { fontFamily: "Montserrat_800ExtraBold", fontSize: 18, color: "#0B4F2C" },
   topSideRight: { width: 90, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 12 },
   bellButton: { padding: 2 },
   bellBadge: {
@@ -475,11 +556,12 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 30, backgroundColor: MINT },
 
   hero: { width: "100%", minHeight: 340, justifyContent: "center", overflow: "hidden", backgroundColor: "#cfe8f5" },
-  heroImage: { top: 0, height: "100%" },
+  heroImage: { top: -300, height: "200%" },
   heroWash: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(255,255,255,0.32)" },
   heroContent: { paddingHorizontal: 22, paddingTop: 26, paddingBottom: 30 },
-  heroTitle: { fontSize: 30, fontWeight: "900", color: GREEN, lineHeight: 34, letterSpacing: 0.3 },
-  heroText: { fontSize: 13, color: "#0A3021", lineHeight: 19, marginTop: 12, maxWidth: "88%", fontWeight: "500" },
+  heroTitle: { fontFamily: "Montserrat_800ExtraBold", fontSize: 30, color: "#0B4F2C", lineHeight: 36, letterSpacing: 0.8, textTransform: "uppercase" },
+  heroOutline: { position: "absolute", color: "#FFFFFF" },
+  heroText: { fontFamily: "Inter_500Medium", fontSize: 13, color: "#0A3021", lineHeight: 20, marginTop: 12, maxWidth: "88%" },
 
   body: { paddingHorizontal: 20, paddingTop: 16 },
 
@@ -611,7 +693,7 @@ const styles = StyleSheet.create({
   drawer: { width: 270, backgroundColor: GREEN, paddingHorizontal: 18 },
   drawerBrand: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 26 },
   drawerLogo: { width: 40, height: 40, resizeMode: "contain" },
-  drawerBrandText: { color: "white", fontSize: 22, fontWeight: "900" },
+  drawerBrandText: { fontFamily: "Montserrat_800ExtraBold", color: "white", fontSize: 22 },
   drawerItem: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14, paddingHorizontal: 10, borderRadius: 14 },
   drawerItemText: { color: "white", fontSize: 15, fontWeight: "700" },
 
@@ -628,7 +710,7 @@ const styles = StyleSheet.create({
 
   chatbotFab: { position: "absolute", right: 20, width: 52, height: 52, borderRadius: 26, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", elevation: 6, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 5 },
   chatModalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(17,20,36,0.6)" },
-  chatPanel: { backgroundColor: "white", borderTopLeftRadius: 24, borderTopRightRadius: 24, height: "75%", overflow: "hidden" },
+  chatPanel: { backgroundColor: "white", borderTopLeftRadius: 24, borderTopRightRadius: 24, height: "85%", overflow: "hidden" },
   chatHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: GREEN, paddingHorizontal: 18, paddingVertical: 16 },
   chatHeaderIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
   chatHeaderTitle: { color: "white", fontSize: 13.5, fontWeight: "800" },

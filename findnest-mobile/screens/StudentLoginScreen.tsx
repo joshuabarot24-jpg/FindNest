@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logo: { width: 96, height: 96, resizeMode: "contain", marginBottom: 6 },
-  brand: { fontSize: 26, fontWeight: "900", color: GREEN, letterSpacing: 0.5 },
+  brand: { fontFamily: "Montserrat_800ExtraBold", fontSize: 26, color: "#0B4F2C", letterSpacing: 0.5 },
   tagline: { fontSize: 11, color: "#4B6358", marginTop: 2, marginBottom: 26 },
   title: { fontSize: 22, fontWeight: "900", color: GREEN, marginBottom: 4, textAlign: "center" },
   subtitle: { fontSize: 13, color: "#4B6358", marginBottom: 18, textAlign: "center", lineHeight: 19 },

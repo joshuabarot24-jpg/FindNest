@@ -604,7 +604,6 @@ export default function ReportLostScreen({ navigation }: any) {
       <Modal visible={showConfirm} animationType="fade" transparent onRequestClose={() => setShowConfirm(false)}>
         <View style={styles.centerOverlay}>
           <View style={styles.confirmBox}>
-            <Text style={styles.crumb}>Confirmation</Text>
             <Text style={styles.confirmTitle}>Submit Lost-item Report?</Text>
             <Text style={styles.confirmSub}>Send report to the campus lost and found located in{"\n"}Guidance office</Text>
             <View style={styles.confirmRow}>
@@ -623,13 +622,12 @@ export default function ReportLostScreen({ navigation }: any) {
       <Modal visible={submitted} animationType="fade" transparent onRequestClose={() => {}}>
         <View style={styles.centerOverlay}>
           <View style={styles.confirmBox}>
-            <Text style={styles.crumb}>Confirmation</Text>
             <View style={styles.checkCircle}>
               <Ionicons name="checkmark" size={24} color="white" />
             </View>
             <Text style={styles.confirmTitle}>Report Submitted Successfully</Text>
             <Text style={styles.confirmSub}>Send report to the campus lost and found located in{"\n"}Guidance office</Text>
-            <TouchableOpacity style={[styles.confirmBtn, { alignSelf: "stretch" }]} onPress={() => navigation.navigate("Home")}>
+            <TouchableOpacity style={styles.homeBtn} onPress={() => navigation.navigate("Home")}>
               <Text style={styles.btnText}>Back to Home</Text>
             </TouchableOpacity>
           </View>
@@ -720,6 +718,7 @@ const styles = StyleSheet.create({
   confirmRow: { flexDirection: "row", gap: 12, alignSelf: "stretch" },
   cancelBtn: { flex: 1, backgroundColor: RED, borderRadius: 14, paddingVertical: 13, alignItems: "center" },
   confirmBtn: { flex: 1, backgroundColor: "#475569", borderRadius: 14, paddingVertical: 13, alignItems: "center" },
+  homeBtn: { alignSelf: "stretch", backgroundColor: "#475569", borderRadius: 14, paddingVertical: 13, alignItems: "center" },
   btnText: { color: "white", fontWeight: "800", fontSize: 13 },
   checkCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#22c55e", alignItems: "center", justifyContent: "center", marginTop: 10 },
 });

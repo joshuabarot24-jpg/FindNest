@@ -652,7 +652,7 @@ export default function ReportFoundScreen({ navigation }: any) {
             </View>
             <View style={styles.confirmRow}>
               <TouchableOpacity style={styles.homeBtn} onPress={() => navigation.navigate("Home")}>
-                <Text style={styles.btnText}>Home</Text>
+                <Text style={styles.btnText}>Back to Home</Text>
               </TouchableOpacity>
             </View>
           </View>

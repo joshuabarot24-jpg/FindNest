@@ -298,17 +298,7 @@ export default function ProfileScreen({ navigation }: any) {
             <Text style={styles.cardTitle}>Account Details</Text>
           </View>
           <Text style={styles.cardHelp}>Manage your login information and account settings.</Text>
-          <Row icon="person-outline" label="Student LRN" value={user?.school_id || "—"} />
           <Row icon="key-outline" label="Account Type" value="Student Account" />
-          <Row
-            icon="radio-button-on-outline"
-            label="Account status"
-            value={
-              <Text style={[styles.rowValue, { color: user?.is_active === false ? "#6b7280" : "#10b981", fontWeight: "800" }]}>
-                {user?.is_active === false ? "• Archived" : "• Active."}
-              </Text>
-            }
-          />
           <Row
             icon="lock-closed-outline"
             label="Password"
