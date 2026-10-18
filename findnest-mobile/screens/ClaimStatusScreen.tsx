@@ -1,14 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Image,
-  ScrollView,
-  TextInput,
-  Modal,
-} from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, TextInput, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -16,8 +7,15 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view
 import api from "../lib/api";
 import { useAutoRefresh } from "../lib/useAutoRefresh";
 import { useForcePasswordChange } from "../lib/useForcePasswordChange";
+import StudentHeader from "../components/StudentHeader";
+import StudentBottomNav from "../components/StudentBottomNav";
 
-const NAVY = "#1a237e";
+const GREEN = "#0E4D34";
+const BLUE = "#1D2A6B";
+const MINT = "#EAF5EF";
+const CARD = "#E3EEE7";
+const SAGE = "#B9CBBF";
+const GRAYGREEN = "#CBD8CF";
 
 interface OwnershipQuestion {
   id: number;
@@ -47,11 +45,7 @@ interface PendingMatch {
   confidence_score: number;
   match_status: string;
   matched_at: string;
-  lost_item: {
-    item_name: string;
-    category: string;
-    location_lost: string;
-  };
+  lost_item: { item_name: string; category: string; location_lost: string };
 }
 
 interface Question {
@@ -70,10 +64,10 @@ function currentStepIndex(status: string, collectedAt: string | null): number {
   if (collectedAt) return 7;
   switch (status) {
     case "approved":
-      return 5;
+      return 6;
     case "pending":
     default:
-      return 4;
+      return 5;
   }
 }
 
@@ -81,40 +75,18 @@ function questionsAnswered(claim: Claim): boolean {
   return !!(claim.ownership_questions && claim.ownership_questions.length > 0 && claim.ownership_questions.every((q) => q.student_answer !== null));
 }
 
-function statusLabel(status: string) {
-  switch (status) {
-    case "approved":
-      return "Approved";
-    case "rejected":
-      return "Rejected";
-    case "abandoned":
-      return "Abandoned";
-    default:
-      return "Under Review";
-  }
-}
-
-function statusColors(status: string) {
-  switch (status) {
-    case "approved":
-      return { text: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0" };
-    case "rejected":
-      return { text: "#dc2626", bg: "#fef2f2", border: "#fecaca" };
-    case "abandoned":
-      return { text: "#6b7280", bg: "#f3f4f6", border: "#e5e7eb" };
-    default:
-      return { text: "#ca8a04", bg: "#fefce8", border: "#fef08a" };
-  }
-}
-
+// mm/dd/yy
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" });
+}
+
+// hh:mm am/pm
+function formatTime(dateStr: string) {
+  return new Date(dateStr).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }).toLowerCase();
 }
 
 function daysRemaining(deadline: string): number {
-  const now = new Date();
-  const end = new Date(deadline);
-  return Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
 export default function ClaimStatusScreen({ navigation }: any) {
@@ -200,10 +172,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
       formData.append("image", { uri, name: "claim.jpg", type: "image/jpeg" } as any);
       formData.append("folder", "appeal-evidence");
       formData.append("analyze", "false");
-
-      const res = await api.post("/upload/image", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await api.post("/upload/image", formData, { headers: { "Content-Type": "multipart/form-data" } });
       setClaimPhotos((prev) => {
         const next = [...prev];
         next[idx] = { ...next[idx], url: res.data.url, uploading: false };
@@ -216,9 +185,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
     }
   };
 
-  const removeClaimPhoto = (index: number) => {
-    setClaimPhotos((prev) => prev.filter((_, i) => i !== index));
-  };
+  const removeClaimPhoto = (index: number) => setClaimPhotos((prev) => prev.filter((_, i) => i !== index));
 
   const handleSubmitClaim = async () => {
     if (!claimingMatch) return;
@@ -255,16 +222,12 @@ export default function ClaimStatusScreen({ navigation }: any) {
     setAppealPhotoPreview(uri);
     setAppealPhotoUploading(true);
     setAppealPhotoUrl(null);
-
     try {
       const formData = new FormData();
       formData.append("image", { uri, name: "appeal.jpg", type: "image/jpeg" } as any);
       formData.append("folder", "appeal-evidence");
       formData.append("analyze", "false");
-
-      const res = await api.post("/upload/image", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await api.post("/upload/image", formData, { headers: { "Content-Type": "multipart/form-data" } });
       setAppealPhotoUrl(res.data.url);
     } catch (err: any) {
       console.error("Appeal photo upload failed:", err);
@@ -327,7 +290,6 @@ export default function ClaimStatusScreen({ navigation }: any) {
       const res = await api.get(`/claims/${claim.id}/questions`);
       const fetchedQuestions: Question[] = res.data.questions || [];
       setQuestions(fetchedQuestions);
-
       const alreadyAnswered = fetchedQuestions.length > 0 && fetchedQuestions.every((q) => q.student_answer !== null);
       if (alreadyAnswered) {
         const correct = fetchedQuestions.filter((q) => q.student_answer !== null).length;
@@ -365,26 +327,17 @@ export default function ClaimStatusScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.topBar}>
-        <View style={styles.topBarLeft}>
-          <Image source={require("../assets/icon.png")} style={styles.logoSmall} />
-          <Text style={styles.brandText}>
-            FIND<Text style={styles.brandAccent}>NEST</Text>
-          </Text>
-        </View>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Support")}>
-          <Ionicons name="help-circle-outline" size={20} color="#374151" />
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <StudentHeader navigation={navigation} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.titleRow}>
+          <View style={styles.titleBar} />
+          <Text style={styles.pageTitle}>Claim Status</Text>
+        </View>
 
-        <Text style={styles.pageTitle}>Claim Status</Text>
-        <Text style={styles.pageSubtitle}>Track the progress of your ownership claims</Text>
-
-        {!matchesLoading && pendingMatches.length > 0 && (
-          <View style={{ marginBottom: 24 }}>
+        {!matchesLoading && pendingMatches.length > 0 ? (
+          <View style={{ marginBottom: 20 }}>
             <Text style={styles.sectionHeading}>Possible Matches for Your Lost Items</Text>
             {pendingMatches.map((match) => (
               <View key={match.id} style={styles.matchCard}>
@@ -401,13 +354,13 @@ export default function ClaimStatusScreen({ navigation }: any) {
               </View>
             ))}
           </View>
-        )}
+        ) : null}
 
         {loading ? (
           <Text style={styles.loadingText}>Loading claims...</Text>
         ) : claims.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="document-text-outline" size={32} color="#d1d5db" />
+            <Ionicons name="cube-outline" size={32} color="#9FC5B0" />
             <Text style={styles.emptyText}>No claims submitted yet</Text>
           </View>
         ) : (
@@ -417,87 +370,83 @@ export default function ClaimStatusScreen({ navigation }: any) {
             const step = currentStepIndex(claim.claim_status, claim.collected_at);
             const isTerminal = ["rejected", "abandoned"].includes(claim.claim_status);
             const canAppeal = claim.claim_status === "rejected" && !claim.appeal_status;
-            const colors = statusColors(claim.claim_status);
             const answered = questionsAnswered(claim);
 
             return (
               <View key={claim.id} style={styles.claimCard}>
-                <View style={styles.claimHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.claimItemName}>{itemName}</Text>
-                    <Text style={styles.claimSubmittedDate}>Submitted {formatDate(claim.created_at)}</Text>
-                  </View>
-                  <View style={[styles.statusPill, { backgroundColor: colors.bg, borderColor: colors.border }]}>
-                    <Text style={[styles.statusPillText, { color: colors.text }]}>{statusLabel(claim.claim_status)}</Text>
-                  </View>
-                </View>
+                <Text style={styles.claimItemName}>{itemName}</Text>
+                <Text style={styles.claimSubmittedDate}>Submitted {formatDate(claim.created_at)}</Text>
 
                 {!isTerminal ? (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timelineScroll}>
-                    {TIMELINE_STEPS.map((label, idx) => {
-                      const stepNum = idx + 1;
-                      const isActive = stepNum <= step;
-                      return (
-                        <View key={label} style={styles.timelineStepWrap}>
-                          <View style={[styles.timelineCircle, isActive && styles.timelineCircleActive]}>
-                            <Text style={[styles.timelineCircleText, isActive && styles.timelineCircleTextActive]}>{stepNum}</Text>
-                          </View>
-                          <Text style={[styles.timelineLabel, isActive && styles.timelineLabelActive]}>{label}</Text>
-                        </View>
-                      );
-                    })}
-                  </ScrollView>
+                  <View style={styles.timelineWrap}>
+                    <View style={styles.timelineLine} />
+                    <View style={styles.timelineNodes}>
+                      {TIMELINE_STEPS.map((label, idx) => {
+                        const done = idx + 1 <= step;
+                        return <View key={label} style={[styles.node, done && styles.nodeDone]} />;
+                      })}
+                    </View>
+                    <Text style={styles.timelineCaption}>
+                      Step {Math.min(step, 7)} of 7: {TIMELINE_STEPS[Math.min(step, 7) - 1]}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {/* Status banner */}
+                {claim.collected_at ? (
+                  <View style={styles.bannerSage}>
+                    <Text style={styles.bannerTitle}>Item is Returned</Text>
+                    <Text style={styles.bannerSub}>
+                      ( {formatDate(claim.collected_at)} at {formatTime(claim.collected_at)} )
+                    </Text>
+                  </View>
+                ) : claim.claim_status === "approved" ? (
+                  <View style={styles.bannerSage}>
+                    <Text style={styles.bannerTitle}>Item Ready for Pickup</Text>
+                    <Text style={styles.bannerSub}>
+                      {claim.pickup_deadline
+                        ? `Collect by ${formatDate(claim.pickup_deadline)}${
+                            daysRemaining(claim.pickup_deadline) >= 0
+                              ? ` (${daysRemaining(claim.pickup_deadline)} day${daysRemaining(claim.pickup_deadline) === 1 ? "" : "s"} left)`
+                              : " (deadline passed)"
+                          }`
+                        : "Visit the Guidance Office"}
+                    </Text>
+                  </View>
                 ) : claim.claim_status === "rejected" ? (
-                  <View style={styles.rejectedBox}>
-                    <Text style={styles.rejectedTitle}>Claim Rejected</Text>
-                    {claim.admin_notes && <Text style={styles.rejectedText}>Reason: {claim.admin_notes}</Text>}
-                    {claim.appeal_status === "pending" && (
+                  <View style={styles.bannerRed}>
+                    <Text style={styles.bannerRedTitle}>Claim Rejected</Text>
+                    {claim.admin_notes ? <Text style={styles.bannerRedSub}>Reason: {claim.admin_notes}</Text> : null}
+                    {claim.appeal_status === "pending" ? (
                       <Text style={styles.appealPendingText}>Your appeal is under super-admin review.</Text>
-                    )}
+                    ) : null}
+                  </View>
+                ) : claim.claim_status === "abandoned" ? (
+                  <View style={styles.bannerGray}>
+                    <Text style={styles.bannerGrayTitle}>Claim Abandoned</Text>
+                    <Text style={styles.bannerGraySub}>Pickup window expired without collection. Item returned to unclaimed status.</Text>
                   </View>
                 ) : (
-                  <View style={styles.abandonedBox}>
-                    <Text style={styles.abandonedTitle}>Claim Abandoned</Text>
-                    <Text style={styles.abandonedText}>Pickup window expired without collection. Item returned to unclaimed status.</Text>
+                  <View style={styles.bannerLight}>
+                    <Text style={styles.bannerTitle}>Under Review</Text>
+                    <Text style={styles.bannerSub}>An admin is verifying your claim.</Text>
                   </View>
                 )}
 
-                {claim.claim_status === "pending" && !answered && (
+                {claim.claim_status === "pending" && !answered ? (
                   <TouchableOpacity style={styles.answerQuestionsButton} onPress={() => openAnswerModal(claim)}>
                     <Text style={styles.answerQuestionsButtonText}>Answer Verification Questions</Text>
                   </TouchableOpacity>
-                )}
+                ) : null}
 
-                {claim.claim_status === "approved" && !claim.collected_at && claim.pickup_deadline && (
-                  <View style={styles.pickupBox}>
-                    <Text style={styles.pickupTitle}>Item Ready for Pickup</Text>
-                    <Text style={styles.pickupText}>
-                      Collect by {formatDate(claim.pickup_deadline)}
-                      {daysRemaining(claim.pickup_deadline) >= 0
-                        ? ` (${daysRemaining(claim.pickup_deadline)} day${daysRemaining(claim.pickup_deadline) === 1 ? "" : "s"} left)`
-                        : " — deadline passed"}
-                    </Text>
-                  </View>
-                )}
-
-                {claim.collected_at && (
-                  <View style={styles.returnedBox}>
-                    <Text style={styles.returnedTitle}>Item Returned</Text>
-                    <Text style={styles.returnedText}>Collected on {formatDate(claim.collected_at)}</Text>
-                  </View>
-                )}
-
-                {canAppeal && (
-                  <TouchableOpacity
-                    style={styles.appealButton}
-                    onPress={() => openAppealModal(claim)}
-                  >
+                {canAppeal ? (
+                  <TouchableOpacity style={styles.appealButton} onPress={() => openAppealModal(claim)}>
                     <Text style={styles.appealButtonText}>Appeal This Decision</Text>
                   </TouchableOpacity>
-                )}
+                ) : null}
 
                 <View style={styles.descriptionBox}>
-                  <Text style={styles.descriptionLabel}>Your Description</Text>
+                  <Text style={styles.descriptionLabel}>Item Description</Text>
                   <Text style={styles.descriptionText}>{claim.proof_description}</Text>
                 </View>
               </View>
@@ -506,20 +455,17 @@ export default function ClaimStatusScreen({ navigation }: any) {
         )}
       </ScrollView>
 
+      {/* Submit claim */}
       <Modal visible={!!claimingMatch} animationType="slide" transparent onRequestClose={() => setClaimingMatch(null)}>
         <View style={styles.modalOverlay}>
-          <KeyboardAwareScrollView
-            contentContainerStyle={styles.modalScrollContent}
-            enableOnAndroid={true}
-            extraScrollHeight={30}
-          >
+          <KeyboardAwareScrollView contentContainerStyle={styles.modalScrollContent} enableOnAndroid={true} extraScrollHeight={30}>
             <View style={styles.modalCard}>
               <TouchableOpacity style={styles.modalCloseX} onPress={() => setClaimingMatch(null)}>
                 <Text style={styles.modalCloseXText}>&times;</Text>
               </TouchableOpacity>
 
               <Text style={styles.modalTitle}>Submit Claim</Text>
-              <Text style={styles.modalSubtitle}>For your reported "{claimingMatch?.lost_item.item_name}"</Text>
+              <Text style={styles.modalSubtitle}>For your reported &quot;{claimingMatch?.lost_item.item_name}&quot;</Text>
 
               <View style={styles.infoNote}>
                 <Text style={styles.infoNoteText}>
@@ -540,32 +486,32 @@ export default function ClaimStatusScreen({ navigation }: any) {
               />
 
               <Text style={styles.fieldLabel}>Evidence Photos (Optional, up to {CLAIM_MAX_PHOTOS})</Text>
-              {claimPhotos.length > 0 && (
+              {claimPhotos.length > 0 ? (
                 <View style={styles.claimPhotoGrid}>
                   {claimPhotos.map((p, idx) => (
                     <View key={idx} style={styles.claimPhotoThumbWrap}>
                       <Image source={{ uri: p.preview }} style={styles.claimPhotoThumb} />
-                      {p.uploading && (
+                      {p.uploading ? (
                         <View style={styles.claimPhotoThumbLoading}>
                           <Text style={{ color: "white", fontWeight: "800" }}>...</Text>
                         </View>
-                      )}
-                      {!p.uploading && (
+                      ) : null}
+                      {!p.uploading ? (
                         <TouchableOpacity style={styles.claimPhotoRemoveBtn} onPress={() => removeClaimPhoto(idx)}>
                           <Text style={styles.claimPhotoRemoveBtnText}>×</Text>
                         </TouchableOpacity>
-                      )}
+                      ) : null}
                     </View>
                   ))}
                 </View>
-              )}
-              {claimPhotos.length < CLAIM_MAX_PHOTOS && (
+              ) : null}
+              {claimPhotos.length < CLAIM_MAX_PHOTOS ? (
                 <TouchableOpacity style={styles.appealPhotoBox} onPress={pickClaimPhoto} disabled={claimAnyUploading}>
                   <Text style={styles.appealPhotoText}>
-                    {claimAnyUploading ? "Analyzing photo..." : claimPhotos.length === 0 ? "Tap to add evidence photos" : `Add more (${CLAIM_MAX_PHOTOS - claimPhotos.length} left)`}
+                    {claimAnyUploading ? "Uploading..." : claimPhotos.length === 0 ? "Tap to add evidence photos" : `Add more (${CLAIM_MAX_PHOTOS - claimPhotos.length} left)`}
                   </Text>
                 </TouchableOpacity>
-              )}
+              ) : null}
 
               {claimError ? <Text style={styles.errorText}>{claimError}</Text> : null}
 
@@ -577,13 +523,10 @@ export default function ClaimStatusScreen({ navigation }: any) {
         </View>
       </Modal>
 
+      {/* Appeal */}
       <Modal visible={!!appealingClaim} animationType="slide" transparent onRequestClose={() => setAppealingClaim(null)}>
         <View style={styles.modalOverlay}>
-          <KeyboardAwareScrollView
-            contentContainerStyle={styles.modalScrollContent}
-            enableOnAndroid={true}
-            extraScrollHeight={30}
-          >
+          <KeyboardAwareScrollView contentContainerStyle={styles.modalScrollContent} enableOnAndroid={true} extraScrollHeight={30}>
             <View style={styles.modalCard}>
               <TouchableOpacity style={styles.modalCloseX} onPress={() => setAppealingClaim(null)}>
                 <Text style={styles.modalCloseXText}>&times;</Text>
@@ -611,7 +554,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
                 ) : appealPhotoPreview ? (
                   <>
                     <Image source={{ uri: appealPhotoPreview }} style={styles.appealPhotoPreview} />
-                    {appealPhotoUrl && <Text style={styles.appealPhotoUploadedText}>Uploaded successfully</Text>}
+                    {appealPhotoUrl ? <Text style={styles.appealPhotoUploadedText}>Uploaded successfully</Text> : null}
                   </>
                 ) : (
                   <Text style={styles.appealPhotoText}>Tap to attach a photo the admin can review</Text>
@@ -620,11 +563,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
 
               {appealError ? <Text style={styles.errorText}>{appealError}</Text> : null}
 
-              <TouchableOpacity
-                style={styles.appealSubmitButton}
-                onPress={handleSubmitAppeal}
-                disabled={appealSubmitting || appealPhotoUploading}
-              >
+              <TouchableOpacity style={styles.appealSubmitButton} onPress={handleSubmitAppeal} disabled={appealSubmitting || appealPhotoUploading}>
                 <Text style={styles.primaryButtonText}>{appealSubmitting ? "Submitting..." : "Submit Appeal"}</Text>
               </TouchableOpacity>
             </View>
@@ -632,6 +571,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
         </View>
       </Modal>
 
+      {/* Verification questions */}
       <Modal visible={!!answeringClaim} animationType="slide" transparent onRequestClose={() => setAnsweringClaim(null)}>
         <View style={styles.modalOverlay}>
           <ScrollView contentContainerStyle={styles.modalScrollContent}>
@@ -641,7 +581,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
               </TouchableOpacity>
 
               <Text style={styles.modalTitle}>Ownership Verification</Text>
-              <Text style={styles.modalSubtitle}>Answer these questions to help confirm you're the true owner</Text>
+              <Text style={styles.modalSubtitle}>Answer these questions to help confirm you&apos;re the true owner</Text>
 
               {questionsLoading ? (
                 <Text style={styles.loadingText}>Loading questions...</Text>
@@ -658,20 +598,14 @@ export default function ClaimStatusScreen({ navigation }: any) {
                       : "Your answers have been recorded, but not all were correct. The admin will still review your claim."}
                   </Text>
                   <View style={styles.resultButtonRow}>
-                    <TouchableOpacity
-                      style={styles.resultCloseButton}
-                      onPress={() => setAnsweringClaim(null)}
-                    >
+                    <TouchableOpacity style={styles.resultCloseButton} onPress={() => setAnsweringClaim(null)}>
                       <Text style={styles.resultCloseButtonText}>Close</Text>
                     </TouchableOpacity>
-                    {answeringClaim && answeringClaim.claim_status === "rejected" && !answeringClaim.appeal_status && (
-                      <TouchableOpacity
-                        style={styles.resultAppealButton}
-                        onPress={() => openAppealModal(answeringClaim)}
-                      >
+                    {answeringClaim && answeringClaim.claim_status === "rejected" && !answeringClaim.appeal_status ? (
+                      <TouchableOpacity style={styles.resultAppealButton} onPress={() => openAppealModal(answeringClaim)}>
                         <Text style={styles.primaryButtonText}>Appeal This Decision</Text>
                       </TouchableOpacity>
-                    )}
+                    ) : null}
                   </View>
                 </View>
               ) : (
@@ -707,109 +641,92 @@ export default function ClaimStatusScreen({ navigation }: any) {
         </View>
       </Modal>
 
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
-          <Ionicons name="home-outline" size={22} color="#9ca3af" />
-          <Text style={styles.navLabel}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ClaimStatus")}>
-          <Ionicons name="document-text" size={22} color={NAVY} />
-          <Text style={styles.navLabelActive}>Status</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Profile")}>
-          <Ionicons name="person-outline" size={22} color="#9ca3af" />
-          <Text style={styles.navLabel}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      <StudentBottomNav navigation={navigation} active="ClaimStatus" />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8f9fc" },
-  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingVertical: 14, backgroundColor: "white", borderBottomWidth: 1, borderBottomColor: "#f0f0f0" },
-  topBarLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-  logoSmall: { width: 30, height: 30, resizeMode: "contain" },
-  brandText: { fontSize: 16, fontWeight: "900", color: NAVY },
-  brandAccent: { color: "#c99700" },
-  iconButton: { width: 38, height: 38, borderRadius: 12, backgroundColor: "#f3f4f6", justifyContent: "center", alignItems: "center" },
-  scrollContent: { padding: 20, paddingBottom: 30 },
-  pageTitle: { fontSize: 20, fontWeight: "900", color: NAVY, marginBottom: 4 },
-  pageSubtitle: { fontSize: 12.5, color: "#9ca3af", marginBottom: 20 },
-  sectionHeading: { fontSize: 12.5, fontWeight: "900", color: "#374151", textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 10 },
-  matchCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#f0fdf4", borderWidth: 1, borderColor: "#bbf7d0", borderRadius: 16, padding: 14, marginBottom: 10, gap: 10 },
-  matchItemName: { fontSize: 14, fontWeight: "900", color: "#166534" },
-  matchSubtext: { fontSize: 11, color: "#16a34a", marginTop: 3 },
-  submitClaimButton: { backgroundColor: "#16a34a", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
+  container: { flex: 1, backgroundColor: "#F6FBF8" },
+  scrollContent: { padding: 20, paddingBottom: 30, backgroundColor: MINT, flexGrow: 1 },
+
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
+  titleBar: { width: 5, height: 24, borderRadius: 3, backgroundColor: "#2FD18B" },
+  pageTitle: { fontSize: 20, fontWeight: "900", color: "#1f2937" },
+
+  sectionHeading: { fontSize: 12, fontWeight: "900", color: GREEN, textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 10 },
+  matchCard: { flexDirection: "row", alignItems: "center", backgroundColor: "white", borderWidth: 1.5, borderColor: SAGE, borderRadius: 20, padding: 14, marginBottom: 10, gap: 10 },
+  matchItemName: { fontSize: 14, fontWeight: "900", color: GREEN },
+  matchSubtext: { fontSize: 11, color: "#6b8f7c", marginTop: 3 },
+  submitClaimButton: { backgroundColor: GREEN, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 },
   submitClaimButtonText: { color: "white", fontWeight: "800", fontSize: 12 },
-  loadingText: { color: "#9ca3af", fontSize: 13, textAlign: "center", marginTop: 20 },
+  loadingText: { color: "#6b8f7c", fontSize: 13, textAlign: "center", marginTop: 20 },
   emptyState: { alignItems: "center", paddingVertical: 60, gap: 8 },
-  emptyText: { color: "#9ca3af", fontWeight: "700" },
-  claimCard: { backgroundColor: "white", borderRadius: 20, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: "#f0f0f0" },
-  claimHeader: { flexDirection: "row", alignItems: "flex-start", marginBottom: 14, gap: 10 },
-  claimItemName: { fontSize: 15, fontWeight: "900", color: "#374151" },
-  claimSubmittedDate: { fontSize: 10.5, color: "#9ca3af", marginTop: 2 },
-  statusPill: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1 },
-  statusPillText: { fontSize: 10, fontWeight: "800" },
-  timelineScroll: { marginBottom: 14 },
-  timelineStepWrap: { alignItems: "center", width: 70, marginRight: 4 },
-  timelineCircle: { width: 26, height: 26, borderRadius: 13, backgroundColor: "#f3f4f6", justifyContent: "center", alignItems: "center", marginBottom: 4 },
-  timelineCircleActive: { backgroundColor: NAVY },
-  timelineCircleText: { fontSize: 10, fontWeight: "800", color: "#9ca3af" },
-  timelineCircleTextActive: { color: "white" },
-  timelineLabel: { fontSize: 8.5, fontWeight: "700", color: "#9ca3af", textAlign: "center" },
-  timelineLabelActive: { color: NAVY },
-  rejectedBox: { backgroundColor: "#fef2f2", borderRadius: 14, padding: 12, marginBottom: 14 },
-  rejectedTitle: { color: "#dc2626", fontWeight: "800", fontSize: 13 },
-  rejectedText: { color: "#b91c1c", fontSize: 11.5, marginTop: 4 },
+  emptyText: { color: "#6b8f7c", fontWeight: "700" },
+
+  claimCard: { backgroundColor: CARD, borderRadius: 22, padding: 16, marginBottom: 16 },
+  claimItemName: { fontSize: 17, fontWeight: "900", color: GREEN, textTransform: "capitalize" },
+  claimSubmittedDate: { fontSize: 10.5, color: "#7a8b83", marginTop: 2 },
+
+  timelineWrap: { marginTop: 18, marginBottom: 14 },
+  timelineLine: { position: "absolute", left: 11, right: 11, top: 11, height: 2, backgroundColor: GREEN, opacity: 0.45 },
+  timelineNodes: { flexDirection: "row", justifyContent: "space-between" },
+  node: { width: 22, height: 22, borderRadius: 11, backgroundColor: "white", borderWidth: 2, borderColor: GREEN },
+  nodeDone: { backgroundColor: BLUE, borderColor: BLUE },
+  timelineCaption: { fontSize: 10.5, fontWeight: "700", color: BLUE, textAlign: "center", marginTop: 8 },
+
+  bannerSage: { backgroundColor: SAGE, borderRadius: 999, paddingVertical: 12, paddingHorizontal: 18, alignItems: "center", marginTop: 6, marginBottom: 10 },
+  bannerLight: { backgroundColor: "#D6E4DB", borderRadius: 999, paddingVertical: 12, paddingHorizontal: 18, alignItems: "center", marginTop: 6, marginBottom: 10 },
+  bannerTitle: { color: "#0A2618", fontWeight: "900", fontSize: 13.5 },
+  bannerSub: { color: "#1E3F2E", fontSize: 10.5, marginTop: 2, textAlign: "center" },
+  bannerRed: { backgroundColor: "#fef2f2", borderRadius: 18, padding: 14, marginTop: 6, marginBottom: 10 },
+  bannerRedTitle: { color: "#dc2626", fontWeight: "900", fontSize: 13 },
+  bannerRedSub: { color: "#b91c1c", fontSize: 11.5, marginTop: 4 },
   appealPendingText: { color: "#c2410c", fontSize: 10.5, marginTop: 6, fontWeight: "700" },
-  abandonedBox: { backgroundColor: "#f3f4f6", borderRadius: 14, padding: 12, marginBottom: 14 },
-  abandonedTitle: { color: "#4b5563", fontWeight: "800", fontSize: 13 },
-  abandonedText: { color: "#6b7280", fontSize: 11, marginTop: 4 },
-  answerQuestionsButton: { backgroundColor: "#eef2ff", borderRadius: 12, paddingVertical: 12, alignItems: "center", marginBottom: 12 },
-  answerQuestionsButtonText: { color: NAVY, fontWeight: "800", fontSize: 12.5 },
-  pickupBox: { backgroundColor: "#f0fdf4", borderRadius: 14, padding: 12, marginBottom: 12 },
-  pickupTitle: { color: "#15803d", fontWeight: "800", fontSize: 13 },
-  pickupText: { color: "#16a34a", fontSize: 11, marginTop: 3 },
-  returnedBox: { backgroundColor: "#eff6ff", borderRadius: 14, padding: 12, marginBottom: 12 },
-  returnedTitle: { color: "#1d4ed8", fontWeight: "800", fontSize: 13 },
-  returnedText: { color: "#2563eb", fontSize: 11, marginTop: 3 },
-  appealButton: { backgroundColor: "#fff7ed", borderRadius: 12, paddingVertical: 12, alignItems: "center", marginBottom: 12 },
+  bannerGray: { backgroundColor: "#f3f4f6", borderRadius: 18, padding: 14, marginTop: 6, marginBottom: 10 },
+  bannerGrayTitle: { color: "#4b5563", fontWeight: "900", fontSize: 13 },
+  bannerGraySub: { color: "#6b7280", fontSize: 11, marginTop: 4 },
+
+  answerQuestionsButton: { backgroundColor: "white", borderWidth: 1.5, borderColor: GREEN, borderRadius: 999, paddingVertical: 11, alignItems: "center", marginBottom: 10 },
+  answerQuestionsButtonText: { color: GREEN, fontWeight: "800", fontSize: 12.5 },
+  appealButton: { backgroundColor: "#fff7ed", borderRadius: 999, paddingVertical: 11, alignItems: "center", marginBottom: 10 },
   appealButtonText: { color: "#c2410c", fontWeight: "800", fontSize: 12.5 },
-  descriptionBox: { paddingTop: 12, borderTopWidth: 1, borderTopColor: "#f3f4f6" },
-  descriptionLabel: { fontSize: 10, fontWeight: "800", color: "#9ca3af", textTransform: "uppercase", marginBottom: 4 },
-  descriptionText: { fontSize: 12.5, color: "#6b7280", lineHeight: 17 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(13,19,63,0.7)", justifyContent: "flex-end" },
+
+  descriptionBox: { backgroundColor: GRAYGREEN, borderRadius: 20, paddingVertical: 12, paddingHorizontal: 16 },
+  descriptionLabel: { fontSize: 9.5, fontWeight: "800", color: "#5d7267", marginBottom: 3 },
+  descriptionText: { fontSize: 12.5, color: "#1E3F2E", lineHeight: 17 },
+
+  modalOverlay: { flex: 1, backgroundColor: "rgba(17,20,36,0.75)", justifyContent: "flex-end", paddingTop: 60 },
   modalScrollContent: { justifyContent: "flex-end", flexGrow: 1 },
-  modalCard: { backgroundColor: "white", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 36 },
-  modalCloseX: { position: "absolute", top: 16, right: 16, zIndex: 10 },
+  modalCard: { backgroundColor: "white", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingTop: 34, paddingBottom: 36 },
+  modalCloseX: { position: "absolute", top: 14, right: 18, zIndex: 10, padding: 6 },
   modalCloseXText: { fontSize: 24, color: "#9ca3af", fontWeight: "700" },
-  modalTitle: { fontSize: 18, fontWeight: "900", color: NAVY, marginBottom: 4 },
-  modalSubtitle: { fontSize: 12, color: "#9ca3af", marginBottom: 16 },
-  infoNote: { backgroundColor: "#eff6ff", borderRadius: 12, padding: 12, marginBottom: 14 },
-  infoNoteText: { fontSize: 11.5, color: "#1e40af", lineHeight: 16 },
+  modalTitle: { fontSize: 18, fontWeight: "900", color: GREEN, marginBottom: 4 },
+  modalSubtitle: { fontSize: 12, color: "#6b7280", marginBottom: 16 },
+  infoNote: { backgroundColor: CARD, borderRadius: 12, padding: 12, marginBottom: 14 },
+  infoNoteText: { fontSize: 11.5, color: "#1E3F2E", lineHeight: 16 },
   fieldLabel: { fontSize: 12, fontWeight: "800", color: "#374151", marginBottom: 8 },
-  textArea: { backgroundColor: "#f8f9fc", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, padding: 14, fontSize: 13, color: "#374151", minHeight: 90, marginBottom: 12 },
-  appealPhotoBox: { backgroundColor: "#f8f9fc", borderWidth: 1.5, borderColor: "#e5e7eb", borderStyle: "dashed", borderRadius: 14, padding: 16, alignItems: "center", marginBottom: 12 },
+  textArea: { backgroundColor: "#F3FAF6", borderWidth: 1.5, borderColor: "#CFE6D8", borderRadius: 14, padding: 14, fontSize: 13, color: "#374151", minHeight: 90, marginBottom: 12 },
+  appealPhotoBox: { backgroundColor: "#F3FAF6", borderWidth: 1.5, borderColor: "#CFE6D8", borderStyle: "dashed", borderRadius: 14, padding: 16, alignItems: "center", marginBottom: 12 },
   claimPhotoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
   claimPhotoThumbWrap: { width: 64, height: 64, position: "relative" },
   claimPhotoThumb: { width: "100%", height: "100%", borderRadius: 12, resizeMode: "cover" },
   claimPhotoThumbLoading: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 12, justifyContent: "center", alignItems: "center" },
   claimPhotoRemoveBtn: { position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: "#ef4444", justifyContent: "center", alignItems: "center" },
   claimPhotoRemoveBtnText: { color: "white", fontWeight: "900", fontSize: 13, lineHeight: 16 },
-  appealPhotoText: { fontSize: 11.5, color: "#9ca3af", textAlign: "center" },
+  appealPhotoText: { fontSize: 11.5, color: "#6b8f7c", textAlign: "center" },
   appealPhotoPreview: { width: 100, height: 100, borderRadius: 12, resizeMode: "cover" },
   appealPhotoUploadedText: { fontSize: 10.5, fontWeight: "700", color: "#22c55e", marginTop: 6 },
   errorText: { color: "#ef4444", fontSize: 11.5, fontWeight: "700", marginBottom: 10 },
-  primaryButton: { backgroundColor: NAVY, borderRadius: 14, paddingVertical: 15, alignItems: "center" },
+  primaryButton: { backgroundColor: GREEN, borderRadius: 999, paddingVertical: 15, alignItems: "center" },
   primaryButtonText: { color: "white", fontWeight: "900", fontSize: 14 },
-  appealSubmitButton: { backgroundColor: "#f97316", borderRadius: 14, paddingVertical: 15, alignItems: "center" },
-  questionBox: { backgroundColor: "#f8f9fc", borderRadius: 14, padding: 14, marginBottom: 14 },
+  appealSubmitButton: { backgroundColor: "#f97316", borderRadius: 999, paddingVertical: 15, alignItems: "center" },
+  questionBox: { backgroundColor: "#F3FAF6", borderRadius: 16, padding: 14, marginBottom: 14 },
   questionText: { fontSize: 13, fontWeight: "800", color: "#374151", marginBottom: 10 },
-  optionButton: { borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 8 },
-  optionButtonSelected: { borderColor: NAVY, backgroundColor: "#eef2ff" },
+  optionButton: { borderWidth: 1.5, borderColor: "#CFE6D8", borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 8, backgroundColor: "white" },
+  optionButtonSelected: { borderColor: GREEN, backgroundColor: CARD },
   optionText: { fontSize: 12.5, color: "#6b7280" },
-  optionTextSelected: { color: NAVY, fontWeight: "800" },
+  optionTextSelected: { color: GREEN, fontWeight: "800" },
   resultBox: { borderRadius: 16, padding: 20, alignItems: "center" },
   resultBoxGood: { backgroundColor: "#f0fdf4", borderWidth: 1, borderColor: "#bbf7d0" },
   resultBoxWarn: { backgroundColor: "#fefce8", borderWidth: 1, borderColor: "#fef08a" },
@@ -818,11 +735,7 @@ const styles = StyleSheet.create({
   resultScoreWarn: { color: "#a16207" },
   resultText: { fontSize: 12.5, color: "#6b7280", textAlign: "center", marginBottom: 16, lineHeight: 18 },
   resultButtonRow: { flexDirection: "row", gap: 10, width: "100%" },
-  resultCloseButton: { flex: 1, borderWidth: 2, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 13, alignItems: "center" },
-  resultCloseButtonText: { color: "#9ca3af", fontWeight: "800", fontSize: 13 },
-  resultAppealButton: { flex: 1, backgroundColor: "#f97316", borderRadius: 14, paddingVertical: 13, alignItems: "center" },
-  bottomNav: { flexDirection: "row", backgroundColor: "white", borderTopWidth: 1, borderTopColor: "#f0f0f0", paddingVertical: 10, paddingBottom: 16 },
-  navItem: { flex: 1, alignItems: "center", gap: 3 },
-  navLabel: { fontSize: 10, color: "#9ca3af", fontWeight: "600" },
-  navLabelActive: { fontSize: 10, color: NAVY, fontWeight: "800" },
+  resultCloseButton: { flex: 1, borderWidth: 2, borderColor: "#e5e7eb", borderRadius: 999, paddingVertical: 13, alignItems: "center" },
+  resultCloseButtonText: { color: "#6b7280", fontWeight: "800", fontSize: 13 },
+  resultAppealButton: { flex: 1, backgroundColor: "#f97316", borderRadius: 999, paddingVertical: 13, alignItems: "center" },
 });

@@ -8,25 +8,27 @@ import {
   Image,
   Modal,
   ScrollView,
-  Platform,
   ActivityIndicator,
   Keyboard,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useForcePasswordChange } from "../lib/useForcePasswordChange";
 import api from "../lib/api";
 
 const categories = ["Electronics", "Personal Belongings", "ID/Cards", "Keys", "School Supplies", "Accessories", "Others"];
 const MAX_PHOTOS = 1;
-const NAVY = "#1a237e";
+const GREEN = "#0E4D34";
+const RED = "#EF4444";
+const FIELD_BG = "#F1F5F9";
+const SAGE = "#C8D7CE";
 
 function getManilaDateObj(daysAgo: number) {
   const now = new Date();
-  const manilaMillis = now.getTime() + (8 * 60 * 60000) + (now.getTimezoneOffset() * 60000);
+  const manilaMillis = now.getTime() + 8 * 60 * 60000 + now.getTimezoneOffset() * 60000;
   const d = new Date(manilaMillis);
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() - daysAgo);
@@ -40,7 +42,6 @@ function toDateString(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
-const MIN_DATE = getManilaDateObj(2);
 const MAX_DATE = getManilaDateObj(0);
 
 interface PhotoItem {
@@ -51,31 +52,25 @@ interface PhotoItem {
 
 export default function ReportLostScreen({ navigation }: any) {
   useForcePasswordChange(navigation);
+  const insets = useSafeAreaInsets();
+
+  const [step, setStep] = useState<"form" | "review">("form");
+
   const [itemName, setItemName] = useState("");
-  const [itemNameAiFilled, setItemNameAiFilled] = useState(false);
   const [category, setCategory] = useState("Electronics");
   const [othersSpecify, setOthersSpecify] = useState("");
   const [primaryColor, setPrimaryColor] = useState("");
   const [brandModel, setBrandModel] = useState("");
   const [description, setDescription] = useState("");
-  const [aiFilled, setAiFilled] = useState(false);
   const [location, setLocation] = useState("");
   const [dateObj, setDateObj] = useState<Date>(MAX_DATE);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [time, setTime] = useState("");
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [tHour, setTHour] = useState(12);
+  const [tMin, setTMin] = useState(0);
+  const [tPeriod, setTPeriod] = useState<"AM" | "PM">("PM");
 
-  const handleTimeChange = (event: any, selected?: Date) => {
-    setShowTimePicker(Platform.OS === "ios");
-    if (selected) {
-      const hours = selected.getHours();
-      const minutes = selected.getMinutes();
-      const period = hours >= 12 ? "PM" : "AM";
-      const displayHour = hours % 12 === 0 ? 12 : hours % 12;
-      const displayMinutes = minutes.toString().padStart(2, "0");
-      setTime(`${displayHour}:${displayMinutes} ${period}`);
-    }
-  };
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
@@ -90,37 +85,34 @@ export default function ReportLostScreen({ navigation }: any) {
   const [choosingItemUrl, setChoosingItemUrl] = useState<string | null>(null);
   const [resolvingChoice, setResolvingChoice] = useState(false);
 
-  const date = toDateString(dateObj);
+  // What the AI detected, shown next to the student's own entries in the review step
+  const [aiData, setAiData] = useState({ name: "", category: "", color: "", brand: "" });
 
+  const date = toDateString(dateObj);
   const anyUploading = photos.some((p) => p.uploading);
   const uploadedUrls = photos.filter((p) => p.url).map((p) => p.url as string);
+  const finalCategory = category === "Others" ? othersSpecify : category;
 
-  const handleDateChange = (event: any, selected?: Date) => {
-    setShowDatePicker(Platform.OS === "ios");
-    if (selected) {
-      const clamped = selected < MIN_DATE ? MIN_DATE : selected > MAX_DATE ? MAX_DATE : selected;
-      setDateObj(clamped);
-    }
+  const confirmTime = () => {
+    setTime(`${tHour}:${String(tMin).padStart(2, "0")} ${tPeriod}`);
+    setShowTimePicker(false);
   };
 
   const applyAiFields = (data: any) => {
-    if (data.ai_item_name) {
-      setItemName(data.ai_item_name);
-      setItemNameAiFilled(true);
-    }
+    setAiData({
+      name: data.ai_item_name || "",
+      category: data.ai_category || "",
+      color: data.ai_details?.primary_color || "",
+      brand: data.ai_details?.brand_or_markings || "",
+    });
+    if (data.ai_item_name) setItemName(data.ai_item_name);
     if (data.ai_category && categories.includes(data.ai_category)) {
       setCategory(data.ai_category);
+      if (data.ai_category === "Others" && data.ai_item_name) setOthersSpecify(data.ai_item_name);
     }
-    if (data.ai_description) {
-      setDescription(data.ai_description);
-      setAiFilled(true);
-    }
-    if (data.ai_details?.primary_color) {
-      setPrimaryColor(data.ai_details.primary_color);
-    }
-    if (data.ai_details?.brand_or_markings) {
-      setBrandModel(data.ai_details.brand_or_markings);
-    }
+    if (data.ai_description) setDescription(data.ai_description);
+    if (data.ai_details?.primary_color) setPrimaryColor(data.ai_details.primary_color);
+    if (data.ai_details?.brand_or_markings) setBrandModel(data.ai_details.brand_or_markings);
   };
 
   const uploadOne = async (uri: string) => {
@@ -149,9 +141,7 @@ export default function ReportLostScreen({ navigation }: any) {
         return next;
       });
 
-      if (isFirstPhoto) {
-        applyAiFields(res.data);
-      }
+      if (isFirstPhoto) applyAiFields(res.data);
     } catch (err: any) {
       if (err.response?.data?.multiple_items && isFirstPhoto) {
         setPhotos((prev) => {
@@ -174,10 +164,7 @@ export default function ReportLostScreen({ navigation }: any) {
     if (!choosingItemUrl) return;
     setResolvingChoice(true);
     try {
-      const res = await api.post("/upload/analyze-existing", {
-        url: choosingItemUrl,
-        item_hint: choice,
-      });
+      const res = await api.post("/upload/analyze-existing", { url: choosingItemUrl, item_hint: choice });
       applyAiFields(res.data);
     } catch (err: any) {
       console.error("Failed to analyze chosen item:", err);
@@ -189,9 +176,7 @@ export default function ReportLostScreen({ navigation }: any) {
     }
   };
 
-  const removePhoto = (index: number) => {
-    setPhotos((prev) => prev.filter((_, i) => i !== index));
-  };
+  const removePhoto = (index: number) => setPhotos((prev) => prev.filter((_, i) => i !== index));
 
   const pickFromGallery = async () => {
     setShowPhotoOptions(false);
@@ -213,8 +198,12 @@ export default function ReportLostScreen({ navigation }: any) {
     if (!result.canceled) uploadOne(result.assets[0].uri);
   };
 
+  // Form -> review step
   const handleReview = () => {
-    if (!itemName.trim()) return;
+    if (!itemName.trim()) {
+      setSubmitError("Item name is required.");
+      return;
+    }
     if (uploadedUrls.length === 0) {
       setPhotoError(true);
       return;
@@ -228,7 +217,7 @@ export default function ReportLostScreen({ navigation }: any) {
       return;
     }
     setSubmitError("");
-    setShowConfirm(true);
+    setStep("review");
   };
 
   const handleFinalSubmit = async () => {
@@ -250,264 +239,248 @@ export default function ReportLostScreen({ navigation }: any) {
       setSubmitted(true);
     } catch (err: any) {
       setShowConfirm(false);
+      setStep("form");
       setSubmitError(err.response?.data?.message || "Failed to submit report. Please try again.");
     } finally {
       setSubmitLoading(false);
     }
   };
 
+  const ReviewRow = ({ label, value }: { label: string; value: string }) => (
+    <View style={{ marginBottom: 10 }}>
+      <Text style={styles.reviewLabel}>{label}</Text>
+      <Text style={styles.reviewValue}>{value || "—"}</Text>
+    </View>
+  );
+
+  const canReview = !!itemName.trim() && uploadedUrls.length > 0 && !anyUploading;
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.topBar}>
-        <View style={styles.topBarLeft}>
-          <Image source={require("../assets/icon.png")} style={styles.logoSmall} />
-          <Text style={styles.brandText}>
-            FIND<Text style={styles.brandAccent}>NEST</Text>
-          </Text>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <View style={styles.card}>
+        <KeyboardAwareScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          enableOnAndroid={true}
+          extraScrollHeight={30}
+        >
+          {step === "form" ? (
+            <>
+              <View style={styles.headRow}>
+                <Text style={styles.title}>I Lost Something</Text>
+                <TouchableOpacity onPress={() => navigation.navigate("Home")} hitSlop={10}>
+                  <Ionicons name="close" size={28} color="#111827" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Upload block */}
+              {photos.length > 0 ? (
+                <View style={styles.photoBlock}>
+                  <Image source={{ uri: photos[0].preview }} style={styles.photoPreview} resizeMode="contain" />
+                  {!photos[0].uploading ? (
+                    <TouchableOpacity style={styles.photoRemove} onPress={() => removePhoto(0)}>
+                      <Text style={styles.photoRemoveText}>×</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.uploadBlock, photoError && styles.uploadBlockError]}
+                  onPress={() => setShowPhotoOptions(true)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="image-outline" size={44} color="#5E7A6B" />
+                  <Text style={styles.uploadTitle}>Click/tap to upload photo</Text>
+                  <Text style={styles.uploadHelp}>
+                    FindNest uses advanced AI image recognition to match lost and found items on campus. Submit a report, get notified instantly.
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {photoError ? (
+                <Text style={styles.errorText}>{photoErrorMessage || "At least one photo is required before you can submit your report."}</Text>
+              ) : null}
+
+              {/* Fields */}
+              <View style={styles.twoCol}>
+                <View style={styles.col}>
+                  <Text style={styles.label}>Item Name</Text>
+                  <TextInput style={styles.input} value={itemName} onChangeText={setItemName} />
+                </View>
+                <View style={styles.col}>
+                  <Text style={styles.label}>Category</Text>
+                  <TouchableOpacity style={[styles.input, styles.selectRow]} onPress={() => setShowCategoryPicker(true)}>
+                    <Text style={styles.selectText} numberOfLines={1}>{category}</Text>
+                    <Ionicons name="chevron-down" size={16} color="#6b7280" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {category === "Others" ? (
+                <View style={styles.fullField}>
+                  <Text style={styles.label}>Please Specify</Text>
+                  <TextInput style={styles.input} value={othersSpecify} onChangeText={setOthersSpecify} />
+                </View>
+              ) : null}
+
+              <View style={styles.twoCol}>
+                <View style={styles.col}>
+                  <Text style={styles.label}>Primary Colors</Text>
+                  <TextInput style={styles.input} value={primaryColor} onChangeText={setPrimaryColor} />
+                </View>
+                <View style={styles.col}>
+                  <Text style={styles.label}>Model and Brand</Text>
+                  <TextInput style={styles.input} value={brandModel} onChangeText={setBrandModel} />
+                </View>
+              </View>
+
+              <View style={styles.twoCol}>
+                <View style={styles.col}>
+                  <Text style={styles.label}>Date Lost</Text>
+                  <TouchableOpacity style={[styles.input, styles.selectRow]} onPress={() => setShowDatePicker(true)}>
+                    <Text style={styles.selectText} numberOfLines={1}>
+                      {dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={16} color="#6b7280" />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.col}>
+                  <Text style={styles.label}>Approx. Time</Text>
+                  <TouchableOpacity style={[styles.input, styles.selectRow]} onPress={() => setShowTimePicker(true)}>
+                    <Text style={styles.selectText}>{time}</Text>
+                    <Ionicons name="time-outline" size={16} color="#6b7280" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.fullField}>
+                <Text style={styles.label}>Last Seen Location</Text>
+                <TextInput style={styles.input} value={location} onChangeText={setLocation} />
+              </View>
+
+              <View style={styles.fullField}>
+                <Text style={styles.label}>Item Description</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={description}
+                  onChangeText={setDescription}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
+            </>
+          ) : (
+            <>
+              <View style={styles.headRow}>
+                <View>
+                  <Text style={styles.crumb}>Report review</Text>
+                  <Text style={styles.title}>Review Your Report</Text>
+                </View>
+                <TouchableOpacity onPress={() => navigation.navigate("Home")} hitSlop={10}>
+                  <Ionicons name="close" size={28} color="#111827" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.reviewHero}>
+                <View style={styles.reviewThumb}>
+                  {photos[0]?.preview ? (
+                    <Image source={{ uri: photos[0].preview }} style={{ width: "100%", height: "100%" }} resizeMode="contain" />
+                  ) : (
+                    <Text style={{ color: "#6b7280", fontSize: 11 }}>No photo</Text>
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.reviewName}>{itemName}</Text>
+                  <Text style={styles.reviewColor}>{primaryColor || "Color not specified"}</Text>
+                  <Text style={styles.reviewBrand}>{brandModel || "Brand not specified"}</Text>
+                </View>
+              </View>
+
+              <View style={styles.compare}>
+                <View style={styles.compareCol}>
+                  <Text style={styles.compareHead}>You submitted</Text>
+                  <ReviewRow label="Item Name:" value={itemName} />
+                  <ReviewRow label="Category:" value={finalCategory} />
+                  <ReviewRow label="Primary color:" value={primaryColor} />
+                  <ReviewRow label="Brand and Models:" value={brandModel} />
+                </View>
+                <View style={styles.divider} />
+                <View style={styles.compareCol}>
+                  <Text style={styles.compareHead}>AI analyzed</Text>
+                  <ReviewRow label="Item Name:" value={aiData.name} />
+                  <ReviewRow label="Category:" value={aiData.category} />
+                  <ReviewRow label="Primary color:" value={aiData.color} />
+                  <ReviewRow label="Brand and Models:" value={aiData.brand} />
+                </View>
+              </View>
+
+              <View style={styles.compare}>
+                <View style={{ flex: 1 }}>
+                  <ReviewRow label="Description:" value={description} />
+                  <ReviewRow label="Last seen:" value={location} />
+                  <ReviewRow label="Date lost:" value={`${date}${time ? ` at ${time}` : ""}`} />
+                </View>
+              </View>
+
+              <TouchableOpacity onPress={() => setStep("form")} style={{ alignSelf: "center", marginTop: 4 }}>
+                <Text style={styles.editLink}>← Edit report</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </KeyboardAwareScrollView>
+
+        {/* Coral wash rising from the bottom, with the submit button on top */}
+        <LinearGradient
+          pointerEvents="none"
+          colors={["rgba(255,255,255,0)", "#FCA5A5", "#F87171"]}
+          style={styles.wash}
+        />
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) + 40 }]}>
+          <TouchableOpacity
+            style={styles.cta}
+            onPress={step === "form" ? handleReview : () => setShowConfirm(true)}
+            disabled={step === "form" && !canReview}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.ctaText}>
+              {step === "form" && anyUploading ? "Waiting for photo analysis..." : "Click to submit report"}
+            </Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate("Support")}>
-          <Ionicons name="help-circle-outline" size={20} color="#374151" />
-        </TouchableOpacity>
       </View>
 
-      <KeyboardAwareScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        enableOnAndroid={true}
-        extraScrollHeight={30}
-      >
-        {submitted ? (
-          <View style={styles.successCard}>
-            <Ionicons name="checkmark-circle" size={40} color="#22c55e" style={{ marginBottom: 10 }} />
-            <Text style={styles.successTitle}>Report Submitted!</Text>
-            <Text style={styles.successMessage}>
-              Our AI is now comparing your report against found items.
-            </Text>
-            <TouchableOpacity style={styles.successButton} onPress={() => navigation.navigate("Home")}>
-              <Text style={styles.successButtonText}>Back to Home</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            <Text style={styles.pageTitle}>Report Lost Item</Text>
-            <Text style={styles.pageSubtitle}>Help us help you find it faster</Text>
-
-            <Text style={styles.label}>
-              Upload Photos <Text style={styles.requiredMark}>*</Text>
-            </Text>
-
-            {photos.length > 0 && (
-              <View style={styles.photoGrid}>
-                {photos.map((p, idx) => (
-                  <View key={idx} style={styles.photoThumbWrap}>
-                    <Image source={{ uri: p.preview }} style={styles.photoThumb} />
-                    {p.uploading && (
-                      <View style={styles.photoThumbLoading}>
-                      <ActivityIndicator size="small" color="white" />
-                        <Text style={styles.photoThumbLoadingText}>Analyzing photo...</Text>
-                      </View>
-                    )}
-                    {!p.uploading && (
-                      <TouchableOpacity style={styles.photoRemoveBtn} onPress={() => removePhoto(idx)}>
-                        <Text style={styles.photoRemoveBtnText}>×</Text>
-                      </TouchableOpacity>
-                    )}
-                    {idx === 0 && <Text style={styles.mainBadge}>MAIN</Text>}
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {photos.length < MAX_PHOTOS && (
-              <TouchableOpacity
-                style={[styles.uploadBox, photoError && styles.uploadBoxError]}
-                onPress={() => setShowPhotoOptions(true)}
-              >
-                <Ionicons name="camera-outline" size={26} color={photoError ? "#ef4444" : "#9ca3af"} style={{ marginBottom: 6 }} />
-                <Text style={[styles.uploadText, photoError && styles.uploadTextError]}>
-                  {photos.length === 0 ? "Add a Photo" : `Add more (${MAX_PHOTOS - photos.length} left)`}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {photoError && (
-              <Text style={styles.errorText}>{photoErrorMessage || "At least one photo is required before you can submit your report."}</Text>
-            )}
-
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>Item Name</Text>
-              {itemNameAiFilled && <Text style={styles.autoTag}>auto-detected, editable</Text>}
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Red iPhone with clear case"
-              placeholderTextColor="#9ca3af"
-              value={itemName}
-              onChangeText={setItemName}
-            />
-
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>Category</Text>
-              {uploadedUrls.length > 0 && <Text style={styles.autoTag}>auto-detected, editable</Text>}
-            </View>
-            <TouchableOpacity style={styles.selectBox} onPress={() => setShowCategoryPicker(true)}>
-              <Text style={styles.selectText}>{category}</Text>
-              <Ionicons name="chevron-down" size={18} color="#9ca3af" />
-            </TouchableOpacity>
-
-            {category === "Others" && (
-              <>
-                <Text style={styles.label}>Please Specify</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Tell us what kind of item this is"
-                  placeholderTextColor="#9ca3af"
-                  value={othersSpecify}
-                  onChangeText={setOthersSpecify}
-                />
-              </>
-            )}
-
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>
-                Primary Color(s) {!primaryColor && <Text style={styles.requiredMark}>*</Text>}
-              </Text>
-              {!!primaryColor && <Text style={styles.autoTag}>auto-detected, editable</Text>}
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="If AI couldn't detect this, fill in manually (e.g. Black, Silver)"
-              placeholderTextColor="#9ca3af"
-              value={primaryColor}
-              onChangeText={setPrimaryColor}
-            />
-
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>
-                Brand & Model {!brandModel && <Text style={styles.requiredMark}>*</Text>}
-              </Text>
-              {!!brandModel && <Text style={styles.autoTag}>auto-detected, editable</Text>}
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="If AI couldn't detect this, fill in manually (e.g. Apple iPhone 15)"
-              placeholderTextColor="#9ca3af"
-              value={brandModel}
-              onChangeText={setBrandModel}
-            />
-
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>
-                Description {!aiFilled && <Text style={styles.requiredMark}>*</Text>}
-              </Text>
-              {aiFilled && <Text style={styles.autoTag}>auto-filled by AI, editable</Text>}
-            </View>
-            <TextInput
-              style={[styles.textArea, !aiFilled && !description.trim() && styles.uploadBoxError]}
-              placeholder={aiFilled ? "" : "If our AI could not auto-fill this. Please describe your item manually (color, brand, markings)."}
-              placeholderTextColor="#9ca3af"
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-
-            <Text style={styles.label}>Last Seen Location</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Science Lab, Canteen"
-              placeholderTextColor="#9ca3af"
-              value={location}
-              onChangeText={setLocation}
-            />
-
-            <Text style={styles.label}>Date Lost</Text>
-            <TouchableOpacity style={styles.dateInputBox} onPress={() => setShowDatePicker(true)}>
-              <Text style={styles.dateInputText}>{date}</Text>
-              <Ionicons name="calendar-outline" size={18} color="#9ca3af" />
-            </TouchableOpacity>
-            <Text style={styles.lockedDateHint}>Only today or up to 2 days ago can be selected</Text>
-
-            {showDatePicker && (
-              <DateTimePicker
-                value={dateObj}
-                mode="date"
-                display={Platform.OS === "ios" ? "spinner" : "default"}
-                minimumDate={MIN_DATE}
-                maximumDate={MAX_DATE}
-                onChange={handleDateChange}
-              />
-            )}
-            {Platform.OS === "ios" && showDatePicker && (
-              <TouchableOpacity style={styles.iosDoneButton} onPress={() => setShowDatePicker(false)}>
-                <Text style={styles.iosDoneButtonText}>Done</Text>
-              </TouchableOpacity>
-            )}
-
-            <Text style={styles.label}>Approx. Time</Text>
-            <TouchableOpacity style={[styles.dateInputBox, { marginBottom: 20 }]} onPress={() => setShowTimePicker(true)}>
-              <Text style={[styles.dateInputText, !time && { color: "#9ca3af", fontWeight: "400" }]}>{time || "Select a time"}</Text>
-              <Ionicons name="time-outline" size={18} color="#9ca3af" />
-            </TouchableOpacity>
-            {showTimePicker && (
-              <DateTimePicker
-                value={new Date()}
-                mode="time"
-                display={Platform.OS === "ios" ? "spinner" : "default"}
-                onChange={handleTimeChange}
-              />
-            )}
-            {Platform.OS === "ios" && showTimePicker && (
-              <TouchableOpacity style={styles.iosDoneButton} onPress={() => setShowTimePicker(false)}>
-                <Text style={styles.iosDoneButtonText}>Done</Text>
-              </TouchableOpacity>
-            )}
-
-            {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
-
-            <TouchableOpacity
-              style={[styles.submitButton, (!itemName.trim() || uploadedUrls.length === 0 || anyUploading) && styles.submitButtonDisabled]}
-              onPress={handleReview}
-              disabled={!itemName.trim() || uploadedUrls.length === 0 || anyUploading}
-            >
-              <Text style={styles.submitButtonText}>{anyUploading ? "Waiting for photo analysis..." : "Review Report"}</Text>
-            </TouchableOpacity>
-          </>
-        )}
-
-      </KeyboardAwareScrollView>
-
-      {/* [UX] While a photo is being analyzed, block every touch on the form */}
-      {anyUploading && (
+      {/* Lock the form while a photo is analyzed */}
+      {anyUploading ? (
         <View style={styles.analyzingOverlay} pointerEvents="auto">
           <View style={styles.analyzingCard}>
-            <ActivityIndicator size="large" color="#1a237e" />
+            <ActivityIndicator size="large" color={GREEN} />
             <Text style={styles.analyzingText}>Analyzing your photo...</Text>
             <Text style={styles.analyzingSub}>Please wait. The form is locked until it finishes.</Text>
           </View>
         </View>
-      )}
+      ) : null}
 
+      {/* Photo options */}
       <Modal visible={showPhotoOptions} animationType="slide" transparent onRequestClose={() => setShowPhotoOptions(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowPhotoOptions(false)}>
           <View style={styles.modalCard}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Add a Photo</Text>
-
             <TouchableOpacity style={styles.photoOption} onPress={takePhoto}>
               <View style={styles.photoOptionIcon}>
-                <Ionicons name="camera-outline" size={22} color={NAVY} />
+                <Ionicons name="camera-outline" size={22} color={GREEN} />
               </View>
               <View>
                 <Text style={styles.photoOptionText}>Take Picture</Text>
                 <Text style={styles.photoOptionSub}>Use your camera</Text>
               </View>
             </TouchableOpacity>
-
             <TouchableOpacity style={styles.photoOption} onPress={pickFromGallery}>
               <View style={styles.photoOptionIcon}>
-                <Ionicons name="images-outline" size={22} color={NAVY} />
+                <Ionicons name="images-outline" size={22} color={GREEN} />
               </View>
               <View>
                 <Text style={styles.photoOptionText}>Choose from Gallery</Text>
@@ -518,6 +491,76 @@ export default function ReportLostScreen({ navigation }: any) {
         </TouchableOpacity>
       </Modal>
 
+      {/* Date */}
+      <Modal visible={showDatePicker} animationType="slide" transparent onRequestClose={() => setShowDatePicker(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowDatePicker(false)}>
+          <TouchableOpacity activeOpacity={1} style={styles.modalCard}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Date Lost</Text>
+            <Text style={styles.modalSub}>Today or up to 2 days ago</Text>
+            {[0, 1, 2].map((daysAgo) => {
+              const d = getManilaDateObj(daysAgo);
+              const value = toDateString(d);
+              const on = value === date;
+              const label = daysAgo === 0 ? "Today" : daysAgo === 1 ? "Yesterday" : "2 days ago";
+              return (
+                <TouchableOpacity
+                  key={daysAgo}
+                  style={styles.categoryOption}
+                  onPress={() => { setDateObj(d); setShowDatePicker(false); }}
+                >
+                  <View>
+                    <Text style={[styles.categoryOptionText, on && styles.categoryOptionTextActive]}>{label}</Text>
+                    <Text style={styles.photoOptionSub}>
+                      {d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                    </Text>
+                  </View>
+                  {on ? <Ionicons name="checkmark" size={18} color={GREEN} /> : null}
+                </TouchableOpacity>
+              );
+            })}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Time */}
+      <Modal visible={showTimePicker} animationType="slide" transparent onRequestClose={() => setShowTimePicker(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowTimePicker(false)}>
+          <TouchableOpacity activeOpacity={1} style={styles.modalCard}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Approx. Time</Text>
+            <View style={styles.timeRow}>
+              <ScrollView style={styles.timeCol} showsVerticalScrollIndicator={false}>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
+                  <TouchableOpacity key={h} style={[styles.timeItem, tHour === h && styles.timeItemOn]} onPress={() => setTHour(h)}>
+                    <Text style={[styles.timeText, tHour === h && styles.timeTextOn]}>{h}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <Text style={styles.timeColon}>:</Text>
+              <ScrollView style={styles.timeCol} showsVerticalScrollIndicator={false}>
+                {Array.from({ length: 60 }, (_, i) => i).map((m) => (
+                  <TouchableOpacity key={m} style={[styles.timeItem, tMin === m && styles.timeItemOn]} onPress={() => setTMin(m)}>
+                    <Text style={[styles.timeText, tMin === m && styles.timeTextOn]}>{String(m).padStart(2, "0")}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <View style={styles.timeCol}>
+                {(["AM", "PM"] as const).map((p) => (
+                  <TouchableOpacity key={p} style={[styles.timeItem, tPeriod === p && styles.timeItemOn]} onPress={() => setTPeriod(p)}>
+                    <Text style={[styles.timeText, tPeriod === p && styles.timeTextOn]}>{p}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            <TouchableOpacity style={styles.timeDone} onPress={confirmTime} activeOpacity={0.9}>
+              <Text style={styles.timeDoneText}>Set time</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Category */}
       <Modal visible={showCategoryPicker} animationType="slide" transparent onRequestClose={() => setShowCategoryPicker(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowCategoryPicker(false)}>
           <View style={styles.modalCard}>
@@ -526,20 +569,21 @@ export default function ReportLostScreen({ navigation }: any) {
             {categories.map((item) => (
               <TouchableOpacity key={item} style={styles.categoryOption} onPress={() => { setCategory(item); setShowCategoryPicker(false); }}>
                 <Text style={[styles.categoryOptionText, category === item && styles.categoryOptionTextActive]}>{item}</Text>
-                {category === item && <Ionicons name="checkmark" size={18} color={NAVY} />}
+                {category === item ? <Ionicons name="checkmark" size={18} color={GREEN} /> : null}
               </TouchableOpacity>
             ))}
           </View>
         </TouchableOpacity>
       </Modal>
 
+      {/* Multiple items */}
       <Modal visible={!!choosingItemUrl} animationType="slide" transparent onRequestClose={() => { setChoosingItemUrl(null); setItemChoices([]); }}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Multiple Items Detected</Text>
-            <Text style={styles.confirmSubtitle}>We found several items in your photo. Which one did you lose?</Text>
+            <Text style={styles.modalSub}>We found several items in your photo. Which one did you lose?</Text>
             {resolvingChoice ? (
-              <Text style={styles.uploadText}>Analyzing your selection...</Text>
+              <Text style={styles.photoOptionText}>Analyzing your selection...</Text>
             ) : (
               <ScrollView style={{ maxHeight: 300 }}>
                 {itemChoices.map((choice, idx) => (
@@ -548,7 +592,7 @@ export default function ReportLostScreen({ navigation }: any) {
                   </TouchableOpacity>
                 ))}
                 <TouchableOpacity onPress={() => { setChoosingItemUrl(null); setItemChoices([]); }} style={{ paddingVertical: 14, alignItems: "center" }}>
-                  <Text style={{ color: "#9ca3af", fontWeight: "700", fontSize: 13 }}>None of these — I'll fill in manually</Text>
+                  <Text style={{ color: "#6b7280", fontWeight: "700", fontSize: 13 }}>None of these, I&apos;ll fill in manually</Text>
                 </TouchableOpacity>
               </ScrollView>
             )}
@@ -556,129 +600,126 @@ export default function ReportLostScreen({ navigation }: any) {
         </View>
       </Modal>
 
-      <Modal visible={showConfirm} animationType="slide" transparent onRequestClose={() => setShowConfirm(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.confirmCard}>
-            <Text style={styles.modalTitle}>Confirm Your Report</Text>
-            <Text style={styles.confirmSubtitle}>Please review before submitting — this will be visible to other students</Text>
-
-            <View style={styles.confirmBox}>
-              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Item: </Text>{itemName}</Text>
-              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Category: </Text>{category === "Others" ? othersSpecify : category}</Text>
-              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Primary Color(s): </Text>{primaryColor || "Not specified"}</Text>
-              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Brand & Model: </Text>{brandModel || "Not specified"}</Text>
-              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Description: </Text>{description}</Text>
-              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Location: </Text>{location}</Text>
-              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Date: </Text>{date} {time ? `at ${time}` : ""}</Text>
-              <Text style={styles.confirmRow}><Text style={styles.confirmLabel}>Photos: </Text>{uploadedUrls.length} attached</Text>
-            </View>
-
-            <View style={styles.confirmButtonRow}>
-              <TouchableOpacity style={styles.confirmCancelButton} onPress={() => setShowConfirm(false)}>
-                <Text style={styles.confirmCancelText}>Go Back</Text>
+      {/* Confirmation */}
+      <Modal visible={showConfirm} animationType="fade" transparent onRequestClose={() => setShowConfirm(false)}>
+        <View style={styles.centerOverlay}>
+          <View style={styles.confirmBox}>
+            <Text style={styles.crumb}>Confirmation</Text>
+            <Text style={styles.confirmTitle}>Submit Lost-item Report?</Text>
+            <Text style={styles.confirmSub}>Send report to the campus lost and found located in{"\n"}Guidance office</Text>
+            <View style={styles.confirmRow}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowConfirm(false)} disabled={submitLoading}>
+                <Text style={styles.btnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.confirmSubmitButton}
-                onPress={handleFinalSubmit}
-                disabled={submitLoading}
-              >
-                <Text style={styles.confirmSubmitText}>{submitLoading ? "Submitting..." : "Confirm & Submit"}</Text>
+              <TouchableOpacity style={styles.confirmBtn} onPress={handleFinalSubmit} disabled={submitLoading}>
+                <Text style={styles.btnText}>{submitLoading ? "Submitting..." : "Confirm Report"}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
-          <Ionicons name="home-outline" size={22} color="#9ca3af" />
-          <Text style={styles.navLabel}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ClaimStatus")}>
-          <Ionicons name="document-text-outline" size={22} color="#9ca3af" />
-          <Text style={styles.navLabel}>Status</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Profile")}>
-          <Ionicons name="person-outline" size={22} color="#9ca3af" />
-          <Text style={styles.navLabel}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Success */}
+      <Modal visible={submitted} animationType="fade" transparent onRequestClose={() => {}}>
+        <View style={styles.centerOverlay}>
+          <View style={styles.confirmBox}>
+            <Text style={styles.crumb}>Confirmation</Text>
+            <View style={styles.checkCircle}>
+              <Ionicons name="checkmark" size={24} color="white" />
+            </View>
+            <Text style={styles.confirmTitle}>Report Submitted Successfully</Text>
+            <Text style={styles.confirmSub}>Send report to the campus lost and found located in{"\n"}Guidance office</Text>
+            <TouchableOpacity style={[styles.confirmBtn, { alignSelf: "stretch" }]} onPress={() => navigation.navigate("Home")}>
+              <Text style={styles.btnText}>Back to Home</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  analyzingOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(255,255,255,0.75)", justifyContent: "center", alignItems: "center", zIndex: 50 },
-  analyzingCard: { backgroundColor: "white", borderRadius: 20, paddingVertical: 24, paddingHorizontal: 28, alignItems: "center", elevation: 6, shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 10, maxWidth: 300 },
-  analyzingText: { marginTop: 12, fontSize: 15, fontWeight: "800", color: "#1a237e" },
+  container: { flex: 1, backgroundColor: "white" },
+  card: { flex: 1, backgroundColor: "white", overflow: "hidden" },
+  scrollContent: { paddingTop: 20, paddingHorizontal: 18, paddingBottom: 180 },
+
+  headRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 },
+  crumb: { fontSize: 11, color: "#9ca3af" },
+  title: { fontSize: 26, fontWeight: "900", color: "#000" },
+
+  uploadBlock: { backgroundColor: SAGE, borderRadius: 22, paddingVertical: 24, paddingHorizontal: 20, alignItems: "center", marginBottom: 16 },
+  uploadBlockError: { borderWidth: 2, borderColor: RED },
+  uploadTitle: { fontSize: 15, fontWeight: "900", color: "#111827", marginTop: 8 },
+  uploadHelp: { fontSize: 11, color: "#4b5563", textAlign: "center", marginTop: 6, lineHeight: 15 },
+  photoBlock: { backgroundColor: SAGE, borderRadius: 22, padding: 10, marginBottom: 16 },
+  photoPreview: { width: "100%", height: 200 },
+  photoRemove: { position: "absolute", top: -6, right: -6, width: 26, height: 26, borderRadius: 13, backgroundColor: RED, alignItems: "center", justifyContent: "center" },
+  photoRemoveText: { color: "white", fontWeight: "900", fontSize: 16, lineHeight: 19 },
+
+  twoCol: { flexDirection: "row", gap: 12, marginBottom: 14 },
+  col: { flex: 1 },
+  fullField: { marginBottom: 14 },
+  label: { fontSize: 12.5, fontWeight: "700", color: "#111827", marginBottom: 6, marginLeft: 6 },
+  input: { backgroundColor: FIELD_BG, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 12, fontSize: 13, color: "#1f2937" },
+  selectRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 44 },
+  selectText: { fontSize: 13, color: "#1f2937", flexShrink: 1 },
+  textArea: { minHeight: 110, borderRadius: 24, paddingTop: 14 },
+  errorText: { fontSize: 11.5, fontWeight: "800", color: RED, marginBottom: 12 },
+
+  wash: { position: "absolute", left: 0, right: 0, bottom: 0, height: 260 },
+  footer: { position: "absolute", left: 0, right: 0, bottom: 0, alignItems: "center", paddingTop: 10 },
+  cta: { backgroundColor: "#EF4444", borderRadius: 999, paddingVertical: 16, paddingHorizontal: 44 },
+  ctaText: { color: "#FFFFFF", fontWeight: "800", fontSize: 16 },
+  editLink: { color: "#374151", fontWeight: "700", fontSize: 13 },
+
+  reviewHero: { flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: "#EBF3EF", borderRadius: 20, padding: 14, marginBottom: 14 },
+  reviewThumb: { width: 96, height: 96, borderRadius: 14, backgroundColor: "#D1D5DB", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  reviewName: { fontSize: 22, fontWeight: "900", color: "#111827" },
+  reviewColor: { fontSize: 14, color: "#374151", marginTop: 4 },
+  reviewBrand: { fontSize: 12.5, color: "#6b7280", marginTop: 2 },
+  compare: { flexDirection: "row", backgroundColor: "#F1F7F4", borderRadius: 20, padding: 14, marginBottom: 12 },
+  compareCol: { flex: 1 },
+  divider: { width: 1, backgroundColor: "#CBD5E1", marginHorizontal: 12 },
+  compareHead: { fontSize: 11, fontWeight: "900", color: GREEN, textTransform: "uppercase", marginBottom: 8 },
+  reviewLabel: { fontSize: 12, fontWeight: "800", color: "#111827" },
+  reviewValue: { fontSize: 12, color: "#6b7280", marginTop: 1 },
+
+  analyzingOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center", alignItems: "center", zIndex: 50 },
+  analyzingCard: { backgroundColor: "white", borderRadius: 20, paddingVertical: 24, paddingHorizontal: 28, alignItems: "center", maxWidth: 300 },
+  analyzingText: { marginTop: 12, fontSize: 15, fontWeight: "800", color: GREEN },
   analyzingSub: { marginTop: 4, fontSize: 12, color: "#6b7280", textAlign: "center" },
-  container: { flex: 1, backgroundColor: "#f8f9fc" },
-  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingVertical: 14, backgroundColor: "white", borderBottomWidth: 1, borderBottomColor: "#f0f0f0" },
-  topBarLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-  logoSmall: { width: 30, height: 30, resizeMode: "contain" },
-  brandText: { fontSize: 16, fontWeight: "900", color: NAVY },
-  brandAccent: { color: "#c99700" },
-  iconButton: { width: 38, height: 38, borderRadius: 12, backgroundColor: "#f3f4f6", justifyContent: "center", alignItems: "center" },
-  scrollContent: { padding: 20, paddingBottom: 30 },
-  pageTitle: { fontSize: 20, fontWeight: "900", color: NAVY, marginBottom: 4 },
-  pageSubtitle: { fontSize: 12.5, color: "#9ca3af", marginBottom: 22 },
-  labelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  label: { fontSize: 12.5, fontWeight: "800", color: "#374151" },
-  hintText: { fontSize: 10.5, fontWeight: "600", color: "#9ca3af" },
-  autoTag: { fontSize: 10.5, fontWeight: "700", color: "#22c55e" },
-  requiredMark: { color: "#ef4444" },
-  input: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13, fontSize: 13.5, color: "#374151", marginBottom: 16 },
-  dateInputBox: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13 },
-  dateInputText: { fontSize: 13.5, color: "#374151", fontWeight: "700" },
-  lockedDateHint: { fontSize: 10.5, color: "#9ca3af", marginTop: 6, marginBottom: 16 },
-  iosDoneButton: { backgroundColor: NAVY, borderRadius: 12, paddingVertical: 10, alignItems: "center", marginBottom: 16 },
-  iosDoneButtonText: { color: "white", fontWeight: "800", fontSize: 13 },
-  textArea: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, fontSize: 13.5, color: "#374151", minHeight: 100, marginBottom: 16 },
-  selectBox: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 16 },
-  selectText: { fontSize: 13.5, color: "#374151", fontWeight: "600" },
-  photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
-  photoThumbWrap: { width: "23%", aspectRatio: 1, position: "relative" },
-  photoThumb: { width: "100%", height: "100%", borderRadius: 12, resizeMode: "cover" },
-photoThumbLoading: { position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 12, justifyContent: "center", alignItems: "center", gap: 4 },
-  photoThumbLoadingText: { color: "white", fontWeight: "800", fontSize: 8, textAlign: "center", paddingHorizontal: 2 },
-  photoRemoveBtn: { position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: "#ef4444", justifyContent: "center", alignItems: "center" },
-  photoRemoveBtnText: { color: "white", fontWeight: "900", fontSize: 13, lineHeight: 16 },
-  mainBadge: { position: "absolute", bottom: 2, left: 2, backgroundColor: NAVY, color: "white", fontSize: 8, fontWeight: "800", paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4, overflow: "hidden" },
-  uploadBox: { backgroundColor: "white", borderWidth: 1.5, borderColor: "#e5e7eb", borderStyle: "dashed", borderRadius: 16, paddingVertical: 24, alignItems: "center", marginBottom: 8 },
-  uploadBoxError: { borderColor: "#ef4444", backgroundColor: "#fef2f2" },
-  uploadText: { fontSize: 13.5, fontWeight: "700", color: "#374151" },
-  uploadTextError: { color: "#ef4444" },
-  errorText: { fontSize: 11.5, fontWeight: "800", color: "#ef4444", marginBottom: 14 },
-  submitButton: { backgroundColor: "#ef4444", borderRadius: 16, paddingVertical: 16, alignItems: "center" },
-  submitButtonDisabled: { backgroundColor: "#fca5a5" },
-  submitButtonText: { color: "white", fontWeight: "900", fontSize: 15 },
-  successCard: { backgroundColor: "white", borderRadius: 20, padding: 32, alignItems: "center", marginTop: 60 },
-  successTitle: { fontSize: 18, fontWeight: "900", color: NAVY, marginBottom: 6 },
-  successMessage: { fontSize: 13, color: "#9ca3af", textAlign: "center", marginBottom: 20 },
-  successButton: { backgroundColor: NAVY, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 24 },
-  successButtonText: { color: "white", fontWeight: "800", fontSize: 13 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(13,19,63,0.6)", justifyContent: "flex-end" },
+
+  modalOverlay: { flex: 1, backgroundColor: "rgba(17,20,36,0.75)", justifyContent: "flex-end" },
   modalCard: { backgroundColor: "white", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 36, maxHeight: "70%" },
   modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#e5e7eb", alignSelf: "center", marginBottom: 16 },
-  modalTitle: { fontSize: 16, fontWeight: "900", color: NAVY, textAlign: "center", marginBottom: 16 },
+  modalTitle: { fontSize: 16, fontWeight: "900", color: GREEN, textAlign: "center", marginBottom: 12 },
+  modalSub: { fontSize: 12, color: "#6b7280", textAlign: "center", marginBottom: 14 },
   photoOption: { flexDirection: "row", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#f3f4f6", gap: 14 },
-  photoOptionIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: "#eef2ff", justifyContent: "center", alignItems: "center" },
+  photoOptionIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: "#E3EEE7", justifyContent: "center", alignItems: "center" },
   photoOptionText: { fontSize: 14, fontWeight: "700", color: "#374151" },
   photoOptionSub: { fontSize: 11, color: "#9ca3af", marginTop: 2 },
   categoryOption: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#f3f4f6" },
   categoryOptionText: { fontSize: 14, color: "#374151", fontWeight: "600" },
-  categoryOptionTextActive: { color: NAVY, fontWeight: "800" },
-  confirmCard: { backgroundColor: "white", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 36 },
-  confirmSubtitle: { fontSize: 12, color: "#9ca3af", textAlign: "center", marginBottom: 16 },
-  confirmBox: { backgroundColor: "#f8f9fc", borderRadius: 16, padding: 16, marginBottom: 20, gap: 8 },
-  confirmRow: { fontSize: 13, color: "#6b7280" },
-  confirmLabel: { fontWeight: "800", color: "#374151" },
-  confirmButtonRow: { flexDirection: "row", gap: 12 },
-  confirmCancelButton: { flex: 1, borderWidth: 2, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 14, alignItems: "center" },
-  confirmCancelText: { color: "#9ca3af", fontWeight: "800", fontSize: 13 },
-  confirmSubmitButton: { flex: 1, backgroundColor: "#ef4444", borderRadius: 14, paddingVertical: 14, alignItems: "center" },
-  confirmSubmitText: { color: "white", fontWeight: "800", fontSize: 13 },
-  bottomNav: { flexDirection: "row", backgroundColor: "white", borderTopWidth: 1, borderTopColor: "#f0f0f0", paddingVertical: 10, paddingBottom: 16 },
-  navItem: { flex: 1, alignItems: "center", gap: 3 },
-  navLabel: { fontSize: 10, color: "#9ca3af", fontWeight: "600" },
+  categoryOptionTextActive: { color: GREEN, fontWeight: "800" },
+
+  timeRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", height: 190, marginBottom: 14 },
+  timeCol: { width: 80, height: 190 },
+  timeColon: { fontSize: 22, fontWeight: "900", color: "#111827", marginHorizontal: 4 },
+  timeItem: { paddingVertical: 10, alignItems: "center", borderRadius: 12 },
+  timeItemOn: { backgroundColor: "#E3EEE7" },
+  timeText: { fontSize: 18, color: "#9ca3af", fontWeight: "600" },
+  timeTextOn: { color: GREEN, fontWeight: "900" },
+  timeDone: { backgroundColor: GREEN, borderRadius: 999, paddingVertical: 14, alignItems: "center" },
+  timeDoneText: { color: "#FFFFFF", fontWeight: "800", fontSize: 15 },
+
+  centerOverlay: { flex: 1, backgroundColor: "rgba(17,20,36,0.75)", alignItems: "center", justifyContent: "center", padding: 24 },
+  confirmBox: { backgroundColor: "white", borderRadius: 24, padding: 24, width: "100%", maxWidth: 380, alignItems: "center" },
+  confirmTitle: { fontSize: 18, fontWeight: "900", color: "#111827", textAlign: "center", marginTop: 10, marginBottom: 6 },
+  confirmSub: { fontSize: 12, color: "#4b5563", textAlign: "center", marginBottom: 20, lineHeight: 17 },
+  confirmRow: { flexDirection: "row", gap: 12, alignSelf: "stretch" },
+  cancelBtn: { flex: 1, backgroundColor: RED, borderRadius: 14, paddingVertical: 13, alignItems: "center" },
+  confirmBtn: { flex: 1, backgroundColor: "#475569", borderRadius: 14, paddingVertical: 13, alignItems: "center" },
+  btnText: { color: "white", fontWeight: "800", fontSize: 13 },
+  checkCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#22c55e", alignItems: "center", justifyContent: "center", marginTop: 10 },
 });

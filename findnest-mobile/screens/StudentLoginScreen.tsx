@@ -14,18 +14,26 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view
 import api from "../lib/api";
 import { setAuth } from "../lib/auth";
 
-const NAVY = "#1a237e";
+const GREEN = "#0F4C3A";
+const MINT = "#F2FAF5";
+const OUTLINE = "#CFE6D8";
 
 export default function StudentLoginScreen({ navigation }: any) {
   const [studentId, setStudentId] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Restore the saved login only if "Remember me" was ticked last time
   useEffect(() => {
     const restoreDraft = async () => {
       try {
+        const remembered = await AsyncStorage.getItem("findnest_remember_me");
+        if (remembered !== "true") return;
+        setRememberMe(true);
         const draft = await AsyncStorage.getItem("findnest_login_draft");
         if (draft) {
           const { studentId: savedId, password: savedPw } = JSON.parse(draft);
@@ -34,20 +42,25 @@ export default function StudentLoginScreen({ navigation }: any) {
         }
       } catch (err) {
         console.error("Failed to restore login draft:", err);
+      } finally {
+        setDraftLoaded(true);
       }
     };
     restoreDraft();
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem("findnest_login_draft", JSON.stringify({ studentId, password })).catch(() => {});
-  }, [studentId, password]);
+    if (!draftLoaded) return;
+    if (rememberMe) {
+      AsyncStorage.setItem("findnest_remember_me", "true").catch(() => {});
+      AsyncStorage.setItem("findnest_login_draft", JSON.stringify({ studentId, password })).catch(() => {});
+    } else {
+      AsyncStorage.removeItem("findnest_remember_me").catch(() => {});
+      AsyncStorage.removeItem("findnest_login_draft").catch(() => {});
+    }
+  }, [studentId, password, rememberMe, draftLoaded]);
 
-  const clearLoginDraft = () => {
-    AsyncStorage.removeItem("findnest_login_draft").catch(() => {});
-  };
-
-  const [step, setStep] = useState<"login" | "otp" | "forgot" | "reset">("login");
+  const [step, setStep] = useState<"login" | "otp" | "forgot">("login");
   const [maskedEmail, setMaskedEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState("");
@@ -58,13 +71,6 @@ export default function StudentLoginScreen({ navigation }: any) {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState("");
   const [resetEmailSent, setResetEmailSent] = useState(false);
-
-  const [resetToken, setResetToken] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [resetLoading, setResetLoading] = useState(false);
-  const [resetError, setResetError] = useState("");
-  const [resetSuccess, setResetSuccess] = useState(false);
 
   const handleLogin = async () => {
     if (!studentId.trim() || !password.trim()) {
@@ -152,47 +158,13 @@ export default function StudentLoginScreen({ navigation }: any) {
     }
   };
 
-  const handleResetSubmit = async () => {
-    setResetError("");
-    if (!resetToken.trim()) {
-      setResetError("Please enter the reset code from your email");
-      return;
-    }
-    if (newPassword.length < 8) {
-      setResetError("Password must be at least 8 characters");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setResetError("Passwords do not match");
-      return;
-    }
-
-    setResetLoading(true);
-    try {
-      await api.post("/auth/reset-password", {
-        email: forgotEmail.trim(),
-        token: resetToken.trim(),
-        password: newPassword,
-        password_confirmation: confirmPassword,
-      });
-      setResetSuccess(true);
-    } catch (err: any) {
-      setResetError(err.response?.data?.message || "Failed to reset password. The code may be invalid or expired.");
-    } finally {
-      setResetLoading(false);
-    }
-  };
-
   const backToLogin = () => {
     setStep("login");
     setResetEmailSent(false);
     setForgotEmail("");
     setForgotError("");
-    setResetToken("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setResetError("");
-    setResetSuccess(false);
+    setOtp("");
+    setOtpError("");
   };
 
   return (
@@ -204,24 +176,22 @@ export default function StudentLoginScreen({ navigation }: any) {
         enableOnAndroid={true}
         extraScrollHeight={30}
       >
-        <View style={styles.card}>
 
-          <View style={styles.logoBox}>
-            <Image source={require("../assets/icon.png")} style={styles.logo} />
-          </View>
+        <View style={styles.card}>
+          <Image source={require("../assets/findnest-logo.png")} style={styles.logo} />
+          <Text style={styles.brand}>FindNest</Text>
+          <Text style={styles.tagline}>Lost and found with AI Matching</Text>
 
           {step === "login" && (
             <>
-              <Text style={styles.title}>Student Login</Text>
-              <Text style={styles.subtitle}>Use your school credentials</Text>
-
-              <View style={styles.inputWrap}>
-                <Ionicons name="school-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
+              <View style={[styles.pill, error && !studentId.trim() && styles.pillError]}>
+                <Ionicons name="person-outline" size={20} color={GREEN} style={styles.pillIcon} />
                 <TextInput
-                  style={[styles.input, error && !studentId.trim() && styles.inputError]}
-                  placeholder="Student ID"
-                  placeholderTextColor="#9ca3af"
+                  style={styles.pillInput}
+                  placeholder="Student ID/ Email"
+                  placeholderTextColor={GREEN}
                   value={studentId}
+                  editable={!loading}
                   onChangeText={(text) => {
                     setStudentId(text);
                     if (error) setError("");
@@ -230,36 +200,52 @@ export default function StudentLoginScreen({ navigation }: any) {
                 />
               </View>
 
-              <View style={styles.inputWrap}>
-                <Ionicons name="lock-closed-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
+              <View style={[styles.pill, error && !password.trim() && styles.pillError]}>
+                <Ionicons name="lock-closed-outline" size={20} color={GREEN} style={styles.pillIcon} />
                 <TextInput
-                  style={[styles.input, error && !password.trim() && styles.inputError]}
+                  style={styles.pillInput}
                   placeholder="Password"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={GREEN}
                   secureTextEntry={!showPassword}
                   value={password}
+                  editable={!loading}
                   onChangeText={(text) => {
                     setPassword(text);
                     if (error) setError("");
                   }}
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
-                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={18} color="#9ca3af" />
+                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={GREEN} />
                 </TouchableOpacity>
               </View>
 
-              {error && <Text style={styles.errorText}>{error}</Text>}
+              <View style={styles.utilityRow}>
+                <TouchableOpacity
+                  style={styles.rememberWrap}
+                  activeOpacity={0.8}
+                  onPress={() => !loading && setRememberMe(!rememberMe)}
+                >
+                  <View style={[styles.checkbox, rememberMe && styles.checkboxOn]}>
+                    {rememberMe && <Ionicons name="checkmark" size={14} color="white" />}
+                  </View>
+                  <Text style={styles.utilityText}>Remember me</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setStep("forgot")} disabled={loading}>
+                  <Text style={styles.forgotText}>Forgot Password?</Text>
+                </TouchableOpacity>
+              </View>
+
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
               <TouchableOpacity
-                style={[styles.button, loading && styles.buttonDisabled]}
+                style={[styles.cta, loading && styles.ctaDisabled]}
                 onPress={handleLogin}
                 disabled={loading}
+                activeOpacity={0.9}
               >
-                <Text style={styles.buttonText}>{loading ? "Sending OTP..." : "Sign In"}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setStep("forgot")}>
-                <Text style={styles.forgotText}>Forgot Password?</Text>
+                <Text style={styles.ctaText}>{loading ? "Sending OTP..." : "Log In"}</Text>
+                {!loading && <Ionicons name="chevron-forward" size={18} color="white" />}
               </TouchableOpacity>
             </>
           )}
@@ -270,55 +256,59 @@ export default function StudentLoginScreen({ navigation }: any) {
               <Text style={styles.subtitle}>We sent a 6-digit code to</Text>
               <Text style={styles.emailText}>{maskedEmail}</Text>
 
-              <TextInput
-                style={[styles.input, styles.otpInput, otpError && styles.inputError]}
-                placeholder="000000"
-                placeholderTextColor="#9ca3af"
-                value={otp}
-                onChangeText={(text) => {
-                  setOtp(text.replace(/[^0-9]/g, "").slice(0, 6));
-                  if (otpError) setOtpError("");
-                }}
-                keyboardType="number-pad"
-                maxLength={6}
-              />
+              <View style={[styles.pill, otpError && styles.pillError]}>
+                <TextInput
+                  style={[styles.pillInput, styles.otpInput]}
+                  placeholder="000000"
+                  placeholderTextColor="#9ca3af"
+                  value={otp}
+                  editable={!otpLoading}
+                  onChangeText={(text) => {
+                    setOtp(text.replace(/[^0-9]/g, "").slice(0, 6));
+                    if (otpError) setOtpError("");
+                  }}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                />
+              </View>
 
-              {otpError && <Text style={styles.errorText}>{otpError}</Text>}
+              {otpError ? <Text style={styles.errorText}>{otpError}</Text> : null}
 
               <TouchableOpacity
-                style={[styles.button, otpLoading && styles.buttonDisabled]}
+                style={[styles.cta, otpLoading && styles.ctaDisabled]}
                 onPress={handleVerifyOtp}
                 disabled={otpLoading}
+                activeOpacity={0.9}
               >
-                <Text style={styles.buttonText}>{otpLoading ? "Verifying..." : "Verify OTP"}</Text>
+                <Text style={styles.ctaText}>{otpLoading ? "Verifying..." : "Verify OTP"}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={handleResendOtp} disabled={resendTimer > 0}>
-                <Text style={[styles.forgotText, resendTimer > 0 && styles.forgotTextDisabled]}>
+                <Text style={[styles.linkText, resendTimer > 0 && styles.linkDisabled]}>
                   {resendTimer > 0 ? `Resend code in ${resendTimer}s` : "Resend Code"}
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={backToLogin}>
-                <Text style={styles.backText}>Back to Login</Text>
+                <Text style={styles.linkText}>Back to Login</Text>
               </TouchableOpacity>
             </>
           )}
 
-          {step === "forgot" && (
-            resetEmailSent ? (
+          {step === "forgot" &&
+            (resetEmailSent ? (
               <>
                 <Text style={styles.title}>Check Your Email</Text>
                 <Text style={styles.subtitle}>
                   We sent a reset link to {forgotEmail.trim()}. Open the email and tap the link to set your new password. The link expires in 60 minutes.
                 </Text>
 
-                <TouchableOpacity style={styles.button} onPress={backToLogin}>
-                  <Text style={styles.buttonText}>Back to Login</Text>
+                <TouchableOpacity style={styles.cta} onPress={backToLogin} activeOpacity={0.9}>
+                  <Text style={styles.ctaText}>Back to Login</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => setResetEmailSent(false)}>
-                  <Text style={styles.backText}>Didn&apos;t get it? Send again</Text>
+                  <Text style={styles.linkText}>Didn&apos;t get it? Send again</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -326,13 +316,14 @@ export default function StudentLoginScreen({ navigation }: any) {
                 <Text style={styles.title}>Forgot Password</Text>
                 <Text style={styles.subtitle}>Enter your registered email to receive a reset link</Text>
 
-                <View style={styles.inputWrap}>
-                  <Ionicons name="mail-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
+                <View style={styles.pill}>
+                  <Ionicons name="mail-outline" size={20} color={GREEN} style={styles.pillIcon} />
                   <TextInput
-                    style={styles.input}
+                    style={styles.pillInput}
                     placeholder="your@email.com"
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor={GREEN}
                     value={forgotEmail}
+                    editable={!forgotLoading}
                     onChangeText={(text) => {
                       setForgotEmail(text);
                       if (forgotError) setForgotError("");
@@ -342,93 +333,22 @@ export default function StudentLoginScreen({ navigation }: any) {
                   />
                 </View>
 
-                {forgotError && <Text style={styles.errorText}>{forgotError}</Text>}
+                {forgotError ? <Text style={styles.errorText}>{forgotError}</Text> : null}
 
                 <TouchableOpacity
-                  style={[styles.button, forgotLoading && styles.buttonDisabled]}
+                  style={[styles.cta, forgotLoading && styles.ctaDisabled]}
                   onPress={handleForgotSubmit}
                   disabled={forgotLoading}
+                  activeOpacity={0.9}
                 >
-                  <Text style={styles.buttonText}>{forgotLoading ? "Sending..." : "Send Reset Link"}</Text>
+                  <Text style={styles.ctaText}>{forgotLoading ? "Sending..." : "Send Reset Link"}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={backToLogin}>
-                  <Text style={styles.backText}>Back to Login</Text>
+                  <Text style={styles.linkText}>Back to Login</Text>
                 </TouchableOpacity>
               </>
-            )
-          )}
-
-          {step === "reset" && (
-            resetSuccess ? (
-              <>
-                <View style={styles.successIconBox}>
-                  <Ionicons name="checkmark-circle" size={40} color="#22c55e" />
-                </View>
-                <Text style={styles.title}>Password Reset!</Text>
-                <Text style={styles.subtitle}>You can now log in with your new password</Text>
-
-                <TouchableOpacity style={styles.button} onPress={backToLogin}>
-                  <Text style={styles.buttonText}>Go to Login</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Text style={styles.title}>Enter Reset Code</Text>
-                <Text style={styles.subtitle}>Check your email for the reset code, then set a new password</Text>
-
-                <View style={styles.inputWrap}>
-                  <Ionicons name="key-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Paste the reset code from your email"
-                    placeholderTextColor="#9ca3af"
-                    value={resetToken}
-                    onChangeText={setResetToken}
-                    autoCapitalize="none"
-                  />
-                </View>
-
-                <View style={styles.inputWrap}>
-                  <Ionicons name="lock-closed-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="New Password"
-                    placeholderTextColor="#9ca3af"
-                    secureTextEntry
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                  />
-                </View>
-
-                <View style={styles.inputWrap}>
-                  <Ionicons name="lock-closed-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Confirm New Password"
-                    placeholderTextColor="#9ca3af"
-                    secureTextEntry
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                  />
-                </View>
-
-                {resetError && <Text style={styles.errorText}>{resetError}</Text>}
-
-                <TouchableOpacity
-                  style={[styles.button, resetLoading && styles.buttonDisabled]}
-                  onPress={handleResetSubmit}
-                  disabled={resetLoading}
-                >
-                  <Text style={styles.buttonText}>{resetLoading ? "Resetting..." : "Reset Password"}</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={backToLogin}>
-                  <Text style={styles.backText}>Back to Login</Text>
-                </TouchableOpacity>
-              </>
-            )
-          )}
+            ))}
         </View>
       </KeyboardAwareScrollView>
     </SafeAreaView>
@@ -436,133 +356,79 @@ export default function StudentLoginScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: NAVY,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: 20,
-  },
+  container: { flex: 1, backgroundColor: MINT },
+  scrollContent: { flexGrow: 1, justifyContent: "center" },
   card: {
-    backgroundColor: "white",
-    borderRadius: 24,
-    padding: 32,
+    backgroundColor: MINT,
+    paddingHorizontal: 28,
+    paddingVertical: 32,
     width: "100%",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 5,
   },
-  logoBox: {
-    width: 90,
-    height: 90,
-    borderRadius: 20,
-    backgroundColor: "#f0f4ff",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  logo: {
-    width: 60,
-    height: 60,
-    resizeMode: "contain",
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: NAVY,
-    marginBottom: 4,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 13,
-    color: "#9ca3af",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  emailText: {
-    fontSize: 13,
-    color: NAVY,
-    fontWeight: "700",
-    marginBottom: 24,
-  },
-  successIconBox: {
-    marginBottom: 8,
-  },
-  inputWrap: {
+  logo: { width: 96, height: 96, resizeMode: "contain", marginBottom: 6 },
+  brand: { fontSize: 26, fontWeight: "900", color: GREEN, letterSpacing: 0.5 },
+  tagline: { fontSize: 11, color: "#4B6358", marginTop: 2, marginBottom: 26 },
+  title: { fontSize: 22, fontWeight: "900", color: GREEN, marginBottom: 4, textAlign: "center" },
+  subtitle: { fontSize: 13, color: "#4B6358", marginBottom: 18, textAlign: "center", lineHeight: 19 },
+  emailText: { fontSize: 13, color: GREEN, fontWeight: "700", marginBottom: 18 },
+  pill: {
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "#e5e7eb",
-    borderRadius: 14,
-    paddingHorizontal: 14,
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: OUTLINE,
+    borderRadius: 999,
+    paddingHorizontal: 18,
     marginBottom: 14,
   },
-  inputIcon: {
-    marginRight: 8,
+  pillError: { borderColor: "#ef4444" },
+  pillIcon: { marginRight: 10 },
+  pillInput: { flex: 1, paddingVertical: 15, fontSize: 14, color: GREEN },
+  otpInput: { textAlign: "center", fontSize: 22, fontWeight: "900", letterSpacing: 8 },
+  eyeButton: { padding: 4 },
+  utilityRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 6,
+    marginBottom: 18,
   },
-  eyeButton: {
-    padding: 4,
+  rememberWrap: { flexDirection: "row", alignItems: "center", gap: 8 },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: GREEN,
+    backgroundColor: "white",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  input: {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: 14,
-    color: "#374151",
-  },
-  otpInput: {
-    textAlign: "center",
-    fontSize: 22,
-    fontWeight: "900",
-    letterSpacing: 8,
-    marginTop: 8,
-  },
-  inputError: {
-    borderColor: "#ef4444",
-  },
+  checkboxOn: { backgroundColor: GREEN },
+  utilityText: { color: "#6b7280", fontSize: 13, fontWeight: "500" },
+  forgotText: { color: GREEN, fontSize: 13, fontWeight: "800" },
   errorText: {
     width: "100%",
     color: "#ef4444",
     fontSize: 12.5,
     fontWeight: "700",
     marginBottom: 10,
-    marginTop: -4,
     textAlign: "center",
   },
-  button: {
+  cta: {
     width: "100%",
-    backgroundColor: NAVY,
-    borderRadius: 14,
-    paddingVertical: 16,
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 8,
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: GREEN,
+    borderRadius: 999,
+    paddingVertical: 16,
   },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: "white",
-    fontWeight: "900",
-    fontSize: 16,
-  },
-  forgotText: {
-    color: "#9ca3af",
-    fontSize: 13,
-    marginTop: 16,
-    fontWeight: "600",
-  },
-  forgotTextDisabled: {
-    opacity: 0.5,
-  },
-  backText: {
-    color: NAVY,
-    fontSize: 13,
-    marginTop: 16,
-    fontWeight: "700",
-  },
+  ctaDisabled: { opacity: 0.5 },
+  ctaText: { color: "white", fontWeight: "800", fontSize: 16 },
+  linkText: { color: GREEN, fontSize: 13, marginTop: 16, fontWeight: "700" },
+  linkDisabled: { opacity: 0.5 },
 });

@@ -5,141 +5,141 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  ImageBackground,
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
-const NAVY = "#1a237e";
-const GOLD = "#ffd700";
-
-const FEATURES = [
-  {
-    icon: "camera-outline" as const,
-    title: "Snap a Photo",
-    description: "AI reads item details automatically — no long forms to fill out.",
-  },
-  {
-    icon: "flash-outline" as const,
-    title: "Automatic Matching",
-    description: "Lost and found reports are compared instantly, no waiting for staff.",
-  },
-  {
-    icon: "shield-checkmark-outline" as const,
-    title: "Verified Claims",
-    description: "Secret ownership questions confirm items go back to their real owner.",
-  },
-];
+const GREEN = "#0F4C3A";
+const DARK_GREEN = "#0A3021";
 
 export default function LandingScreen({ navigation }: any) {
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <ImageBackground
+      source={require("../assets/landing-bg.jpg")}
+      style={styles.bg}
+      resizeMode="cover"
+    >
+      {/* Soft light wash so the dark green text stays readable on the photo */}
+      <View style={styles.wash} />
 
-        <View style={styles.header}>
-          <View style={styles.logoBox}>
-            <Image 
-              source={require("../assets/icon.png")} 
-              style={styles.logo} 
-              defaultSource={require("../assets/icon.png")}
-            />
-          </View>
-          <Text style={styles.brand}>
-            FIND<Text style={styles.brandAccent}>NEST</Text>
-          </Text>
-          <Text style={styles.tagLabel}>SJDM Cornerstone College Inc.</Text>
-        </View>
-
-        <Text style={styles.title}>
-          Lost something?{"\n"}Let AI find it.
-        </Text>
-        <Text style={styles.subtitle}>
-          FindNest matches lost and found reports automatically using image recognition — report it, and we take it from there.
-        </Text>
-
-        <View style={styles.featureList}>
-          {FEATURES.map((feature) => (
-            <View key={feature.title} style={styles.featureRow}>
-              <View style={styles.featureIconBox}>
-                <Ionicons name={feature.icon} size={20} color={NAVY} />
-              </View>
-              <View style={styles.featureTextBox}>
-                <Text style={styles.featureTitle}>{feature.title}</Text>
-                <Text style={styles.featureDescription}>{feature.description}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        <TouchableOpacity
-          style={styles.loginButton}
-          activeOpacity={0.9}
-          onPress={() => navigation.navigate("StudentLogin")}
+      <SafeAreaView style={styles.safe}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
         >
-          <Text style={styles.loginButtonText}>Login</Text>
-          <Ionicons name="arrow-forward" size={18} color="white" />
-        </TouchableOpacity>
+          <View style={styles.header}>
+            <Image source={require("../assets/findnest-logo.png")} style={styles.logo} />
+            <Text style={styles.brand}>FindNest</Text>
+            <Text style={styles.tagline}>Lost and found with AI Matching</Text>
+          </View>
 
-        <Text style={styles.footerText}>SJDM Cornerstone College Inc. &copy; 2026</Text>
-      </ScrollView>
-    </SafeAreaView>
+          <Text style={styles.title}>WELCOME TO FINDNEST!</Text>
+          <Text style={styles.subtitle}>
+            Lost something? Found something?{"\n"}
+            Let&apos;s bring it back where it belongs.{"\n"}
+            Your campus lost-and-found starts here.{"\n"}
+            Let FindNest help you!
+          </Text>
+
+          <TouchableOpacity
+            style={styles.cta}
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate("StudentLogin")}
+          >
+            <Text style={styles.ctaText}>Let&apos;s get Started</Text>
+            <Ionicons name="chevron-forward" size={18} color="white" />
+          </TouchableOpacity>
+
+          <View style={styles.footer}>
+            <Image source={require("../assets/findnest-logo.png")} style={styles.footerLogo} />
+            <Text style={styles.footerText}>© 2026/Information College. LostandFound.com</Text>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+
+      {/* Dark green wave along the bottom edge */}
+      <View pointerEvents="none" style={styles.waveWrap}>
+        <View style={styles.waveBack} />
+        <View style={styles.waveFront} />
+      </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8f9fc" },
-  scrollContent: { padding: 28, paddingTop: 50, paddingBottom: 40 },
-  header: { alignItems: "center", marginBottom: 36 },
-  logoBox: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    backgroundColor: NAVY,
+  bg: { flex: 1, backgroundColor: "#cfe8f5" },
+  wash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255,255,255,0.35)",
+  },
+  safe: { flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 28,
+    paddingTop: 20,
+    paddingBottom: 120,
+  },
+  header: { alignItems: "center", marginBottom: 28 },
+  logo: { width: 84, height: 84, resizeMode: "contain" },
+  brand: { fontSize: 26, fontWeight: "900", color: GREEN, marginTop: 6 },
+  tagline: { fontSize: 10, color: DARK_GREEN, marginTop: 2, fontWeight: "500" },
+  title: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: GREEN,
+    textAlign: "center",
+    letterSpacing: 0.5,
     marginBottom: 14,
   },
-  logo: { width: 46, height: 46, resizeMode: "contain" },
-  brand: { fontSize: 20, fontWeight: "900", color: NAVY, letterSpacing: 1 },
-  brandAccent: { color: "#c99700" },
-  tagLabel: { fontSize: 11, fontWeight: "700", color: "#9ca3af", marginTop: 4 },
-  title: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#1f2937",
-    lineHeight: 36,
-    marginBottom: 12,
-  },
   subtitle: {
-    fontSize: 13.5,
-    color: "#6b7280",
-    lineHeight: 20,
-    marginBottom: 36,
+    fontSize: 14,
+    fontWeight: "600",
+    color: DARK_GREEN,
+    textAlign: "center",
+    lineHeight: 21,
+    marginBottom: 30,
   },
-  featureList: { gap: 20, marginBottom: 40 },
-  featureRow: { flexDirection: "row", gap: 14, alignItems: "flex-start" },
-  featureIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
-    backgroundColor: "#eef2ff",
-    justifyContent: "center",
-    alignItems: "center",
-    flexShrink: 0,
-  },
-  featureTextBox: { flex: 1, paddingTop: 2 },
-  featureTitle: { fontSize: 14.5, fontWeight: "800", color: "#1f2937", marginBottom: 3 },
-  featureDescription: { fontSize: 12.5, color: "#6b7280", lineHeight: 18 },
-  loginButton: {
+  cta: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    backgroundColor: NAVY,
-    paddingVertical: 17,
-    borderRadius: 16,
-    marginBottom: 20,
+    gap: 6,
+    backgroundColor: GREEN,
+    paddingVertical: 15,
+    paddingHorizontal: 34,
+    borderRadius: 999,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
-  loginButtonText: { color: "white", fontWeight: "800", fontSize: 15 },
-  footerText: { color: "#9ca3af", fontSize: 11, textAlign: "center" },
+  ctaText: { color: "white", fontWeight: "800", fontSize: 15 },
+  footer: { alignItems: "center", marginTop: 34 },
+  footerLogo: { width: 26, height: 26, resizeMode: "contain", opacity: 0.45 },
+  footerText: { color: "#6b7280", fontSize: 10, marginTop: 6, textAlign: "center" },
+  waveWrap: { position: "absolute", left: 0, right: 0, bottom: 0, height: 110 },
+  waveBack: {
+    position: "absolute",
+    left: -80,
+    right: -80,
+    bottom: -90,
+    height: 150,
+    borderRadius: 999,
+    backgroundColor: "#14654d",
+  },
+  waveFront: {
+    position: "absolute",
+    left: -40,
+    right: -120,
+    bottom: -110,
+    height: 150,
+    borderRadius: 999,
+    backgroundColor: GREEN,
+  },
 });

@@ -1,23 +1,20 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Image,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import api from "../lib/api";
 import * as ImagePicker from "expo-image-picker";
+import api from "../lib/api";
 import { clearAuth } from "../lib/auth";
 import LogoutConfirmModal from "../components/LogoutConfirmModal";
+import StudentBottomNav from "../components/StudentBottomNav";
 
-const NAVY = "#1a237e";
+const GREEN = "#0E4D34";
+const MINT = "#EAF5EF";
+
+// Remembers the last loaded profile so the screen opens instantly
+let cachedUser: any = null;
 
 interface User {
   id: number;
@@ -28,6 +25,7 @@ interface User {
   course: string | null;
   year_level: string | null;
   trust_score: number;
+  is_active?: boolean;
   password_change_requested: boolean;
   password_change_approved: boolean;
   password_change_reason: string | null;
@@ -36,8 +34,8 @@ interface User {
 }
 
 export default function ProfileScreen({ navigation }: any) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(cachedUser);
+  const [loading, setLoading] = useState(!cachedUser);
 
   const [reason, setReason] = useState("");
   const [requestLoading, setRequestLoading] = useState(false);
@@ -45,6 +43,7 @@ export default function ProfileScreen({ navigation }: any) {
   const [requestSuccess, setRequestSuccess] = useState("");
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -57,6 +56,7 @@ export default function ProfileScreen({ navigation }: any) {
   const fetchProfile = async () => {
     try {
       const res = await api.get("/profile");
+      cachedUser = res.data.user;
       setUser(res.data.user);
     } catch (err) {
       console.error("Error fetching profile:", err);
@@ -117,32 +117,30 @@ export default function ProfileScreen({ navigation }: any) {
       });
       setNewPassword("");
       setConfirmPassword("");
+      setPwOpen(false);
       Alert.alert("Password Updated", "Your new password is saved. Use it the next time you log in.");
       fetchProfile();
     } catch (err: any) {
-      setSetPasswordError(
-        err.response?.data?.message || "Failed to change password."
-      );
+      setSetPasswordError(err.response?.data?.message || "Failed to change password.");
     } finally {
       setSetPasswordLoading(false);
     }
   };
 
   const doLogout = async () => {
+    cachedUser = null;
     try {
       await api.post("/auth/logout");
     } catch (err) {
       console.error("Logout request failed:", err);
     } finally {
-        await clearAuth();
+      await clearAuth();
       navigation.reset({ index: 0, routes: [{ name: "Landing" }] });
     }
   };
 
-  // [UX] Ask before logging out (styled popup)
   const handleLogout = () => setShowLogoutConfirm(true);
 
-  // Uploads the picked image (moderated, no item analysis), then saves the URL on the account
   const uploadPhoto = async (uri: string) => {
     setPhotoBusy(true);
     try {
@@ -196,32 +194,31 @@ export default function ProfileScreen({ navigation }: any) {
     options.push({ text: "Cancel", style: "cancel" });
     Alert.alert("Profile photo", undefined, options);
   };
+
   const confirmLogout = async () => {
     setLoggingOut(true);
     await doLogout();
   };
 
-  function trustScoreColor(score: number) {
-    if (score >= 70) return "#16a34a";
-    if (score >= 40) return "#ca8a04";
-    return "#dc2626";
-  }
+  const goBack = () => {
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.navigate("Home");
+  };
 
-  function trustScoreBg(score: number) {
-    if (score >= 70) return "#f0fdf4";
-    if (score >= 40) return "#fefce8";
-    return "#fef2f2";
-  }
+  const classLine = [user?.year_level, user?.course].filter(Boolean).join(" ");
+  const canSetPassword = !!(user?.password_is_temporary || user?.password_change_approved);
 
-  function trustScoreLabel(score: number) {
-    if (score >= 70) return "Good Standing";
-    if (score >= 40) return "Moderate";
-    return "Restricted";
-  }
+  const Row = ({ icon, label, value, last }: { icon: any; label: string; value: React.ReactNode; last?: boolean }) => (
+    <View style={[styles.row, !last && styles.rowDivider]}>
+      <Ionicons name={icon} size={20} color={GREEN} style={styles.rowIcon} />
+      <Text style={styles.rowLabel}>{label}</Text>
+      <View style={styles.rowValueWrap}>{typeof value === "string" ? <Text style={styles.rowValue}>{value}</Text> : value}</View>
+    </View>
+  );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={["top"]}>
         <View style={styles.loadingBox}>
           <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
@@ -229,15 +226,16 @@ export default function ProfileScreen({ navigation }: any) {
     );
   }
 
+  const score = user?.trust_score ?? 100;
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.topBar}>
-        <View style={styles.topBarLeft}>
-          <Image source={require("../assets/icon.png")} style={styles.logoSmall} />
-          <Text style={styles.brandText}>
-            FIND<Text style={styles.brandAccent}>NEST</Text>
-          </Text>
-        </View>
+        <TouchableOpacity onPress={goBack} hitSlop={10} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={26} color="#1f2937" />
+        </TouchableOpacity>
+        <Text style={styles.topTitle}>Student profile</Text>
+        <View style={styles.backBtn} />
       </View>
 
       <KeyboardAwareScrollView
@@ -247,179 +245,191 @@ export default function ProfileScreen({ navigation }: any) {
         enableOnAndroid={true}
         extraScrollHeight={30}
       >
-        <View style={styles.profileCard}>
-          <TouchableOpacity style={styles.avatarBox} onPress={changePhoto} disabled={photoBusy} activeOpacity={0.8}>
-            {user?.profile_photo_url ? (
-              <Image source={{ uri: user.profile_photo_url }} style={{ width: "100%", height: "100%" }} />
-            ) : (
-              <Text style={styles.avatarInitial}>{user?.name?.charAt(0).toUpperCase() || "?"}</Text>
-            )}
-            {photoBusy && (
-              <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" }}>
-                <ActivityIndicator color="white" />
+        {/* Hero card */}
+        <LinearGradient colors={["#FFFFFF", "#BFEBDD"]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={styles.hero}>
+          <View style={styles.heroLeft}>
+            <TouchableOpacity onPress={changePhoto} disabled={photoBusy} activeOpacity={0.85} style={styles.avatarWrap}>
+              <View style={styles.avatar}>
+                {user?.profile_photo_url ? (
+                  <Image source={{ uri: user.profile_photo_url }} style={styles.avatarImg} />
+                ) : (
+                  <Text style={styles.avatarInitial}>{user?.name?.charAt(0).toUpperCase() || "?"}</Text>
+                )}
+                {photoBusy ? (
+                  <View style={styles.avatarBusy}>
+                    <ActivityIndicator color="white" />
+                  </View>
+                ) : null}
               </View>
-            )}
-          </TouchableOpacity>
-          <Text style={{ color: "#1a237e", fontWeight: "700", fontSize: 12, marginBottom: 8 }}>Tap to change photo</Text>
-          <Text style={styles.studentName}>{user?.name}</Text>
-          <Text style={styles.studentInfo}>{user?.email}</Text>
-
-          <View style={[styles.trustBox, { backgroundColor: trustScoreBg(user?.trust_score ?? 100) }]}>
-            <Text style={[styles.trustScore, { color: trustScoreColor(user?.trust_score ?? 100) }]}>
-              {user?.trust_score ?? 100}
-            </Text>
-            <Text style={[styles.trustLabel, { color: trustScoreColor(user?.trust_score ?? 100) }]}>
-              {trustScoreLabel(user?.trust_score ?? 100)}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-          <Text style={styles.sectionSubtitle}>Managed by the school — contact the Guidance Office to request changes</Text>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Full Name</Text>
-            <Text style={styles.detailValue}>{user?.name}</Text>
-          </View>
-          <View style={styles.detailDivider} />
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Email</Text>
-            <Text style={styles.detailValue}>{user?.email}</Text>
-          </View>
-          <View style={styles.detailDivider} />
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>School ID</Text>
-            <Text style={styles.detailValue}>{user?.school_id || "—"}</Text>
-          </View>
-          <View style={styles.detailDivider} />
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Course</Text>
-            <Text style={styles.detailValue}>{user?.course || "—"}</Text>
-          </View>
-          <View style={styles.detailDivider} />
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Year Level</Text>
-            <Text style={styles.detailValue}>{user?.year_level || "—"}</Text>
-          </View>
-        </View>
-
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Password</Text>
-          <Text style={styles.sectionSubtitle}>
-              {user?.password_is_temporary
-              ? "You are using a temporary password — set your own now"
-              : user?.password_change_approved
-              ? "Your request was approved — set your new password below"
-              : "Passwords are changed by the Super Admin after your request is reviewed"}
-          </Text>
-
-            {user?.password_is_temporary || user?.password_change_approved ? (
-            <>
-              <View style={styles.approvedNote}>
-                <Text style={styles.approvedNoteText}>
-                  {user?.password_is_temporary
-                    ? "Your account was created with a temporary password. Set one only you will know. After this, further changes need Super Admin approval."
-                    : "Your Super Admin approved your request. Set a new password only you will know."}
-                </Text>
+              <View style={styles.camera}>
+                <Ionicons name="camera" size={12} color="white" />
               </View>
-                            <Text style={styles.fieldLabel}>New Password</Text>
-              <View style={styles.passwordWrap}>
-                <TextInput
-                  style={[styles.input, { marginBottom: 0, paddingRight: 46 }]}
-                  placeholder="8+ chars, A-Z, a-z, 0-9, symbol"
-                  placeholderTextColor="#9ca3af"
-                  secureTextEntry={!showNewPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  maxLength={50}
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                />
-                <TouchableOpacity style={styles.eyeButton} onPress={() => setShowNewPassword((v) => !v)}>
-                  <Ionicons name={showNewPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#6b7280" />
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.fieldLabel}>Confirm New Password</Text>
-              <View style={styles.passwordWrap}>
-                <TextInput
-                  style={[styles.input, { marginBottom: 0, paddingRight: 46 }]}
-                  placeholder="Re-enter new password"
-                  placeholderTextColor="#9ca3af"
-                  secureTextEntry={!showConfirmPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  maxLength={50}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                />
-                <TouchableOpacity style={styles.eyeButton} onPress={() => setShowConfirmPassword((v) => !v)}>
-                  <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#6b7280" />
-                </TouchableOpacity>
-              </View>
-              {setPasswordError ? <Text style={styles.errorText}>{setPasswordError}</Text> : null}
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={handleSetNewPassword}
-                disabled={setPasswordLoading}
-              >
-                <Text style={styles.actionButtonText}>{setPasswordLoading ? "Saving..." : "Set New Password"}</Text>
-              </TouchableOpacity>
-            </>
-          ) : user?.password_change_requested ? (
-            <View style={styles.pendingNote}>
-              <Text style={styles.pendingNoteTitle}>Request Pending</Text>
-              <Text style={styles.pendingNoteText}>
-                Your password change request is awaiting Super Admin approval.
-                {user.password_change_reason ? `\n"${user.password_change_reason}"` : ""}
-              </Text>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.name} numberOfLines={2}>{user?.name}</Text>
+              {classLine ? <Text style={styles.sub}>{classLine}</Text> : null}
+              <Text style={styles.sub} numberOfLines={1}>ID: {user?.school_id || "—"}</Text>
             </View>
-          ) : (
-            <>
-              <Text style={styles.fieldLabel}>Why do you need a password change?</Text>
-              <TextInput
-                style={styles.textArea}
-                placeholder="e.g. I forgot my password, or want to update it for security"
-                placeholderTextColor="#9ca3af"
-                value={reason}
-                onChangeText={setReason}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
-              {requestError ? <Text style={styles.errorText}>{requestError}</Text> : null}
-              {requestSuccess ? <Text style={styles.successText}>{requestSuccess}</Text> : null}
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={handleRequestPasswordChange}
-                disabled={requestLoading}
-              >
-                <Text style={styles.actionButtonText}>{requestLoading ? "Sending..." : "Request Password Change"}</Text>
-              </TouchableOpacity>
-            </>
-          )}
+          </View>
+          <View style={styles.heroRight}>
+            <Text style={styles.credLabel}>Credibility score</Text>
+            <Text style={styles.credValue}>{score}%</Text>
+          </View>
+        </LinearGradient>
+
+        {/* Personal info */}
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <Ionicons name="person-outline" size={20} color="#1f2937" />
+            <Text style={styles.cardTitle}>Student Personal Info</Text>
+          </View>
+          <Text style={styles.cardHelp}>Please contact the school admin to change personal details.</Text>
+          <Row icon="person-outline" label="Full Name" value={user?.name || "—"} />
+          <Row icon="mail-outline" label="Email" value={user?.email || "—"} />
+          <Row icon="card-outline" label="School I.D" value={user?.school_id || "—"} />
+          <Row icon="school-outline" label="Course/Strand" value={user?.course || "—"} />
+          <Row icon="calendar-outline" label="Year/Grade Level" value={user?.year_level || "—"} last />
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={16} color="#dc2626" style={{ marginRight: 6 }} />
-          <Text style={styles.logoutButtonText}>Logout</Text>
+        {/* Account details */}
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <Ionicons name="shield-checkmark-outline" size={20} color="#1f2937" />
+            <Text style={styles.cardTitle}>Account Details</Text>
+          </View>
+          <Text style={styles.cardHelp}>Manage your login information and account settings.</Text>
+          <Row icon="person-outline" label="Student LRN" value={user?.school_id || "—"} />
+          <Row icon="key-outline" label="Account Type" value="Student Account" />
+          <Row
+            icon="radio-button-on-outline"
+            label="Account status"
+            value={
+              <Text style={[styles.rowValue, { color: user?.is_active === false ? "#6b7280" : "#10b981", fontWeight: "800" }]}>
+                {user?.is_active === false ? "• Archived" : "• Active."}
+              </Text>
+            }
+          />
+          <Row
+            icon="lock-closed-outline"
+            label="Password"
+            last
+            value={
+              <View style={styles.pwValue}>
+                <Text style={styles.rowValue}>••••••••••</Text>
+                <TouchableOpacity onPress={() => setPwOpen(true)} hitSlop={8}>
+                  <Text style={styles.changeLink}>Change</Text>
+                </TouchableOpacity>
+              </View>
+            }
+          />
+        </View>
+
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.85}>
+          <Ionicons name="log-out-outline" size={20} color="#b91c1c" style={{ marginRight: 8 }} />
+          <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
       </KeyboardAwareScrollView>
 
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
-          <Ionicons name="home-outline" size={22} color="#9ca3af" />
-          <Text style={styles.navLabel}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ClaimStatus")}>
-          <Ionicons name="document-text-outline" size={22} color="#9ca3af" />
-          <Text style={styles.navLabel}>Status</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Profile")}>
-          <Ionicons name="person" size={22} color={NAVY} />
-          <Text style={styles.navLabelActive}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Password popup */}
+      <Modal visible={pwOpen} animationType="slide" transparent onRequestClose={() => setPwOpen(false)}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+          <ScrollView contentContainerStyle={styles.modalScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <View style={styles.modalCard}>
+              <TouchableOpacity style={styles.modalClose} onPress={() => setPwOpen(false)}>
+                <Text style={styles.modalCloseText}>&times;</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.cardTitle}>{canSetPassword ? "Set New Password" : "Request Password Change"}</Text>
+              <Text style={styles.cardHelp}>
+                {user?.password_is_temporary
+                  ? "You are using a temporary password. Set your own now."
+                  : user?.password_change_approved
+                  ? "Your request was approved. Set your new password below."
+                  : "Passwords are changed by the Super Admin after your request is reviewed."}
+              </Text>
+
+              {canSetPassword ? (
+                <>
+                  <View style={styles.approvedNote}>
+                    <Text style={styles.approvedNoteText}>
+                      {user?.password_is_temporary
+                        ? "Your account was created with a temporary password. Set one only you will know. After this, further changes need Super Admin approval."
+                        : "Your Super Admin approved your request. Set a new password only you will know."}
+                    </Text>
+                  </View>
+                  <Text style={styles.fieldLabel}>New Password</Text>
+                  <View style={styles.passwordWrap}>
+                    <TextInput
+                      style={[styles.input, { marginBottom: 0, paddingRight: 46 }]}
+                      placeholder="8+ chars, A-Z, a-z, 0-9, symbol"
+                      placeholderTextColor="#9ca3af"
+                      secureTextEntry={!showNewPassword}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      maxLength={50}
+                      value={newPassword}
+                      onChangeText={setNewPassword}
+                    />
+                    <TouchableOpacity style={styles.eyeButton} onPress={() => setShowNewPassword((v) => !v)}>
+                      <Ionicons name={showNewPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#6b7280" />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.fieldLabel}>Confirm New Password</Text>
+                  <View style={styles.passwordWrap}>
+                    <TextInput
+                      style={[styles.input, { marginBottom: 0, paddingRight: 46 }]}
+                      placeholder="Re-enter new password"
+                      placeholderTextColor="#9ca3af"
+                      secureTextEntry={!showConfirmPassword}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      maxLength={50}
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                    />
+                    <TouchableOpacity style={styles.eyeButton} onPress={() => setShowConfirmPassword((v) => !v)}>
+                      <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#6b7280" />
+                    </TouchableOpacity>
+                  </View>
+                  {setPasswordError ? <Text style={styles.errorText}>{setPasswordError}</Text> : null}
+                  <TouchableOpacity style={styles.actionButton} onPress={handleSetNewPassword} disabled={setPasswordLoading}>
+                    <Text style={styles.actionButtonText}>{setPasswordLoading ? "Saving..." : "Set New Password"}</Text>
+                  </TouchableOpacity>
+                </>
+              ) : user?.password_change_requested ? (
+                <View style={styles.pendingNote}>
+                  <Text style={styles.pendingNoteTitle}>Request Pending</Text>
+                  <Text style={styles.pendingNoteText}>
+                    Your password change request is awaiting Super Admin approval.
+                    {user?.password_change_reason ? `\n"${user.password_change_reason}"` : ""}
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.fieldLabel}>Why do you need a password change?</Text>
+                  <TextInput
+                    style={styles.textArea}
+                    placeholder="e.g. I forgot my password, or want to update it for security"
+                    placeholderTextColor="#9ca3af"
+                    value={reason}
+                    onChangeText={setReason}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                  {requestError ? <Text style={styles.errorText}>{requestError}</Text> : null}
+                  {requestSuccess ? <Text style={styles.successText}>{requestSuccess}</Text> : null}
+                  <TouchableOpacity style={styles.actionButton} onPress={handleRequestPasswordChange} disabled={requestLoading}>
+                    <Text style={styles.actionButtonText}>{requestLoading ? "Sending..." : "Request Password Change"}</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <StudentBottomNav navigation={navigation} active="Profile" />
       <LogoutConfirmModal
         visible={showLogoutConfirm}
         busy={loggingOut}
@@ -431,48 +441,65 @@ export default function ProfileScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8f9fc" },
+  container: { flex: 1, backgroundColor: "white" },
   loadingBox: { flex: 1, justifyContent: "center", alignItems: "center" },
-  loadingText: { color: "#9ca3af", fontSize: 14 },
-  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingVertical: 14, backgroundColor: "white", borderBottomWidth: 1, borderBottomColor: "#f0f0f0" },
-  topBarLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-  logoSmall: { width: 30, height: 30, resizeMode: "contain" },
-  brandText: { fontSize: 16, fontWeight: "900", color: NAVY },
-  brandAccent: { color: "#c99700" },
-  scrollContent: { padding: 20, paddingBottom: 30 },
-  profileCard: { backgroundColor: "white", borderRadius: 20, padding: 24, alignItems: "center", marginBottom: 16, borderWidth: 1, borderColor: "#f0f0f0" },
-  avatarBox: { width: 72, height: 72, borderRadius: 22, backgroundColor: NAVY, justifyContent: "center", alignItems: "center", marginBottom: 12 },
-  avatarInitial: { fontSize: 28, fontWeight: "900", color: "white" },
-  studentName: { fontSize: 16, fontWeight: "900", color: NAVY, textAlign: "center" },
-  studentInfo: { fontSize: 12, color: "#9ca3af", marginTop: 4, marginBottom: 14 },
-  trustBox: { borderRadius: 14, paddingHorizontal: 20, paddingVertical: 10, alignItems: "center" },
-  trustScore: { fontSize: 20, fontWeight: "900" },
-  trustLabel: { fontSize: 10, fontWeight: "800", marginTop: 2 },
-  sectionCard: { backgroundColor: "white", borderRadius: 18, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: "#f0f0f0" },
-  sectionTitle: { fontSize: 14, fontWeight: "900", color: "#374151" },
-  sectionSubtitle: { fontSize: 11, color: "#9ca3af", marginTop: 3, marginBottom: 14, lineHeight: 15 },
-  detailRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 10 },
-  detailLabel: { fontSize: 12.5, color: "#9ca3af", fontWeight: "600" },
-  detailValue: { fontSize: 12.5, color: "#374151", fontWeight: "700" },
-  detailDivider: { height: 1, backgroundColor: "#f3f4f6" },
+  loadingText: { color: "#6b8f7c", fontSize: 14 },
+
+  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 12, backgroundColor: "white", borderBottomWidth: 1, borderBottomColor: "#E3EEE7" },
+  backBtn: { width: 36, alignItems: "flex-start" },
+  topTitle: { fontSize: 17, fontWeight: "900", color: "#1f2937" },
+
+  scrollContent: { padding: 16, paddingBottom: 30, backgroundColor: MINT, flexGrow: 1 },
+
+  hero: { borderRadius: 22, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16, borderWidth: 1, borderColor: "#D5ECE2" },
+  heroLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12 },
+  avatarWrap: { width: 66, height: 66 },
+  avatar: { width: 66, height: 66, borderRadius: 33, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  avatarImg: { width: "100%", height: "100%" },
+  avatarInitial: { color: "white", fontSize: 26, fontWeight: "900" },
+  avatarBusy: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
+  camera: { position: "absolute", right: -2, bottom: -2, width: 24, height: 24, borderRadius: 12, backgroundColor: "#111", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "white" },
+  name: { fontSize: 15, fontWeight: "900", color: "#111827" },
+  sub: { fontSize: 11, color: "#6b7280", marginTop: 2 },
+  heroRight: { alignItems: "flex-end", marginLeft: 8 },
+  credLabel: { fontSize: 10.5, color: "#6b7280" },
+  credValue: { fontSize: 26, fontWeight: "900", color: "#111827", marginTop: 2 },
+
+  card: { backgroundColor: "white", borderRadius: 20, padding: 16, marginBottom: 16, borderWidth: 1.5, borderColor: "#1f2937" },
+  cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  cardTitle: { fontSize: 15, fontWeight: "900", color: "#111827" },
+  cardHelp: { fontSize: 11, color: "#9ca3af", marginTop: 4, marginBottom: 8, lineHeight: 15 },
+
+  row: { flexDirection: "row", alignItems: "center", paddingVertical: 13 },
+  rowDivider: { borderBottomWidth: 1, borderBottomColor: "#E5E7EB" },
+  rowIcon: { width: 28 },
+  rowLabel: { fontSize: 13, fontWeight: "700", color: "#1f2937", width: 118 },
+  rowValueWrap: { flex: 1, alignItems: "flex-end" },
+  rowValue: { fontSize: 12.5, color: "#4b5563", textAlign: "right" },
+  pwValue: { flexDirection: "row", alignItems: "center", gap: 10 },
+  changeLink: { fontSize: 12.5, fontWeight: "800", color: "#10b981" },
+
   fieldLabel: { fontSize: 11.5, fontWeight: "800", color: "#374151", marginBottom: 6 },
-  input: { backgroundColor: "#f8f9fc", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 13, color: "#374151", marginBottom: 14 },
+  input: { backgroundColor: "#F3FAF6", borderWidth: 1.5, borderColor: "#CFE6D8", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 13, color: "#374151", marginBottom: 14 },
   passwordWrap: { marginBottom: 14, justifyContent: "center" },
   eyeButton: { position: "absolute", right: 12, top: 0, bottom: 0, justifyContent: "center", paddingHorizontal: 4 },
-  textArea: { backgroundColor: "#f8f9fc", borderWidth: 1.5, borderColor: "#e5e7eb", borderRadius: 12, padding: 14, fontSize: 13, color: "#374151", minHeight: 80, marginBottom: 12 },
+  textArea: { backgroundColor: "#F3FAF6", borderWidth: 1.5, borderColor: "#CFE6D8", borderRadius: 12, padding: 14, fontSize: 13, color: "#374151", minHeight: 80, marginBottom: 12 },
   errorText: { color: "#ef4444", fontSize: 11.5, fontWeight: "700", marginBottom: 10 },
   successText: { color: "#16a34a", fontSize: 11.5, fontWeight: "700", marginBottom: 10 },
-  actionButton: { backgroundColor: NAVY, borderRadius: 14, paddingVertical: 14, alignItems: "center" },
+  actionButton: { backgroundColor: GREEN, borderRadius: 999, paddingVertical: 14, alignItems: "center" },
   actionButtonText: { color: "white", fontWeight: "800", fontSize: 13.5 },
   pendingNote: { backgroundColor: "#fefce8", borderRadius: 14, padding: 16, alignItems: "center" },
   pendingNoteTitle: { color: "#a16207", fontWeight: "800", fontSize: 13, marginBottom: 4 },
   pendingNoteText: { color: "#ca8a04", fontSize: 11.5, textAlign: "center", lineHeight: 16, fontStyle: "italic" },
-  approvedNote: { backgroundColor: "#f0fdf4", borderRadius: 12, padding: 12, marginBottom: 14 },
-  approvedNoteText: { color: "#15803d", fontSize: 11, lineHeight: 15 },
-  logoutButton: { flexDirection: "row", backgroundColor: "#fef2f2", borderRadius: 16, paddingVertical: 15, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#fecaca" },
-  logoutButtonText: { color: "#dc2626", fontWeight: "800", fontSize: 14 },
-  bottomNav: { flexDirection: "row", backgroundColor: "white", borderTopWidth: 1, borderTopColor: "#f0f0f0", paddingVertical: 10, paddingBottom: 16 },
-  navItem: { flex: 1, alignItems: "center", gap: 3 },
-  navLabel: { fontSize: 10, color: "#9ca3af", fontWeight: "600" },
-  navLabelActive: { fontSize: 10, color: NAVY, fontWeight: "800" },
+  approvedNote: { backgroundColor: "#E3EEE7", borderRadius: 12, padding: 12, marginBottom: 14 },
+  approvedNoteText: { color: "#1E3F2E", fontSize: 11, lineHeight: 15 },
+
+  logoutButton: { flexDirection: "row", backgroundColor: "#FDECEC", borderRadius: 999, paddingVertical: 15, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "#b91c1c" },
+  logoutButtonText: { color: "#b91c1c", fontWeight: "900", fontSize: 15 },
+
+  modalOverlay: { flex: 1, backgroundColor: "rgba(17,20,36,0.75)", justifyContent: "flex-end", paddingTop: 60 },
+  modalScroll: { justifyContent: "flex-end", flexGrow: 1 },
+  modalCard: { backgroundColor: "white", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingTop: 34, paddingBottom: 36 },
+  modalClose: { position: "absolute", top: 14, right: 18, zIndex: 10, padding: 6 },
+  modalCloseText: { fontSize: 24, color: "#9ca3af", fontWeight: "700" },
 });
