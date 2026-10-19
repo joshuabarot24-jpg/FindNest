@@ -46,6 +46,15 @@ interface PublicLostReport {
   photo_url: string | null;
 }
 
+interface FoundRecord {
+  id: number;
+  admin_id?: number;
+  item_name: string;
+  category: string;
+  status: string;
+  photo_url: string | null;
+}
+
 interface NotificationItem {
   id: number;
   title: string;
@@ -70,18 +79,21 @@ export default function HomeScreen({ navigation }: any) {
   const { count: unreadCount } = useUnreadCount(navigation);
 
   const scrollRef = useRef<ScrollView>(null);
-  const sectionY = useRef(0);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [userInitial, setUserInitial] = useState("?");
+  const [userId, setUserId] = useState<number | null>(null);
 
   const [matchNotification, setMatchNotification] = useState<NotificationItem | null>(null);
 
+  const [tab, setTab] = useState<"lost" | "found">("lost");
   const [publicReports, setPublicReports] = useState<PublicLostReport[]>([]);
   const [publicLoading, setPublicLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<PublicLostReport | null>(null);
   const [shown, setShown] = useState(PAGE);
+  const [foundRecords, setFoundRecords] = useState<FoundRecord[]>([]);
+  const [foundLoading, setFoundLoading] = useState(true);
 
   const [chatbotOpen, setChatbotOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState<{ role: "user" | "bot"; text: string }[]>([]);
@@ -142,6 +154,17 @@ export default function HomeScreen({ navigation }: any) {
     }
   };
 
+  const fetchFoundReports = async () => {
+    try {
+      const response = await api.get("/found-items");
+      setFoundRecords(response.data.records || []);
+    } catch (err) {
+      console.error("Error fetching found reports:", err);
+    } finally {
+      setFoundLoading(false);
+    }
+  };
+
   const fetchNotifications = async () => {
     try {
       const response = await api.get("/notifications");
@@ -158,6 +181,7 @@ export default function HomeScreen({ navigation }: any) {
   const fetchProfile = async () => {
     try {
       const res = await api.get("/profile");
+      setUserId(res.data.user?.id ?? null);
       setProfilePhoto(res.data.user?.profile_photo_url || null);
       setUserInitial((res.data.user?.name || "?").charAt(0).toUpperCase());
     } catch (err) {
@@ -167,18 +191,21 @@ export default function HomeScreen({ navigation }: any) {
 
   useEffect(() => {
     fetchPublicReports();
+    fetchFoundReports();
     fetchNotifications();
     fetchProfile();
   }, []);
 
   useAutoRefresh(() => {
     fetchPublicReports();
+    fetchFoundReports();
     fetchNotifications();
     fetchProfile();
   });
 
   const filtered = publicReports;
   const visible = filtered.slice(0, shown);
+  const myFound = foundRecords.filter((r) => r.admin_id === undefined || r.admin_id === userId);
   const cardWidth = (width - 40 - 20) / 3;
 
   const goTo = (screen: string) => {
@@ -277,46 +304,95 @@ export default function HomeScreen({ navigation }: any) {
             </TouchableOpacity>
           </View>
 
-          {/* Reported lost items */}
-          <View onLayout={(e) => { sectionY.current = e.nativeEvent.layout.y + 280; }}>
+          {/* Reported items */}
+          <View>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionBar} />
-              <Text style={styles.sectionTitle}>Reported Lost Items</Text>
-              <Text style={styles.sectionCount}>{publicReports.length} active</Text>
+              <Text style={styles.sectionTitle}>Reported Items</Text>
+              <Text style={styles.sectionCount}>
+                {tab === "lost" ? `${publicReports.length} active` : `${myFound.length} yours`}
+              </Text>
             </View>
-            <Text style={styles.sectionSubtitle}>Items reported lost by students. Photos are blurred for privacy.</Text>
 
-            {publicLoading ? (
+            <View style={styles.tabsRow}>
+              <TouchableOpacity style={[styles.tabBtn, tab === "lost" && styles.tabBtnOn]} onPress={() => setTab("lost")} activeOpacity={0.85}>
+                <Text style={[styles.tabText, tab === "lost" && styles.tabTextOn]}>Reported Lost Items</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.tabBtn, tab === "found" && styles.tabBtnOn]} onPress={() => setTab("found")} activeOpacity={0.85}>
+                <Text style={[styles.tabText, tab === "found" && styles.tabTextOn]}>Your Reported Found Items</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.sectionSubtitle}>
+              {tab === "lost"
+                ? "Items reported lost by students. Photos are blurred for privacy."
+                : "Found items you reported. Only you and the admins can see these."}
+            </Text>
+
+            {tab === "lost" ? (
+              publicLoading ? (
+                <Text style={styles.loadingText}>Loading reports...</Text>
+              ) : filtered.length === 0 ? (
+                <View style={styles.emptyBox}>
+                  <Ionicons name="cube-outline" size={28} color="#9FC5B0" />
+                  <Text style={styles.loadingText}>No active lost reports</Text>
+                </View>
+              ) : (
+                <>
+                  <View style={styles.grid}>
+                    {visible.map((item) => (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={[styles.card, { width: cardWidth }]}
+                        activeOpacity={0.85}
+                        onPress={() => setSelectedItem(item)}
+                      >
+                        <View style={styles.cardImageBox}>
+                          {item.photo_url ? (
+                            <Image source={{ uri: blurred(item.photo_url, 200) }} style={styles.cardImage} resizeMode="contain" />
+                          ) : (
+                            <Ionicons name="image-outline" size={24} color="#9FC5B0" />
+                          )}
+                        </View>
+                        <Text style={styles.cardName} numberOfLines={1}>{item.item_name}</Text>
+                        <Text style={styles.cardMeta} numberOfLines={1}>{item.category}</Text>
+                        <Text style={styles.cardMeta} numberOfLines={1}>{formatDate(item.date_lost)}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  {filtered.length > shown ? (
+                    <TouchableOpacity style={styles.moreButton} onPress={() => setShown(shown + PAGE)} activeOpacity={0.85}>
+                      <Text style={styles.moreText}>Show more</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </>
+              )
+            ) : foundLoading ? (
               <Text style={styles.loadingText}>Loading reports...</Text>
-            ) : filtered.length === 0 ? (
+            ) : myFound.length === 0 ? (
               <View style={styles.emptyBox}>
                 <Ionicons name="cube-outline" size={28} color="#9FC5B0" />
-                <Text style={styles.loadingText}>No active lost reports</Text>
+                <Text style={styles.loadingText}>You have no reported found items</Text>
               </View>
             ) : (
               <>
                 <View style={styles.grid}>
-                  {visible.map((item) => (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[styles.card, { width: cardWidth }]}
-                      activeOpacity={0.85}
-                      onPress={() => setSelectedItem(item)}
-                    >
+                  {myFound.slice(0, shown).map((rec) => (
+                    <View key={rec.id} style={[styles.card, { width: cardWidth }]}>
                       <View style={styles.cardImageBox}>
-                        {item.photo_url ? (
-                          <Image source={{ uri: blurred(item.photo_url, 200) }} style={styles.cardImage} resizeMode="contain" />
+                        {rec.photo_url ? (
+                          <Image source={{ uri: rec.photo_url }} style={styles.cardImage} resizeMode="contain" />
                         ) : (
                           <Ionicons name="image-outline" size={24} color="#9FC5B0" />
                         )}
                       </View>
-                      <Text style={styles.cardName} numberOfLines={1}>{item.item_name}</Text>
-                      <Text style={styles.cardMeta} numberOfLines={1}>{item.category}</Text>
-                      <Text style={styles.cardMeta} numberOfLines={1}>{formatDate(item.date_lost)}</Text>
-                    </TouchableOpacity>
+                      <Text style={styles.cardName} numberOfLines={1}>{rec.item_name}</Text>
+                      <Text style={styles.cardMeta} numberOfLines={1}>{rec.category}</Text>
+                      <Text style={styles.cardStatus} numberOfLines={1}>{(rec.status || "").replace(/_/g, " ")}</Text>
+                    </View>
                   ))}
                 </View>
-                {filtered.length > shown ? (
+                {myFound.length > shown ? (
                   <TouchableOpacity style={styles.moreButton} onPress={() => setShown(shown + PAGE)} activeOpacity={0.85}>
                     <Text style={styles.moreText}>Show more</Text>
                   </TouchableOpacity>
@@ -437,7 +513,7 @@ export default function HomeScreen({ navigation }: any) {
                     <Text style={{ color: GREEN, fontWeight: "800", fontSize: 12.5 }}>Request Manual AI Override</Text>
                   </TouchableOpacity>
                   <Text style={{ fontSize: 10.5, color: "#6b8f7c", textAlign: "center", marginTop: 6 }}>
-                    Photo unclear and the AI can't read it? Tap here to ask the office.
+                    Photo unclear and the AI can&apos;t read it? Tap here to ask the office.
                   </Text>
                 </View>
               ) : (
@@ -599,7 +675,7 @@ const styles = StyleSheet.create({
   },
   actionText: { color: "white", fontWeight: "800", fontSize: 14 },
 
-  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   sectionBar: { width: 5, height: 22, borderRadius: 3, backgroundColor: "#2FD18B" },
   sectionTitle: { flex: 1, fontSize: 17, fontWeight: "900", color: "#1f2937" },
   sectionCount: { fontSize: 11, color: "#6b8f7c", fontWeight: "700" },
@@ -615,18 +691,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
 
-  searchBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "white",
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
-    paddingHorizontal: 14,
-    marginBottom: 12,
-  },
-  searchInput: { flex: 1, paddingVertical: 10, fontSize: 13, color: GREEN },
+  tabsRow: { flexDirection: "row", gap: 8, marginBottom: 8 },
+  tabBtn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: "#E3EEE7" },
+  tabBtnOn: { backgroundColor: GREEN },
+  tabText: { fontSize: 11, fontWeight: "700", color: "#4B6358" },
+  tabTextOn: { color: "#FFFFFF" },
 
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 10 },
   card: {
@@ -649,6 +718,7 @@ const styles = StyleSheet.create({
   cardImage: { width: "100%", height: "100%" },
   cardName: { fontSize: 11.5, fontWeight: "900", color: GREEN },
   cardMeta: { fontSize: 9.5, color: "#6b8f7c", marginTop: 1 },
+  cardStatus: { fontSize: 9.5, color: GREEN, fontWeight: "800", marginTop: 1, textTransform: "capitalize" },
 
   moreButton: {
     alignSelf: "center",
@@ -696,17 +766,6 @@ const styles = StyleSheet.create({
   drawerBrandText: { fontFamily: "Montserrat_800ExtraBold", color: "white", fontSize: 22 },
   drawerItem: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14, paddingHorizontal: 10, borderRadius: 14 },
   drawerItemText: { color: "white", fontSize: 15, fontWeight: "700" },
-
-  bottomNav: {
-    flexDirection: "row",
-    backgroundColor: "white",
-    borderTopWidth: 1,
-    borderTopColor: "#E3EEE7",
-    paddingTop: 10,
-  },
-  navItem: { flex: 1, alignItems: "center", gap: 3 },
-  navLabel: { fontSize: 10, color: "#7a9a89", fontWeight: "600" },
-  navLabelActive: { fontSize: 10, color: GREEN, fontWeight: "800" },
 
   chatbotFab: { position: "absolute", right: 20, width: 52, height: 52, borderRadius: 26, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", elevation: 6, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 5 },
   chatModalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(17,20,36,0.6)" },

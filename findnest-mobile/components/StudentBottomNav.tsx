@@ -20,15 +20,8 @@ export default function StudentBottomNav({ navigation, active, hideActive = fals
     <View style={[styles.bar, { paddingBottom: insets.bottom + 10, paddingTop: 4 }]}>
       {items.map((it) => {
         const on = !hideActive && it.key === active;
-        const order: Tab[] = ["Home", "ClaimStatus", "Profile"];
-        const go = (target: Tab) => {
-          if (target === active) return;
-          const forward = order.indexOf(target) > order.indexOf(active);
-          // Slide from the right when moving to a tab on the right, from the left otherwise
-          navigation.navigate(target, {}, { animation: forward ? "slide_from_right" : "slide_from_left" } as any);
-        };
         return (
-          <TouchableOpacity key={it.key} style={styles.item} onPress={() => go(it.key)} activeOpacity={0.8}>
+          <TouchableOpacity key={it.key} style={styles.item} onPress={() => navigation.navigate(it.key)} activeOpacity={0.8}>
             <View style={[styles.line, on && styles.lineOn]} />
             <Ionicons name={on ? it.iconActive : it.icon} size={22} color={on ? GREEN : MUTED} />
             <Text style={on ? styles.labelOn : styles.label}>{it.label}</Text>
