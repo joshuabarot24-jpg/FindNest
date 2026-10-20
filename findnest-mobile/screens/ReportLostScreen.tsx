@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -55,6 +55,14 @@ export default function ReportLostScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
 
   const [step, setStep] = useState<"form" | "review">("form");
+
+  // Admin can grant a student a manual AI override: no photo analysis, no auto-fill
+  const [overrideOn, setOverrideOn] = useState(false);
+  useEffect(() => {
+    api.get("/profile")
+      .then((r) => setOverrideOn(!!r.data.user?.manual_override_granted))
+      .catch(() => {});
+  }, []);
 
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState("Electronics");
@@ -130,6 +138,7 @@ export default function ReportLostScreen({ navigation }: any) {
       const formData = new FormData();
       formData.append("image", { uri, name: "photo.jpg", type: "image/jpeg" } as any);
       formData.append("folder", "lost-items");
+      if (overrideOn) formData.append("analyze", "false");
 
       const res = await api.post("/upload/image", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -141,7 +150,7 @@ export default function ReportLostScreen({ navigation }: any) {
         return next;
       });
 
-      if (isFirstPhoto) applyAiFields(res.data);
+      if (isFirstPhoto && !overrideOn) applyAiFields(res.data);
     } catch (err: any) {
       if (err.response?.data?.multiple_items && isFirstPhoto) {
         setPhotos((prev) => {
