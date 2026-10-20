@@ -81,7 +81,12 @@ export default function NotificationsScreen({ navigation }: any) {
   const handleNotifPress = (notif: NotificationItem) => {
     if (!notif.is_read) markAsRead(notif.id);
     const t = notif.type?.toLowerCase() || "";
-    if (t.includes("support")) {
+    const title = (notif.title || "").toLowerCase();
+    if (title.includes("override")) {
+      // stays on the Notifications screen
+    } else if (title.includes("unclaimed")) {
+      navigation.navigate("Home");
+    } else if (t.includes("support")) {
       navigation.navigate("Support");
     } else if (t.includes("match") || t.includes("status") || t.includes("reminder") || t.includes("claim")) {
       navigation.navigate("ClaimStatus");
