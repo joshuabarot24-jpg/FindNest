@@ -85,7 +85,8 @@ export default function HomeScreen({ navigation }: any) {
   const [userInitial, setUserInitial] = useState("?");
   const [userId, setUserId] = useState<number | null>(null);
 
-  const [matchNotification, setMatchNotification] = useState<NotificationItem | null>(null);
+  const [matchNotifications, setMatchNotifications] = useState<NotificationItem[]>([]);
+  const [matchIndex, setMatchIndex] = useState(0);
 
   const [tab, setTab] = useState<"lost" | "found">("lost");
   const [publicReports, setPublicReports] = useState<PublicLostReport[]>([]);
@@ -143,6 +144,17 @@ export default function HomeScreen({ navigation }: any) {
     }
   };
 
+  // Marks a match notification as read and lets the next one take its place
+  const dismissMatch = async (id: number) => {
+    setMatchNotifications((prev) => prev.filter((n) => n.id !== id));
+    setMatchIndex(0);
+    try {
+      await api.post(`/notifications/${id}/read`);
+    } catch (err) {
+      console.error("Error marking notification as read:", err);
+    }
+  };
+
   const fetchPublicReports = async () => {
     try {
       const response = await api.get("/lost-items", { params: { status: "searching" } });
@@ -169,10 +181,10 @@ export default function HomeScreen({ navigation }: any) {
     try {
       const response = await api.get("/notifications");
       const notifications: NotificationItem[] = response.data.notifications || [];
-      const unreadMatch = notifications.find(
+      const unreadMatches = notifications.filter(
         (n) => !n.is_read && n.type?.toLowerCase().includes("match")
       );
-      setMatchNotification(unreadMatch || null);
+      setMatchNotifications(unreadMatches);
     } catch (err) {
       console.error("Error fetching notifications:", err);
     }
@@ -206,6 +218,8 @@ export default function HomeScreen({ navigation }: any) {
   const filtered = publicReports;
   const visible = filtered.slice(0, shown);
   const myFound = foundRecords.filter((r) => r.admin_id === undefined || r.admin_id === userId);
+  const matchIdx = Math.min(matchIndex, Math.max(0, matchNotifications.length - 1));
+  const currentMatch = matchNotifications[matchIdx];
   const cardWidth = (width - 40 - 20) / 3;
 
   const goTo = (screen: string) => {
@@ -279,17 +293,36 @@ export default function HomeScreen({ navigation }: any) {
         </ImageBackground>
 
         <View style={styles.body}>
-          {matchNotification ? (
-            <TouchableOpacity style={styles.notifBanner} activeOpacity={0.85} onPress={() => navigation.navigate("ClaimStatus")}>
-              <View style={styles.notifIconBox}>
-                <Ionicons name="checkmark-circle" size={22} color="#22c55e" />
-              </View>
-              <View style={styles.notifTextBox}>
-                <Text style={styles.notifTitle}>{matchNotification.title}</Text>
-                <Text style={styles.notifMessage}>{matchNotification.message}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#16a34a" />
-            </TouchableOpacity>
+          {currentMatch ? (
+            <View style={styles.notifBanner}>
+              <TouchableOpacity style={styles.notifMain} activeOpacity={0.85} onPress={() => navigation.navigate("ClaimStatus")}>
+                <View style={styles.notifIconBox}>
+                  <Ionicons name="checkmark-circle" size={22} color="#22c55e" />
+                </View>
+                <View style={styles.notifTextBox}>
+                  <Text style={styles.notifTitle}>
+                    {currentMatch.title}
+                    {matchNotifications.length > 1 ? `  (${matchIdx + 1} of ${matchNotifications.length})` : ""}
+                  </Text>
+                  <Text style={styles.notifMessage}>{currentMatch.message}</Text>
+                </View>
+              </TouchableOpacity>
+
+              {matchNotifications.length > 1 ? (
+                <View style={styles.notifNav}>
+                  <TouchableOpacity hitSlop={8} onPress={() => setMatchIndex((matchIdx - 1 + matchNotifications.length) % matchNotifications.length)}>
+                    <Ionicons name="chevron-back" size={18} color="#16a34a" />
+                  </TouchableOpacity>
+                  <TouchableOpacity hitSlop={8} onPress={() => setMatchIndex((matchIdx + 1) % matchNotifications.length)}>
+                    <Ionicons name="chevron-forward" size={18} color="#16a34a" />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              <TouchableOpacity hitSlop={8} onPress={() => dismissMatch(currentMatch.id)}>
+                <Ionicons name="close" size={18} color="#16a34a" />
+              </TouchableOpacity>
+            </View>
           ) : null}
 
           {/* Action buttons */}
@@ -655,6 +688,8 @@ const styles = StyleSheet.create({
   notifTextBox: { flex: 1 },
   notifTitle: { fontWeight: "800", color: "#15803d", fontSize: 13 },
   notifMessage: { color: "#16a34a", fontSize: 11.5, marginTop: 2 },
+  notifMain: { flex: 1, flexDirection: "row", alignItems: "center" },
+  notifNav: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 8 },
 
   actionRow: { flexDirection: "row", gap: 12, marginBottom: 24 },
   lostButton: {
