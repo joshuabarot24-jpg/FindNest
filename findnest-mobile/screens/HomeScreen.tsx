@@ -238,7 +238,7 @@ export default function HomeScreen({ navigation }: any) {
         </View>
         <View style={styles.topCenter}>
           <Image source={require("../assets/findnest-logo.png")} style={styles.logoSmall} />
-          <Text style={styles.brandText}>FindNest</Text>
+          <Text style={styles.brandText}>FINDNEST</Text>
         </View>
         <View style={styles.topSideRight}>
           <TouchableOpacity style={styles.bellButton} onPress={() => navigation.navigate("Notifications")} hitSlop={8}>
@@ -476,7 +476,12 @@ export default function HomeScreen({ navigation }: any) {
           <View style={[styles.drawer, { paddingTop: insets.top + 20 }]}>
             <View style={styles.drawerBrand}>
               <Image source={require("../assets/findnest-logo.png")} style={styles.drawerLogo} />
-              <Text style={styles.drawerBrandText}>FindNest</Text>
+              <View style={styles.drawerBrandCol}>
+                <Text style={styles.drawerBrandText}>
+                  FIND<Text style={styles.drawerBrandGold}>NEST</Text>
+                </Text>
+                <Text style={styles.drawerRole}>Student Portal</Text>
+              </View>
             </View>
             {[
               { label: "Home", icon: "home-outline" as const, screen: "Home" },
@@ -634,7 +639,7 @@ const styles = StyleSheet.create({
   topSideLeft: { width: 90, alignItems: "flex-start" },
   topCenter: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   logoSmall: { width: 30, height: 30, resizeMode: "contain" },
-  brandText: { fontFamily: "Montserrat_800ExtraBold", fontSize: 18, color: "#0B4F2C" },
+  brandText: { fontFamily: "Inter_900Black", fontSize: 18, color: "#0B4F2C" },
   topSideRight: { width: 90, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 12 },
   bellButton: { padding: 2 },
   bellBadge: {
@@ -796,9 +801,12 @@ const styles = StyleSheet.create({
 
   drawerOverlay: { flex: 1, flexDirection: "row", backgroundColor: "rgba(17,20,36,0.6)" },
   drawer: { width: 270, backgroundColor: GREEN, paddingHorizontal: 18 },
-  drawerBrand: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 26 },
-  drawerLogo: { width: 40, height: 40, resizeMode: "contain" },
-  drawerBrandText: { fontFamily: "Montserrat_800ExtraBold", color: "white", fontSize: 22 },
+  drawerBrand: { flexDirection: "row", alignItems: "center", marginBottom: 26 },
+  drawerLogo: { width: 48, height: 48, resizeMode: "contain", marginRight: 12 },
+  drawerBrandCol: { flexDirection: "column", justifyContent: "center" },
+  drawerBrandText: { fontFamily: "Inter_900Black", color: "#E2EFE9", fontSize: 20, lineHeight: 24, includeFontPadding: false },
+  drawerBrandGold: { color: "#ffd700" },
+  drawerRole: { fontFamily: "Inter_500Medium", color: "rgba(226,239,233,0.7)", fontSize: 12, lineHeight: 16, marginTop: 1, includeFontPadding: false },
   drawerItem: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14, paddingHorizontal: 10, borderRadius: 14 },
   drawerItemText: { color: "white", fontSize: 15, fontWeight: "700" },
 

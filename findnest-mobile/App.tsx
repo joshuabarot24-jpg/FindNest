@@ -16,13 +16,13 @@ import ReportLostScreen from "./screens/ReportLostScreen";
 import ReportFoundScreen from "./screens/ReportFoundScreen";
 import ClaimStatusScreen from "./screens/ClaimStatusScreen";
 import { useFonts, Montserrat_800ExtraBold } from "@expo-google-fonts/montserrat";
-import { Inter_500Medium } from "@expo-google-fonts/inter";
+import { Inter_500Medium, Inter_900Black } from "@expo-google-fonts/inter";
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [initialRoute, setInitialRoute] = useState<"Landing" | "Home" | null>(null);
-  const [fontsLoaded] = useFonts({ Montserrat_800ExtraBold, Inter_500Medium });
+  const [fontsLoaded] = useFonts({ Montserrat_800ExtraBold, Inter_500Medium, Inter_900Black });
 
   useEffect(() => {
     const restoreSession = async () => {

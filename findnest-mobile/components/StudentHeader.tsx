@@ -43,7 +43,7 @@ export default function StudentHeader({ navigation }: { navigation: any }) {
         </View>
         <View style={styles.center}>
           <Image source={require("../assets/findnest-logo.png")} style={styles.logo} />
-          <Text style={styles.brand}>FindNest</Text>
+          <Text style={styles.brand}>FINDNEST</Text>
         </View>
         <View style={styles.right}>
           <TouchableOpacity onPress={() => navigation.navigate("Notifications")} hitSlop={8}>
@@ -65,7 +65,12 @@ export default function StudentHeader({ navigation }: { navigation: any }) {
           <View style={[styles.drawer, { paddingTop: insets.top + 20 }]}>
             <View style={styles.drawerBrand}>
               <Image source={require("../assets/findnest-logo.png")} style={styles.drawerLogo} />
-              <Text style={styles.drawerBrandText}>FindNest</Text>
+              <View style={styles.drawerBrandCol}>
+                <Text style={styles.drawerBrandText}>
+                  FIND<Text style={styles.drawerBrandGold}>NEST</Text>
+                </Text>
+                <Text style={styles.drawerRole}>Student Portal</Text>
+              </View>
             </View>
             {[
               { label: "Home", icon: "home-outline" as const, screen: "Home" },
@@ -91,7 +96,7 @@ const styles = StyleSheet.create({
   left: { width: 90, alignItems: "flex-start" },
   center: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   logo: { width: 30, height: 30, resizeMode: "contain" },
-  brand: { fontFamily: "Montserrat_800ExtraBold", fontSize: 18, color: "#0B4F2C" },
+  brand: { fontFamily: "Inter_900Black", fontSize: 18, color: "#0B4F2C" },
   right: { width: 90, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 12 },
   badge: { position: "absolute", top: -4, right: -6, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center" },
   badgeText: { color: "white", fontSize: 9, fontWeight: "800" },
@@ -100,9 +105,12 @@ const styles = StyleSheet.create({
   avatarText: { color: "white", fontWeight: "800", fontSize: 14 },
   overlay: { flex: 1, flexDirection: "row", backgroundColor: "rgba(17,20,36,0.6)" },
   drawer: { width: 270, backgroundColor: GREEN, paddingHorizontal: 18 },
-  drawerBrand: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 26 },
-  drawerLogo: { width: 40, height: 40, resizeMode: "contain" },
-  drawerBrandText: { fontFamily: "Montserrat_800ExtraBold", color: "white", fontSize: 22 },
+  drawerBrand: { flexDirection: "row", alignItems: "center", marginBottom: 26 },
+  drawerLogo: { width: 48, height: 48, resizeMode: "contain", marginRight: 12 },
+  drawerBrandCol: { flexDirection: "column", justifyContent: "center" },
+  drawerBrandText: { fontFamily: "Inter_900Black", color: "#E2EFE9", fontSize: 20, lineHeight: 24, includeFontPadding: false },
+  drawerBrandGold: { color: "#ffd700" },
+  drawerRole: { fontFamily: "Inter_500Medium", color: "rgba(226,239,233,0.7)", fontSize: 12, lineHeight: 16, marginTop: 0, includeFontPadding: false },
   drawerItem: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14, paddingHorizontal: 10, borderRadius: 14 },
   drawerItemText: { color: "white", fontSize: 15, fontWeight: "700" },
 });
