@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import api from "../lib/api";
 import { setAuth } from "../lib/auth";
+import { loginErrorMessage } from "../lib/loginError";
 
 const GREEN = "#0F4C3A";
 const MINT = "#F2FAF5";
@@ -88,7 +89,7 @@ export default function StudentLoginScreen({ navigation }: any) {
       setStep("otp");
       startResendTimer();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Invalid credentials");
+      setError(loginErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -122,7 +123,7 @@ export default function StudentLoginScreen({ navigation }: any) {
       await setAuth(response.data.token, response.data.user);
       navigation.reset({ index: 0, routes: [{ name: "Home" }] });
     } catch (err: any) {
-      setOtpError(err.response?.data?.message || "Invalid OTP code");
+      setOtpError(loginErrorMessage(err, "Invalid OTP code"));
       setOtp("");
     } finally {
       setOtpLoading(false);
