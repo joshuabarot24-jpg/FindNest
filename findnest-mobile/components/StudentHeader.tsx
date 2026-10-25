@@ -76,7 +76,6 @@ export default function StudentHeader({ navigation }: { navigation: any }) {
               { label: "Home", icon: "home-outline" as const, screen: "Home" },
               { label: "Claim Status", icon: "cube-outline" as const, screen: "ClaimStatus" },
               { label: "Support", icon: "chatbubbles-outline" as const, screen: "Support" },
-              { label: "Student profile", icon: "person-outline" as const, screen: "Profile" },
             ].map((item) => (
               <TouchableOpacity key={item.label} style={styles.drawerItem} onPress={() => goTo(item.screen)} activeOpacity={0.8}>
                 <Ionicons name={item.icon} size={22} color="white" />
