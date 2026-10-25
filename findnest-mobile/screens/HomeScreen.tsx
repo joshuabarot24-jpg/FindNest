@@ -91,6 +91,10 @@ export default function HomeScreen({ navigation }: any) {
   const [tab, setTab] = useState<"lost" | "found">("lost");
   const [publicReports, setPublicReports] = useState<PublicLostReport[]>([]);
   const [myReportIds, setMyReportIds] = useState<number[]>([]);
+  const [deletingReport, setDeletingReport] = useState<PublicLostReport | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [publicLoading, setPublicLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<PublicLostReport | null>(null);
   const [shown, setShown] = useState(PAGE);
@@ -157,6 +161,29 @@ export default function HomeScreen({ navigation }: any) {
   };
 
   // The student's own lost reports, used only to mark them with "Yours"
+const startDelete = (item: PublicLostReport) => {
+    setDeleteReason("");
+    setDeleteError("");
+    setDeletingReport(item);
+    setSelectedItem(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingReport || !deleteReason.trim() || deleteBusy) return;
+    setDeleteBusy(true);
+    setDeleteError("");
+    try {
+      await api.delete(`/lost-items/${deletingReport.id}`, { data: { reason: deleteReason.trim() } });
+      setPublicReports((prev) => prev.filter((r) => r.id !== deletingReport.id));
+      setMyReportIds((prev) => prev.filter((id) => id !== deletingReport.id));
+      setDeletingReport(null);
+    } catch (err: any) {
+      setDeleteError(err.response?.data?.message || "Could not delete the report. Please try again.");
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   const fetchMyReportIds = async () => {
     try {
       const response = await api.get("/lost-items/my-reports");
@@ -479,6 +506,12 @@ export default function HomeScreen({ navigation }: any) {
                   </Text>
                 </View>
 
+                {myReportIds.includes(selectedItem.id) ? (
+                  <TouchableOpacity onPress={() => startDelete(selectedItem)} style={styles.deleteButton} activeOpacity={0.85}>
+                    <Ionicons name="trash-outline" size={16} color="#DC2626" />
+                    <Text style={styles.deleteButtonText}>Delete Report</Text>
+                  </TouchableOpacity>
+                ) : null}
                 <TouchableOpacity onPress={() => setSelectedItem(null)} style={styles.modalCloseButton}>
                   <Text style={styles.modalCloseText}>Close</Text>
                 </TouchableOpacity>
@@ -489,6 +522,39 @@ export default function HomeScreen({ navigation }: any) {
       </Modal>
 
       {/* Hamburger drawer */}
+      <Modal visible={!!deletingReport} transparent animationType="fade" onRequestClose={() => setDeletingReport(null)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.delOverlay}>
+          <View style={styles.delCard}>
+            <Text style={styles.delTitle}>Delete This Report?</Text>
+            <Text style={styles.delText}>
+              Let us know why you're deleting "{deletingReport?.item_name}", for example, if you found it yourself.
+            </Text>
+            <TextInput
+              value={deleteReason}
+              onChangeText={setDeleteReason}
+              placeholder="Reason for deleting"
+              placeholderTextColor="#9ca3af"
+              multiline
+              style={styles.delInput}
+            />
+            {deleteError ? <Text style={styles.delError}>{deleteError}</Text> : null}
+            <View style={styles.delRow}>
+              <TouchableOpacity style={styles.delCancel} onPress={() => setDeletingReport(null)} activeOpacity={0.85}>
+                <Text style={styles.delCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.delConfirm, (!deleteReason.trim() || deleteBusy) && { opacity: 0.5 }]}
+                onPress={confirmDelete}
+                disabled={!deleteReason.trim() || deleteBusy}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.delConfirmText}>{deleteBusy ? "Deleting..." : "Delete"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
         <View style={styles.drawerOverlay}>
           <View style={[styles.drawer, { paddingTop: insets.top + 20 }]}>
@@ -816,6 +882,19 @@ const styles = StyleSheet.create({
   modalNote: { backgroundColor: CARD_BG, borderRadius: 14, padding: 14, marginBottom: 20, width: "100%", alignItems: "center" },
   modalNoteText: { fontSize: 12, color: GREEN, lineHeight: 17, textAlign: "center" },
   modalCloseButton: { paddingVertical: 6 },
+  deleteButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: "#FEF2F2", borderRadius: 999, paddingVertical: 10, paddingHorizontal: 18, marginBottom: 6 },
+  deleteButtonText: { color: "#DC2626", fontWeight: "700", fontSize: 13 },
+  delOverlay: { flex: 1, backgroundColor: "rgba(17,20,36,0.6)", justifyContent: "center", paddingHorizontal: 24 },
+  delCard: { backgroundColor: "white", borderRadius: 22, padding: 20 },
+  delTitle: { fontSize: 17, fontWeight: "900", color: "#0E4D34", marginBottom: 6 },
+  delText: { fontSize: 13, color: "#6b7280", lineHeight: 18, marginBottom: 12 },
+  delInput: { borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, minHeight: 70, textAlignVertical: "top", color: "#1f2937", fontSize: 14 },
+  delError: { color: "#DC2626", fontSize: 12, fontWeight: "600", marginTop: 8 },
+  delRow: { flexDirection: "row", gap: 10, marginTop: 16 },
+  delCancel: { flex: 1, borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 999, paddingVertical: 12, alignItems: "center" },
+  delCancelText: { color: "#6b7280", fontWeight: "700", fontSize: 14 },
+  delConfirm: { flex: 1, backgroundColor: "#DC2626", borderRadius: 999, paddingVertical: 12, alignItems: "center" },
+  delConfirmText: { color: "white", fontWeight: "700", fontSize: 14 },
   modalCloseText: { color: "#6b7280", fontWeight: "700", fontSize: 13 },
 
   drawerOverlay: { flex: 1, flexDirection: "row", backgroundColor: "rgba(17,20,36,0.6)" },
