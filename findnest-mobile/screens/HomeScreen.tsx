@@ -90,6 +90,7 @@ export default function HomeScreen({ navigation }: any) {
 
   const [tab, setTab] = useState<"lost" | "found">("lost");
   const [publicReports, setPublicReports] = useState<PublicLostReport[]>([]);
+  const [myReportIds, setMyReportIds] = useState<number[]>([]);
   const [publicLoading, setPublicLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<PublicLostReport | null>(null);
   const [shown, setShown] = useState(PAGE);
@@ -155,6 +156,16 @@ export default function HomeScreen({ navigation }: any) {
     }
   };
 
+  // The student's own lost reports, used only to mark them with "Yours"
+  const fetchMyReportIds = async () => {
+    try {
+      const response = await api.get("/lost-items/my-reports");
+      setMyReportIds((response.data.reports || []).map((r: { id: number }) => r.id));
+    } catch (err) {
+      console.error("Error fetching my reports:", err);
+    }
+  };
+
   const fetchPublicReports = async () => {
     try {
       const response = await api.get("/lost-items", { params: { status: "searching" } });
@@ -203,6 +214,7 @@ export default function HomeScreen({ navigation }: any) {
 
   useEffect(() => {
     fetchPublicReports();
+    fetchMyReportIds();
     fetchFoundReports();
     fetchNotifications();
     fetchProfile();
@@ -210,6 +222,7 @@ export default function HomeScreen({ navigation }: any) {
 
   useAutoRefresh(() => {
     fetchPublicReports();
+    fetchMyReportIds();
     fetchFoundReports();
     fetchNotifications();
     fetchProfile();
@@ -386,6 +399,11 @@ export default function HomeScreen({ navigation }: any) {
                           ) : (
                             <Ionicons name="image-outline" size={24} color="#9FC5B0" />
                           )}
+                          {myReportIds.includes(item.id) ? (
+                            <View style={styles.yoursTag}>
+                              <Text style={styles.yoursTagText}>Yours</Text>
+                            </View>
+                          ) : null}
                         </View>
                         <Text style={styles.cardName} numberOfLines={1}>{item.item_name}</Text>
                         <Text style={styles.cardMeta} numberOfLines={1}>{item.category}</Text>
@@ -759,6 +777,8 @@ const styles = StyleSheet.create({
   cardMeta: { fontSize: 9.5, color: "#6b8f7c", marginTop: 1 },
   cardStatus: { fontSize: 9.5, color: GREEN, fontWeight: "800", marginTop: 1, textTransform: "capitalize" },
 
+  yoursTag: { position: "absolute", top: 6, left: 6, backgroundColor: "#0E4D34", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+  yoursTagText: { color: "white", fontSize: 10, fontWeight: "700" },
   moreButton: {
     alignSelf: "center",
     marginTop: 14,
