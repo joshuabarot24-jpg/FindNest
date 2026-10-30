@@ -444,7 +444,7 @@ export default function ReportLostScreen({ navigation }: any) {
         {/* Coral wash rising from the bottom, with the submit button on top */}
         <LinearGradient
           pointerEvents="none"
-          colors={["rgba(255,255,255,0)", "#FCA5A5", "#F87171"]}
+          colors={["rgba(254,226,226,0)", "#FEE2E2", "#FCA5A5"]}
           style={styles.wash}
         />
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) + 40 }]}>
