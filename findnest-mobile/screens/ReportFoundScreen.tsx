@@ -461,7 +461,7 @@ export default function ReportFoundScreen({ navigation }: any) {
         {/* Green wash rising from the bottom, with the submit button on top */}
         <LinearGradient
           pointerEvents="none"
-          colors={["rgba(255,255,255,0)", "rgba(49,122,87,0.55)", WASH]}
+          colors={["rgba(220,252,231,0)", "#DCFCE7", "#86EFAC"]}
           style={styles.wash}
         />
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) + 40 }]}>
