@@ -509,12 +509,13 @@ export default function ReportLostScreen({ navigation }: any) {
           <TouchableOpacity activeOpacity={1} style={styles.modalCard}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Date Lost</Text>
-            <Text style={styles.modalSub}>Today or up to 2 days ago</Text>
-            {[0, 1, 2].map((daysAgo) => {
+            <Text style={styles.modalSub}>Today or up to 3 weeks ago</Text>
+            <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+            {Array.from({ length: 22 }, (_, i) => i).map((daysAgo) => {
               const d = getManilaDateObj(daysAgo);
               const value = toDateString(d);
               const on = value === date;
-              const label = daysAgo === 0 ? "Today" : daysAgo === 1 ? "Yesterday" : "2 days ago";
+              const label = daysAgo === 0 ? "Today" : daysAgo === 1 ? "Yesterday" : `${daysAgo} days ago`;
               return (
                 <TouchableOpacity
                   key={daysAgo}
@@ -531,6 +532,7 @@ export default function ReportLostScreen({ navigation }: any) {
                 </TouchableOpacity>
               );
             })}
+            </ScrollView>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
