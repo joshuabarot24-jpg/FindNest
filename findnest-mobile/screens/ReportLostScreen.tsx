@@ -18,6 +18,7 @@ import * as ImagePicker from "expo-image-picker";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useForcePasswordChange } from "../lib/useForcePasswordChange";
 import api from "../lib/api";
+import { uploadErrorInfo } from "../lib/uploadError";
 
 const categories = ["Electronics", "Personal Belongings", "ID/Cards", "Keys", "School Supplies", "Accessories", "Others"];
 const MAX_PHOTOS = 1;
@@ -85,6 +86,7 @@ export default function ReportLostScreen({ navigation }: any) {
   const [submitted, setSubmitted] = useState(false);
   const [photoError, setPhotoError] = useState(false);
   const [photoErrorMessage, setPhotoErrorMessage] = useState("");
+  const [photoErrorTone, setPhotoErrorTone] = useState<"red" | "amber">("red");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
@@ -128,6 +130,7 @@ export default function ReportLostScreen({ navigation }: any) {
 
     setPhotoError(false);
     setPhotoErrorMessage("");
+    setPhotoErrorTone("red");
     const isFirstPhoto = photos.length === 0;
     const idx = photos.length;
 
@@ -164,7 +167,7 @@ export default function ReportLostScreen({ navigation }: any) {
       }
       console.error("Photo upload failed:", JSON.stringify(err.response?.data));
       setPhotos((prev) => prev.filter((_, i2) => i2 !== idx));
-      setPhotoErrorMessage(err.response?.data?.message || "Photo upload failed. Please try again.");
+      { const info = uploadErrorInfo(err); setPhotoErrorMessage(info.message); setPhotoErrorTone(info.tone); }
       setPhotoError(true);
     }
   };
