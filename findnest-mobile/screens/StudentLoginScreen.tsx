@@ -75,7 +75,7 @@ export default function StudentLoginScreen({ navigation }: any) {
 
   const handleLogin = async () => {
     if (!studentId.trim() || !password.trim()) {
-      setError("Please enter your Student ID and Password!");
+      setError("Please enter your Student ID or Email and your Password!");
       return;
     }
     setError("");
