@@ -310,7 +310,7 @@ export default function ReportLostScreen({ navigation }: any) {
                 </TouchableOpacity>
               )}
               {photoError ? (
-                <Text style={styles.errorText}>{photoErrorMessage || "At least one photo is required before you can submit your report."}</Text>
+                <Text style={[styles.errorText, photoErrorTone === "amber" && { color: "#B45309" }]}>{photoErrorMessage || "At least one photo is required before you can submit your report."}</Text>
               ) : null}
 
               {/* Fields */}
