@@ -468,9 +468,12 @@ export default function ReportFoundScreen({ navigation }: any) {
           style={styles.wash}
         />
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) + 40 }]}>
+          {step === "review" && submitError ? (
+            <Text style={[styles.errorText, { textAlign: "center", marginBottom: 10 }]}>{submitError}</Text>
+          ) : null}
           <TouchableOpacity
             style={styles.cta}
-            onPress={step === "form" ? handleReview : () => setShowConfirm(true)}
+            onPress={step === "form" ? handleReview : () => { setSubmitError(""); setShowConfirm(true); }}
             disabled={step === "form" && !canReview}
             activeOpacity={0.9}
           >
