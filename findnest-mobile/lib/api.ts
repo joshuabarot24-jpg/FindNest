@@ -35,6 +35,12 @@ api.interceptors.response.use(
         setTimeout(() => { redirectingToLogin = false; }, 2000);
       }
     }
+    // A temporary password blocks every call except the password change: show the locked screen
+    if (error.response?.status === 403 && error.response?.data?.error === "MUST_CHANGE_PASSWORD") {
+      if (navigationRef.isReady() && navigationRef.getCurrentRoute()?.name !== "ForcePassword") {
+        navigationRef.reset({ index: 0, routes: [{ name: "ForcePassword" }] });
+      }
+    }
     return Promise.reject(error);
   }
 );

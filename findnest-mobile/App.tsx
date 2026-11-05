@@ -15,6 +15,7 @@ import NotificationsScreen from "./screens/NotificationsScreen";
 import ReportLostScreen from "./screens/ReportLostScreen"; 
 import ReportFoundScreen from "./screens/ReportFoundScreen";
 import ClaimStatusScreen from "./screens/ClaimStatusScreen";
+import ForcePasswordScreen from "./screens/ForcePasswordScreen";
 import { useFonts, Montserrat_800ExtraBold } from "@expo-google-fonts/montserrat";
 import { Inter_500Medium, Inter_900Black } from "@expo-google-fonts/inter";
 
@@ -57,6 +58,7 @@ export default function App() {
           <Stack.Screen name="ReportLost" component={ReportLostScreen} options={{ animation: "fade" }} />
           <Stack.Screen name="ReportFound" component={ReportFoundScreen} options={{ animation: "fade" }} />
           <Stack.Screen name="ClaimStatus" component={ClaimStatusScreen} options={{ animation: "fade" }} />
+          <Stack.Screen name="ForcePassword" component={ForcePasswordScreen} options={{ animation: "fade", gestureEnabled: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
