@@ -120,8 +120,16 @@ export default function StudentLoginScreen({ navigation }: any) {
         school_id: studentId.trim(),
         otp: otp,
       });
-      await setAuth(response.data.token, response.data.user);
-      navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+await setAuth(response.data.token, response.data.user);
+      // A temporary password goes straight to the locked screen, with no flash of Home
+      let mustChange = false;
+      try {
+        const prof = await api.get("/profile");
+        mustChange = !!prof.data?.user?.password_is_temporary;
+      } catch {
+        // ignore: the 403 handler in lib/api.ts covers it
+      }
+      navigation.reset({ index: 0, routes: [{ name: mustChange ? "ForcePassword" : "Home" }] });
     } catch (err: any) {
       setOtpError(loginErrorMessage(err, "Invalid OTP code"));
       setOtp("");
