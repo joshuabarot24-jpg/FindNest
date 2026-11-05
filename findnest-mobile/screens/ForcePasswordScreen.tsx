@@ -20,6 +20,28 @@ export default function ForcePasswordScreen({ navigation }: any) {
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [code, setCode] = useState("");
+  const [cooldown, setCooldown] = useState(0);
+  const [codeSent, setCodeSent] = useState(false);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  async function sendCode() {
+    if (cooldown > 0) return;
+    setError("");
+    try {
+      await api.post("/profile/send-password-otp");
+      setCodeSent(true);
+      setCooldown(60);
+    } catch (err: any) {
+      if (err.response?.status === 429) setCooldown(Math.ceil(err.response.data?.retry_after || 60));
+      setError(err.response?.data?.message || "Could not send the code. Please try again.");
+    }
+  }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -36,10 +58,11 @@ export default function ForcePasswordScreen({ navigation }: any) {
     if (busy) return;
     if (!allOk) return setError("Your password does not meet all the rules below.");
     if (pw !== confirm) return setError("The two passwords do not match.");
+    if (!/^\d{6}$/.test(code)) return setError("Enter the 6-digit verification code sent to your email.");
     setError("");
     setBusy(true);
     try {
-      await api.post("/profile/set-new-password", { new_password: pw, new_password_confirmation: confirm });
+      await api.post("/profile/set-new-password", { new_password: pw, new_password_confirmation: confirm, otp_code: code });
       setSuccess(true);
       setTimeout(() => navigation.reset({ index: 0, routes: [{ name: "Home" }] }), 1800);
     } catch (err: any) {
@@ -108,6 +131,27 @@ export default function ForcePasswordScreen({ navigation }: any) {
                   </TouchableOpacity>
                 </View>
 
+                <Text style={[styles.label, { marginTop: 16 }]}>EMAIL VERIFICATION CODE</Text>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  <TextInput
+                    style={[styles.input, { flex: 1, letterSpacing: 8, textAlign: "center", fontWeight: "800", fontSize: 18 }]}
+                    value={code}
+                    onChangeText={(t) => setCode(t.replace(/\D/g, ""))}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    placeholder="000000"
+                    placeholderTextColor="#cbd5e1"
+                  />
+                  <TouchableOpacity
+                    onPress={sendCode}
+                    disabled={cooldown > 0}
+                    style={[styles.sendBtn, cooldown > 0 && { opacity: 0.5 }]}
+                  >
+                    <Text style={styles.sendBtnText}>{cooldown > 0 ? `Send again in ${cooldown}s` : codeSent ? "Resend Code" : "Send Verification Code"}</Text>
+                  </TouchableOpacity>
+                </View>
+                {codeSent ? <Text style={styles.sentNote}>A 6-digit verification code has been sent to your registered email address.</Text> : null}
+
                 {error ? <Text style={styles.error}>{error}</Text> : null}
 
                 <TouchableOpacity style={[styles.btn, busy && { opacity: 0.5 }]} onPress={submit} disabled={busy} activeOpacity={0.85}>
@@ -134,6 +178,9 @@ const styles = StyleSheet.create({
   input: { borderWidth: 2, borderColor: "#e5e7eb", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: "#1f2937" },
   rule: { fontSize: 12, fontWeight: "600", color: "#9ca3af", marginTop: 4 },
   ruleOk: { color: "#16a34a" },
+  sendBtn: { borderWidth: 2, borderColor: GREEN, borderRadius: 12, paddingHorizontal: 10, justifyContent: "center", maxWidth: 120 },
+  sendBtnText: { color: GREEN, fontWeight: "800", fontSize: 11, textAlign: "center" },
+  sentNote: { color: "#16a34a", fontSize: 12, fontWeight: "600", marginTop: 8 },
   eye: { position: "absolute", right: 14, top: 0, bottom: 0, justifyContent: "center" },
   error: { backgroundColor: "#FEF2F2", borderColor: "#FECACA", borderWidth: 1, color: "#B91C1C", fontSize: 12, fontWeight: "600", borderRadius: 10, padding: 10, marginTop: 14 },
   btn: { backgroundColor: "#DC2626", borderRadius: 14, paddingVertical: 14, alignItems: "center", marginTop: 18 },
