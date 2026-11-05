@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, BackHandler, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import api from "../lib/api";
 
@@ -17,7 +18,8 @@ const RULES = [
 export default function ForcePasswordScreen({ navigation }: any) {
   const [pw, setPw] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [show, setShow] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -71,14 +73,19 @@ export default function ForcePasswordScreen({ navigation }: any) {
                 </Text>
 
                 <Text style={styles.label}>NEW PASSWORD</Text>
-                <TextInput
-                  style={styles.input}
-                  value={pw}
-                  onChangeText={setPw}
-                  secureTextEntry={!show}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
+                <View>
+                  <TextInput
+                    style={[styles.input, { paddingRight: 44 }]}
+                    value={pw}
+                    onChangeText={setPw}
+                    secureTextEntry={!showPw}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity style={styles.eye} onPress={() => setShowPw((s) => !s)} hitSlop={8}>
+                    <Ionicons name={showPw ? "eye-off-outline" : "eye-outline"} size={20} color="#94a3b8" />
+                  </TouchableOpacity>
+                </View>
                 {RULES.map((r) => (
                   <Text key={r.label} style={[styles.rule, r.ok(pw) && styles.ruleOk]}>
                     {r.ok(pw) ? "✓" : "○"} {r.label}
@@ -86,18 +93,20 @@ export default function ForcePasswordScreen({ navigation }: any) {
                 ))}
 
                 <Text style={[styles.label, { marginTop: 14 }]}>CONFIRM NEW PASSWORD</Text>
-                <TextInput
-                  style={styles.input}
-                  value={confirm}
-                  onChangeText={setConfirm}
-                  secureTextEntry={!show}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  onSubmitEditing={submit}
-                />
-                <TouchableOpacity onPress={() => setShow((s) => !s)}>
-                  <Text style={styles.toggle}>{show ? "Hide passwords" : "Show passwords"}</Text>
-                </TouchableOpacity>
+                <View>
+                  <TextInput
+                    style={[styles.input, { paddingRight: 44 }]}
+                    value={confirm}
+                    onChangeText={setConfirm}
+                    secureTextEntry={!showConfirm}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    onSubmitEditing={submit}
+                  />
+                  <TouchableOpacity style={styles.eye} onPress={() => setShowConfirm((s) => !s)} hitSlop={8}>
+                    <Ionicons name={showConfirm ? "eye-off-outline" : "eye-outline"} size={20} color="#94a3b8" />
+                  </TouchableOpacity>
+                </View>
 
                 {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -125,7 +134,7 @@ const styles = StyleSheet.create({
   input: { borderWidth: 2, borderColor: "#e5e7eb", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: "#1f2937" },
   rule: { fontSize: 12, fontWeight: "600", color: "#9ca3af", marginTop: 4 },
   ruleOk: { color: "#16a34a" },
-  toggle: { color: GREEN, fontWeight: "800", fontSize: 12, marginTop: 10 },
+  eye: { position: "absolute", right: 14, top: 0, bottom: 0, justifyContent: "center" },
   error: { backgroundColor: "#FEF2F2", borderColor: "#FECACA", borderWidth: 1, color: "#B91C1C", fontSize: 12, fontWeight: "600", borderRadius: 10, padding: 10, marginTop: 14 },
   btn: { backgroundColor: "#DC2626", borderRadius: 14, paddingVertical: 14, alignItems: "center", marginTop: 18 },
   btnText: { color: "white", fontWeight: "800", fontSize: 15 },
