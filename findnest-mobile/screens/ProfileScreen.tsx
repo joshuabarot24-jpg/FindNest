@@ -38,21 +38,10 @@ export default function ProfileScreen({ navigation }: any) {
   const [user, setUser] = useState<User | null>(cachedUser);
   const [loading, setLoading] = useState(!cachedUser);
 
-  const [reason, setReason] = useState("");
-  const [requestLoading, setRequestLoading] = useState(false);
-  const [requestError, setRequestError] = useState("");
-  const [requestSuccess, setRequestSuccess] = useState("");
-
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [setPasswordLoading, setSetPasswordLoading] = useState(false);
-  const [setPasswordError, setSetPasswordError] = useState("");
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const fetchProfile = async () => {
     try {
@@ -69,64 +58,6 @@ export default function ProfileScreen({ navigation }: any) {
   useEffect(() => {
     fetchProfile();
   }, []);
-
-  const handleRequestPasswordChange = async () => {
-    if (!reason.trim()) {
-      setRequestError("Please tell us why you need a password change.");
-      return;
-    }
-    setRequestError("");
-    setRequestSuccess("");
-    setRequestLoading(true);
-    try {
-      await api.post("/profile/request-password-change", { reason: reason.trim() });
-      setRequestSuccess("Your request has been sent to the Super Admin.");
-      setReason("");
-      fetchProfile();
-    } catch (err: any) {
-      setRequestError(err.response?.data?.message || "Failed to send request.");
-    } finally {
-      setRequestLoading(false);
-    }
-  };
-
-  const handleSetNewPassword = async () => {
-    if (!newPassword || !confirmPassword) {
-      setSetPasswordError("Please fill in both fields.");
-      return;
-    }
-    if (
-      newPassword.length < 8 ||
-      !/[A-Z]/.test(newPassword) ||
-      !/[a-z]/.test(newPassword) ||
-      !/[0-9]/.test(newPassword) ||
-      !/[^A-Za-z0-9]/.test(newPassword)
-    ) {
-      setSetPasswordError("Password must be 8+ characters with an uppercase letter, a lowercase letter, a number and a special character.");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setSetPasswordError("Passwords do not match.");
-      return;
-    }
-    setSetPasswordError("");
-    setSetPasswordLoading(true);
-    try {
-      await api.post("/profile/set-new-password", {
-        new_password: newPassword,
-        new_password_confirmation: confirmPassword,
-      });
-      setNewPassword("");
-      setConfirmPassword("");
-      setPwOpen(false);
-      Alert.alert("Password Updated", "Your new password is saved. Use it the next time you log in.");
-      fetchProfile();
-    } catch (err: any) {
-      setSetPasswordError(err.response?.data?.message || "Failed to change password.");
-    } finally {
-      setSetPasswordLoading(false);
-    }
-  };
 
   const doLogout = async () => {
     cachedUser = null;
@@ -207,7 +138,6 @@ export default function ProfileScreen({ navigation }: any) {
   };
 
   const classLine = [user?.year_level, user?.course].filter(Boolean).join(" ");
-  const canSetPassword = !!(user?.password_is_temporary || user?.password_change_approved);
 
   const Row = ({ icon, label, value, last }: { icon: any; label: string; value: React.ReactNode; last?: boolean }) => (
     <View style={[styles.row, !last && styles.rowDivider]}>
