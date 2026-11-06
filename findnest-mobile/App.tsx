@@ -55,8 +55,8 @@ export default function App() {
           <Stack.Screen name="Profile" component={ProfileScreen} options={{ animation: "fade" }} />
           <Stack.Screen name="Support" component={SupportScreen} options={{ animation: "fade" }} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: "fade" }} />
-          <Stack.Screen name="ReportLost" component={ReportLostScreen} options={{ animation: "fade" }} />
-          <Stack.Screen name="ReportFound" component={ReportFoundScreen} options={{ animation: "fade" }} />
+          <Stack.Screen name="ReportLost" component={ReportLostScreen} options={{ presentation: "modal", animation: "slide_from_bottom" }} />
+          <Stack.Screen name="ReportFound" component={ReportFoundScreen} options={{ presentation: "modal", animation: "slide_from_bottom" }} />
           <Stack.Screen name="ClaimStatus" component={ClaimStatusScreen} options={{ animation: "fade" }} />
           <Stack.Screen name="ForcePassword" component={ForcePasswordScreen} options={{ animation: "fade", gestureEnabled: false }} />
         </Stack.Navigator>
