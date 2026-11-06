@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useForcePasswordChange } from "../lib/useForcePasswordChange";
@@ -462,11 +461,6 @@ export default function ReportFoundScreen({ navigation }: any) {
         </KeyboardAwareScrollView>
 
         {/* Green wash rising from the bottom, with the submit button on top */}
-        <LinearGradient
-          pointerEvents="none"
-          colors={["rgba(220,252,231,0)", "#DCFCE7", "#86EFAC"]}
-          style={styles.wash}
-        />
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) + 40 }]}>
           {step === "review" && submitError ? (
             <Text style={[styles.errorText, { textAlign: "center", marginBottom: 10 }]}>{submitError}</Text>
