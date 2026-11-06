@@ -102,7 +102,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
   const [claimSubmitting, setClaimSubmitting] = useState(false);
   const [claimError, setClaimError] = useState("");
   const [claimPhotos, setClaimPhotos] = useState<{ preview: string; url: string | null; uploading: boolean }[]>([]);
-  const CLAIM_MAX_PHOTOS = 1;
+  const CLAIM_MAX_PHOTOS = 3;
 
   const [appealingClaim, setAppealingClaim] = useState<Claim | null>(null);
   const [appealMessage, setAppealMessage] = useState("");
@@ -189,8 +189,8 @@ export default function ClaimStatusScreen({ navigation }: any) {
 
   const handleSubmitClaim = async () => {
     if (!claimingMatch) return;
-    if (!proofDescription.trim()) {
-      setClaimError("Please describe why you believe this item is yours.");
+    if (claimUploadedUrls.length === 0) {
+      setClaimError("Please add at least one evidence photo.");
       return;
     }
     setClaimError("");
@@ -198,7 +198,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
     try {
       await api.post("/claims", {
         match_id: claimingMatch.id,
-        proof_description: proofDescription.trim(),
+        proof_description: proofDescription.trim() || null,
         proof_photo_url: claimUploadedUrls[0] || null,
         proof_photo_urls: claimUploadedUrls,
       });
@@ -464,28 +464,27 @@ export default function ClaimStatusScreen({ navigation }: any) {
                 <Text style={styles.modalCloseXText}>&times;</Text>
               </TouchableOpacity>
 
-              <Text style={styles.modalTitle}>Submit Claim</Text>
+              <Text style={styles.modalTitle}>Submit Ownership Proof</Text>
               <Text style={styles.modalSubtitle}>For your reported &quot;{claimingMatch?.lost_item.item_name}&quot;</Text>
 
               <View style={styles.infoNote}>
                 <Text style={styles.infoNoteText}>
-                  Describe specific details only the true owner would know. You will also be asked verification questions after submitting.
+                  To verify your claim, please upload photos or digital evidence demonstrating your ownership of this item (e.g., photos showing you with the item, receipts, serial numbers, or unique identifying features). You will also be asked verification questions after submitting.
                 </Text>
               </View>
 
-              <Text style={styles.fieldLabel}>Your Description</Text>
+              <Text style={styles.fieldLabel}>Evidence Note (Optional)</Text>
               <TextInput
                 style={styles.textArea}
-                placeholder="Describe why you believe this item belongs to you..."
+                placeholder="e.g., Picture of me with the item taken last month"
                 placeholderTextColor="#9ca3af"
                 value={proofDescription}
-                onChangeText={setProofDescription}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
+                onChangeText={(t) => setProofDescription(t.slice(0, 100))}
+                maxLength={100}
               />
+              <Text style={{ textAlign: "right", fontSize: 11, color: "#9ca3af", marginBottom: 10 }}>{proofDescription.length}/100</Text>
 
-              <Text style={styles.fieldLabel}>Evidence Photos (Optional, up to {CLAIM_MAX_PHOTOS})</Text>
+              <Text style={styles.fieldLabel}>Ownership Evidence Photos * (up to {CLAIM_MAX_PHOTOS})</Text>
               {claimPhotos.length > 0 ? (
                 <View style={styles.claimPhotoGrid}>
                   {claimPhotos.map((p, idx) => (
@@ -508,15 +507,15 @@ export default function ClaimStatusScreen({ navigation }: any) {
               {claimPhotos.length < CLAIM_MAX_PHOTOS ? (
                 <TouchableOpacity style={styles.appealPhotoBox} onPress={pickClaimPhoto} disabled={claimAnyUploading}>
                   <Text style={styles.appealPhotoText}>
-                    {claimAnyUploading ? "Uploading..." : claimPhotos.length === 0 ? "Tap to add evidence photos" : `Add more (${CLAIM_MAX_PHOTOS - claimPhotos.length} left)`}
+                    {claimAnyUploading ? "Uploading..." : claimPhotos.length === 0 ? "Tap to add ownership evidence photos" : `Add more (${CLAIM_MAX_PHOTOS - claimPhotos.length} left)`}
                   </Text>
                 </TouchableOpacity>
               ) : null}
 
               {claimError ? <Text style={styles.errorText}>{claimError}</Text> : null}
 
-              <TouchableOpacity style={styles.primaryButton} onPress={handleSubmitClaim} disabled={claimSubmitting || claimAnyUploading}>
-                <Text style={styles.primaryButtonText}>{claimSubmitting ? "Submitting..." : claimAnyUploading ? "Uploading photos..." : "Submit Claim"}</Text>
+              <TouchableOpacity style={[styles.primaryButton, (claimSubmitting || claimAnyUploading || claimUploadedUrls.length === 0) && { opacity: 0.5 }]} onPress={handleSubmitClaim} disabled={claimSubmitting || claimAnyUploading || claimUploadedUrls.length === 0}>
+                <Text style={styles.primaryButtonText}>{claimSubmitting ? "Submitting..." : claimAnyUploading ? "Uploading photos..." : "Submit Claim Verification"}</Text>
               </TouchableOpacity>
             </View>
           </KeyboardAwareScrollView>
