@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import * as ImagePicker from "expo-image-picker";
 import api from "../lib/api";
+import ChangePasswordForm from "./ChangePasswordForm";
 import { clearAuth } from "../lib/auth";
 import LogoutConfirmModal from "../components/LogoutConfirmModal";
 import StudentBottomNav from "../components/StudentBottomNav";
@@ -329,91 +330,11 @@ export default function ProfileScreen({ navigation }: any) {
                 <Text style={styles.modalCloseText}>&times;</Text>
               </TouchableOpacity>
 
-              <Text style={styles.cardTitle}>{canSetPassword ? "Set New Password" : "Request Password Change"}</Text>
+              <Text style={styles.cardTitle}>Change Password</Text>
               <Text style={styles.cardHelp}>
-                {user?.password_is_temporary
-                  ? "You are using a temporary password. Set your own now."
-                  : user?.password_change_approved
-                  ? "Your request was approved. Set your new password below."
-                  : "Passwords are changed by the Super Admin after your request is reviewed."}
+                Update your password directly. A 6-digit verification code sent to your registered Gmail address is required to confirm changes.
               </Text>
-
-              {canSetPassword ? (
-                <>
-                  <View style={styles.approvedNote}>
-                    <Text style={styles.approvedNoteText}>
-                      {user?.password_is_temporary
-                        ? "Your account was created with a temporary password. Set one only you will know. After this, further changes need Super Admin approval."
-                        : "Your Super Admin approved your request. Set a new password only you will know."}
-                    </Text>
-                  </View>
-                  <Text style={styles.fieldLabel}>New Password</Text>
-                  <View style={styles.passwordWrap}>
-                    <TextInput
-                      style={[styles.input, { marginBottom: 0, paddingRight: 46 }]}
-                      placeholder="8+ chars, A-Z, a-z, 0-9, symbol"
-                      placeholderTextColor="#9ca3af"
-                      secureTextEntry={!showNewPassword}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      maxLength={50}
-                      value={newPassword}
-                      onChangeText={setNewPassword}
-                    />
-                    <TouchableOpacity style={styles.eyeButton} onPress={() => setShowNewPassword((v) => !v)}>
-                      <Ionicons name={showNewPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#6b7280" />
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={styles.fieldLabel}>Confirm New Password</Text>
-                  <View style={styles.passwordWrap}>
-                    <TextInput
-                      style={[styles.input, { marginBottom: 0, paddingRight: 46 }]}
-                      placeholder="Re-enter new password"
-                      placeholderTextColor="#9ca3af"
-                      secureTextEntry={!showConfirmPassword}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      maxLength={50}
-                      value={confirmPassword}
-                      onChangeText={setConfirmPassword}
-                    />
-                    <TouchableOpacity style={styles.eyeButton} onPress={() => setShowConfirmPassword((v) => !v)}>
-                      <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#6b7280" />
-                    </TouchableOpacity>
-                  </View>
-                  {setPasswordError ? <Text style={styles.errorText}>{setPasswordError}</Text> : null}
-                  <TouchableOpacity style={styles.actionButton} onPress={handleSetNewPassword} disabled={setPasswordLoading}>
-                    <Text style={styles.actionButtonText}>{setPasswordLoading ? "Saving..." : "Set New Password"}</Text>
-                  </TouchableOpacity>
-                </>
-              ) : user?.password_change_requested ? (
-                <View style={styles.pendingNote}>
-                  <Text style={styles.pendingNoteTitle}>Request Pending</Text>
-                  <Text style={styles.pendingNoteText}>
-                    Your password change request is awaiting Super Admin approval.
-                    {user?.password_change_reason ? `\n"${user.password_change_reason}"` : ""}
-                  </Text>
-                </View>
-              ) : (
-                <>
-                  <Text style={styles.fieldLabel}>Why do you need a password change?</Text>
-                  <TextInput
-                    style={styles.textArea}
-                    placeholder="e.g. I forgot my password, or want to update it for security"
-                    placeholderTextColor="#9ca3af"
-                    value={reason}
-                    onChangeText={setReason}
-                    multiline
-                    numberOfLines={3}
-                    textAlignVertical="top"
-                  />
-                  {requestError ? <Text style={styles.errorText}>{requestError}</Text> : null}
-                  {requestSuccess ? <Text style={styles.successText}>{requestSuccess}</Text> : null}
-                  <TouchableOpacity style={styles.actionButton} onPress={handleRequestPasswordChange} disabled={requestLoading}>
-                    <Text style={styles.actionButtonText}>{requestLoading ? "Sending..." : "Request Password Change"}</Text>
-                  </TouchableOpacity>
-                </>
-              )}
+              <ChangePasswordForm onDone={(m) => { setPwOpen(false); Alert.alert("Password", m); }} />
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
