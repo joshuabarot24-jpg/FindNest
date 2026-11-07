@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   sentNote: { color: "#16a34a", fontSize: 12, fontWeight: "600", marginTop: 8 },
   eye: { position: "absolute", right: 14, top: 0, bottom: 0, justifyContent: "center" },
   error: { backgroundColor: "#FEF2F2", borderColor: "#FECACA", borderWidth: 1, color: "#B91C1C", fontSize: 12, fontWeight: "600", borderRadius: 10, padding: 10, marginTop: 14 },
-  btn: { backgroundColor: "#DC2626", borderRadius: 14, paddingVertical: 14, alignItems: "center", marginTop: 18 },
+  btn: { backgroundColor: "#0F4C3A", borderRadius: 14, paddingVertical: 14, alignItems: "center", marginTop: 18 },
   btnText: { color: "white", fontWeight: "800", fontSize: 15 },
   successTitle: { color: GREEN, fontWeight: "900", fontSize: 17, marginBottom: 4 },
 });
