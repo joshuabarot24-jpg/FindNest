@@ -18,12 +18,13 @@ import ClaimStatusScreen from "./screens/ClaimStatusScreen";
 import ForcePasswordScreen from "./screens/ForcePasswordScreen";
 import { useFonts, Montserrat_800ExtraBold } from "@expo-google-fonts/montserrat";
 import { Inter_500Medium, Inter_900Black } from "@expo-google-fonts/inter";
+import { BalooTamma2_700Bold } from "@expo-google-fonts/baloo-tamma-2";
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [initialRoute, setInitialRoute] = useState<"Landing" | "Home" | null>(null);
-  const [fontsLoaded] = useFonts({ Montserrat_800ExtraBold, Inter_500Medium, Inter_900Black });
+  const [fontsLoaded] = useFonts({ Montserrat_800ExtraBold, Inter_500Medium, Inter_900Black, BalooTamma2_700Bold });
 
   useEffect(() => {
     const restoreSession = async () => {

@@ -278,7 +278,7 @@ const startDelete = (item: PublicLostReport) => {
         </View>
         <View style={styles.topCenter}>
           <Image source={require("../assets/findnest-logo.png")} style={styles.logoSmall} />
-          <Text style={styles.brandText}>FINDNEST</Text>
+          <Text style={styles.brandText}>FindNest</Text>
         </View>
         <View style={styles.topSideRight}>
           <TouchableOpacity style={styles.bellButton} onPress={() => navigation.navigate("Notifications")} hitSlop={8}>
@@ -562,7 +562,7 @@ const startDelete = (item: PublicLostReport) => {
               <Image source={require("../assets/findnest-logo.png")} style={styles.drawerLogo} />
               <View style={styles.drawerBrandCol}>
                 <Text style={styles.drawerBrandText}>
-                  FIND<Text style={styles.drawerBrandGold}>NEST</Text>
+                  FindNest
                 </Text>
                 <Text style={styles.drawerRole}>Student Portal</Text>
               </View>
@@ -902,7 +902,7 @@ const styles = StyleSheet.create({
   drawerBrand: { flexDirection: "row", alignItems: "center", marginBottom: 26 },
   drawerLogo: { width: 48, height: 48, resizeMode: "contain", marginRight: 12 },
   drawerBrandCol: { flexDirection: "column", justifyContent: "center" },
-  drawerBrandText: { fontFamily: "Inter_900Black", color: "#E2EFE9", fontSize: 20, lineHeight: 24, includeFontPadding: false },
+  drawerBrandText: { fontFamily: "BalooTamma2_700Bold", color: "#FFFFFF", fontSize: 28, lineHeight: 30, includeFontPadding: false },
   drawerBrandGold: { color: "#ffd700" },
   drawerRole: { fontFamily: "Inter_500Medium", color: "rgba(226,239,233,0.7)", fontSize: 12, lineHeight: 16, marginTop: 1, includeFontPadding: false },
   drawerItem: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14, paddingHorizontal: 10, borderRadius: 14 },
