@@ -218,7 +218,7 @@ export default function ProfileScreen({ navigation }: any) {
           <Row icon="person-outline" label="Full Name" value={user?.name || "—"} />
           <Row icon="mail-outline" label="Email" value={user?.email || "—"} />
           <Row icon="card-outline" label="School I.D" value={user?.school_id || "—"} />
-          <Row icon="school-outline" label="Course/Strand" value={user?.course || "—"} />
+          <Row icon="school-outline" label="Course/Strand/Section" value={user?.course || "—"} />
           <Row icon="calendar-outline" label="Year/Grade Level" value={user?.year_level || "—"} last />
         </View>
 
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", paddingVertical: 13 },
   rowDivider: { borderBottomWidth: 1, borderBottomColor: "#E5E7EB" },
   rowIcon: { width: 28 },
-  rowLabel: { fontSize: 13, fontWeight: "700", color: "#1f2937", width: 118 },
+  rowLabel: { fontSize: 13, fontWeight: "700", color: "#1f2937", width: 150 },
   rowValueWrap: { flex: 1, alignItems: "flex-end" },
   rowValue: { fontSize: 12.5, color: "#4b5563", textAlign: "right" },
   pwValue: { flexDirection: "row", alignItems: "center", gap: 10 },
