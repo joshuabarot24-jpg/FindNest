@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   avatarImg: { width: "100%", height: "100%" },
   avatarText: { color: "white", fontWeight: "800", fontSize: 14 },
   overlay: { flex: 1, flexDirection: "row", backgroundColor: "rgba(17,20,36,0.6)" },
-  drawer: { width: 270, backgroundColor: GREEN, paddingHorizontal: 18 },
+  drawer: { width: "78%", minWidth: 240, maxWidth: 300, backgroundColor: GREEN, paddingHorizontal: 18 },
   drawerBrand: { flexDirection: "row", alignItems: "center", marginBottom: 26 },
   drawerLogo: { width: 48, height: 48, resizeMode: "contain", marginRight: 12 },
   drawerBrandCol: { flexDirection: "column", justifyContent: "center" },
