@@ -820,7 +820,7 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 11, fontWeight: "700", color: "#4B6358" },
   tabTextOn: { color: "#FFFFFF" },
 
-  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 10 },
+  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-start", columnGap: 10, rowGap: 10 },
   card: {
     backgroundColor: CARD_BG,
     borderRadius: 18,
