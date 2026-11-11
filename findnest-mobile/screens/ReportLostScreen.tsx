@@ -18,6 +18,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view
 import { useForcePasswordChange } from "../lib/useForcePasswordChange";
 import api from "../lib/api";
 import { uploadErrorInfo } from "../lib/uploadError";
+import { timeLabels } from "../lib/reportTime";
 
 const categories = ["Electronics", "Personal Belongings", "ID/Cards", "Keys", "School Supplies", "Accessories", "Others"];
 const MAX_PHOTOS = 1;
@@ -229,6 +230,10 @@ export default function ReportLostScreen({ navigation }: any) {
     }
     if (!time) {
       setSubmitError("Approximate time is required.");
+      return;
+    }
+    if (!timeLabels(date).includes(time)) {
+      setSubmitError("Choose a time between 6:00 AM and 7:00 PM that is not in the future.");
       return;
     }
     if (!primaryColor.trim()) {
@@ -537,7 +542,7 @@ export default function ReportLostScreen({ navigation }: any) {
                 <TouchableOpacity
                   key={daysAgo}
                   style={styles.categoryOption}
-                  onPress={() => { setDateObj(d); setShowDatePicker(false); }}
+                  onPress={() => { setDateObj(d); setShowDatePicker(false); if (time && !timeLabels(toDateString(d)).includes(time)) setTime(""); }}
                 >
                   <View>
                     <Text style={[styles.categoryOptionText, on && styles.categoryOptionTextActive]}>{label}</Text>
@@ -560,33 +565,19 @@ export default function ReportLostScreen({ navigation }: any) {
           <TouchableOpacity activeOpacity={1} style={styles.modalCard}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Approx. Time</Text>
-            <View style={styles.timeRow}>
-              <ScrollView style={styles.timeCol} showsVerticalScrollIndicator={false}>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
-                  <TouchableOpacity key={h} style={[styles.timeItem, tHour === h && styles.timeItemOn]} onPress={() => setTHour(h)}>
-                    <Text style={[styles.timeText, tHour === h && styles.timeTextOn]}>{h}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              <Text style={styles.timeColon}>:</Text>
-              <ScrollView style={styles.timeCol} showsVerticalScrollIndicator={false}>
-                {Array.from({ length: 60 }, (_, i) => i).map((m) => (
-                  <TouchableOpacity key={m} style={[styles.timeItem, tMin === m && styles.timeItemOn]} onPress={() => setTMin(m)}>
-                    <Text style={[styles.timeText, tMin === m && styles.timeTextOn]}>{String(m).padStart(2, "0")}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              <View style={styles.timeCol}>
-                {(["AM", "PM"] as const).map((p) => (
-                  <TouchableOpacity key={p} style={[styles.timeItem, tPeriod === p && styles.timeItemOn]} onPress={() => setTPeriod(p)}>
-                    <Text style={[styles.timeText, tPeriod === p && styles.timeTextOn]}>{p}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-            <TouchableOpacity style={styles.timeDone} onPress={confirmTime} activeOpacity={0.9}>
-              <Text style={styles.timeDoneText}>Set time</Text>
-            </TouchableOpacity>
+            <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+              {timeLabels(date).map((t) => (
+                <TouchableOpacity key={t} style={styles.categoryOption} onPress={() => { setTime(t); setShowTimePicker(false); }}>
+                  <Text style={[styles.categoryOptionText, time === t && styles.categoryOptionTextActive]}>{t}</Text>
+                  {time === t ? <Ionicons name="checkmark" size={18} color={GREEN} /> : null}
+                </TouchableOpacity>
+              ))}
+              {timeLabels(date).length === 0 ? (
+                <Text style={{ color: "#DC2626", fontSize: 13, fontWeight: "600", paddingVertical: 12 }}>
+                  No time is available yet today. Choose an earlier date.
+                </Text>
+              ) : null}
+            </ScrollView>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
