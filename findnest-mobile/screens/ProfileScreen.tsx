@@ -24,8 +24,6 @@ interface User {
   role: string;
   school_id: string | null;
   lrn?: string | null;
-  course: string | null;
-  year_level: string | null;
   trust_score: number;
   is_active?: boolean;
   password_change_requested: boolean;
