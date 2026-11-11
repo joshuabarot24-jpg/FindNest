@@ -80,7 +80,7 @@ export default function ReportFoundScreen({ navigation }: any) {
   const [brandModel, setBrandModel] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
-  const [dateObj, setDateObj] = useState<Date>(MAX_DATE);
+  const [dateObj, setDateObj] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [time, setTime] = useState("");
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -106,7 +106,7 @@ export default function ReportFoundScreen({ navigation }: any) {
   // What the AI detected, shown next to the student's own entries in the review step
   const [aiData, setAiData] = useState({ name: "", category: "", color: "", brand: "" });
 
-  const date = toDateString(dateObj);
+  const date = dateObj ? toDateString(dateObj) : "";
   const anyUploading = photos.some((p) => p.uploading);
   const uploadedUrls = photos.filter((p) => p.url).map((p) => p.url as string);
   const finalCategory = category === "Others" ? othersSpecify : category;
@@ -226,6 +226,18 @@ export default function ReportFoundScreen({ navigation }: any) {
     }
     if (uploadedUrls.length === 0) {
       setPhotoError(true);
+      return;
+    }
+    if (!time) {
+      setSubmitError("Approximate time is required.");
+      return;
+    }
+    if (!dateObj) {
+      setSubmitError("Date found is required.");
+      return;
+    }
+    if (!time) {
+      setSubmitError("Approximate time is required.");
       return;
     }
     if (!primaryColor.trim()) {
@@ -364,16 +376,16 @@ export default function ReportFoundScreen({ navigation }: any) {
 
               <View style={styles.twoCol}>
                 <View style={styles.col}>
-                  <Text style={styles.label}>Date Found</Text>
+                  <Text style={styles.label}>Date Found{!dateObj ? <Text style={{ color: "#DC2626" }}> *</Text> : null}</Text>
                   <TouchableOpacity style={[styles.input, styles.selectRow]} onPress={() => setShowDatePicker(true)}>
                     <Text style={styles.selectText} numberOfLines={1}>
-                      {dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {dateObj ? dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Select date"}
                     </Text>
                     <Ionicons name="calendar-outline" size={16} color="#6b7280" />
                   </TouchableOpacity>
                 </View>
                 <View style={styles.col}>
-                  <Text style={styles.label}>Approx. Time Found</Text>
+                  <Text style={styles.label}>Approx. Time Found{!time ? <Text style={{ color: "#DC2626" }}> *</Text> : null}</Text>
                   <TouchableOpacity style={[styles.input, styles.selectRow]} onPress={() => setShowTimePicker(true)}>
                     <Text style={styles.selectText}>{time}</Text>
                     <Ionicons name="time-outline" size={16} color="#6b7280" />
