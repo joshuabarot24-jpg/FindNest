@@ -219,6 +219,14 @@ export default function ReportLostScreen({ navigation }: any) {
       setPhotoError(true);
       return;
     }
+    if (!primaryColor.trim()) {
+      setSubmitError("Primary colors is required.");
+      return;
+    }
+    if (!brandModel.trim()) {
+      setSubmitError("Model and brand is required. Type None if the item has no brand.");
+      return;
+    }
     if (!description.trim()) {
       setSubmitError("Description is required. Since AI couldn't auto-fill it, please describe your item manually.");
       return;
@@ -315,11 +323,11 @@ export default function ReportLostScreen({ navigation }: any) {
               {/* Fields */}
               <View style={styles.twoCol}>
                 <View style={styles.col}>
-                  <Text style={styles.label}>Item Name</Text>
+                  <Text style={styles.label}>Item Name{!itemName.trim() ? <Text style={{ color: "#DC2626" }}> *</Text> : null}</Text>
                   <TextInput style={styles.input} value={itemName} onChangeText={setItemName} />
                 </View>
                 <View style={styles.col}>
-                  <Text style={styles.label}>Category</Text>
+                  <Text style={styles.label}>Category{!aiData.category ? <Text style={{ color: "#DC2626" }}> *</Text> : null}</Text>
                   <TouchableOpacity style={[styles.input, styles.selectRow]} onPress={() => setShowCategoryPicker(true)}>
                     <Text style={styles.selectText} numberOfLines={1}>{category}</Text>
                     <Ionicons name="chevron-down" size={16} color="#6b7280" />
@@ -336,11 +344,11 @@ export default function ReportLostScreen({ navigation }: any) {
 
               <View style={styles.twoCol}>
                 <View style={styles.col}>
-                  <Text style={styles.label}>Primary Colors</Text>
+                  <Text style={styles.label}>Primary Colors{!primaryColor.trim() ? <Text style={{ color: "#DC2626" }}> *</Text> : null}</Text>
                   <TextInput style={styles.input} value={primaryColor} onChangeText={setPrimaryColor} />
                 </View>
                 <View style={styles.col}>
-                  <Text style={styles.label}>Model and Brand</Text>
+                  <Text style={styles.label}>Model and Brand{!brandModel.trim() ? <Text style={{ color: "#DC2626" }}> *</Text> : null}</Text>
                   <TextInput style={styles.input} value={brandModel} onChangeText={setBrandModel} />
                 </View>
               </View>
@@ -365,12 +373,12 @@ export default function ReportLostScreen({ navigation }: any) {
               </View>
 
               <View style={styles.fullField}>
-                <Text style={styles.label}>Last Seen Location</Text>
+                <Text style={styles.label}>Last Seen Location{!location.trim() ? <Text style={{ color: "#DC2626" }}> *</Text> : null}</Text>
                 <TextInput style={styles.input} value={location} onChangeText={setLocation} />
               </View>
 
               <View style={styles.fullField}>
-                <Text style={styles.label}>Item Description</Text>
+                <Text style={styles.label}>Item Description{!description.trim() ? <Text style={{ color: "#DC2626" }}> *</Text> : null}</Text>
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   value={description}
