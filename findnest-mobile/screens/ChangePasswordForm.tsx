@@ -69,7 +69,7 @@ export default function ChangePasswordForm({ onDone }: { onDone: (message: strin
     if (!current) return setError("Enter your current password.");
     if (!RULES.every((r) => r.ok(pw))) return setError("Your new password does not meet all the rules.");
     if (pw !== confirm) return setError("The two new passwords do not match.");
-    if (!/^\d{6}$/.test(code)) return setError("Enter the 6-digit verification code sent to your Gmail address.");
+    if (!/^\d{6}$/.test(code)) return setError("Enter the 6-digit verification code sent to your email address.");
     setError("");
     setBusy(true);
     try {
