@@ -23,6 +23,7 @@ interface User {
   email: string;
   role: string;
   school_id: string | null;
+  lrn?: string | null;
   course: string | null;
   year_level: string | null;
   trust_score: number;
@@ -137,7 +138,7 @@ export default function ProfileScreen({ navigation }: any) {
     else navigation.navigate("Home");
   };
 
-  const classLine = [user?.year_level, user?.course].filter(Boolean).join(" ");
+  const classLine = "";
 
   const Row = ({ icon, label, value, last }: { icon: any; label: string; value: React.ReactNode; last?: boolean }) => (
     <View style={[styles.row, !last && styles.rowDivider]}>
@@ -199,7 +200,7 @@ export default function ProfileScreen({ navigation }: any) {
             <View style={{ flex: 1 }}>
               <Text style={styles.name} numberOfLines={2}>{user?.name}</Text>
               {classLine ? <Text style={styles.sub}>{classLine}</Text> : null}
-              <Text style={styles.sub} numberOfLines={1}>ID: {user?.school_id || "—"}</Text>
+              <Text style={styles.sub} numberOfLines={1}>LRN: {user?.lrn || user?.school_id || "—"}</Text>
             </View>
           </View>
           <View style={styles.heroRight}>
@@ -217,9 +218,7 @@ export default function ProfileScreen({ navigation }: any) {
           <Text style={styles.cardHelp}>Please contact the school admin to change personal details.</Text>
           <Row icon="person-outline" label="Full Name" value={user?.name || "—"} />
           <Row icon="mail-outline" label="Email" value={user?.email || "—"} />
-          <Row icon="card-outline" label="School I.D" value={user?.school_id || "—"} />
-          <Row icon="school-outline" label="Course/Strand/Section" value={user?.course || "—"} />
-          <Row icon="calendar-outline" label="Year/Grade Level" value={user?.year_level || "—"} last />
+          <Row icon="card-outline" label="LRN" value={user?.lrn || user?.school_id || "—"} last />
         </View>
 
         {/* Account details */}
