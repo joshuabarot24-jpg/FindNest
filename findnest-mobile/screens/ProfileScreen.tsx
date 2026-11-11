@@ -259,7 +259,7 @@ export default function ProfileScreen({ navigation }: any) {
 
               <Text style={styles.cardTitle}>Change Password</Text>
               <Text style={styles.cardHelp}>
-                Update your password directly. A 6-digit verification code sent to your registered Gmail address is required to confirm changes.
+                Update your password directly. A 6-digit verification code sent to your registered email address is required to confirm changes.
               </Text>
               <ChangePasswordForm onDone={(m) => { setPwOpen(false); Alert.alert("Password", m); }} />
             </View>
