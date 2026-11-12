@@ -418,7 +418,7 @@ export default function ClaimStatusScreen({ navigation }: any) {
                     <Text style={styles.bannerRedTitle}>Claim Rejected</Text>
                     {claim.admin_notes ? <Text style={styles.bannerRedSub}>Reason: {claim.admin_notes}</Text> : null}
                     {claim.appeal_status === "pending" ? (
-                      <Text style={styles.appealPendingText}>Your appeal is under super-admin review.</Text>
+                      <Text style={styles.appealPendingText}>The Guidance Office is reviewing your appeal.</Text>
                     ) : null}
                   </View>
                 ) : claim.claim_status === "abandoned" ? (
