@@ -19,6 +19,16 @@ const GREEN = "#0F4C3A";
 const MINT = "#F2FAF5";
 const OUTLINE = "#CFE6D8";
 
+// Remember me: tokens of the phones that passed the email code, saved per student login (LRN or email)
+const DEVICE_KEY = "findnest_device_tokens";
+const loadDeviceTokens = async (): Promise<Record<string, string>> => {
+  try {
+    return JSON.parse((await AsyncStorage.getItem(DEVICE_KEY)) || "{}");
+  } catch {
+    return {};
+  }
+};
+
 export default function StudentLoginScreen({ navigation }: any) {
   const [studentId, setStudentId] = useState("");
   const [password, setPassword] = useState("");
@@ -58,6 +68,7 @@ export default function StudentLoginScreen({ navigation }: any) {
     } else {
       AsyncStorage.removeItem("findnest_remember_me").catch(() => {});
       AsyncStorage.removeItem("findnest_login_draft").catch(() => {});
+      AsyncStorage.removeItem(DEVICE_KEY).catch(() => {});
     }
   }, [studentId, password, rememberMe, draftLoaded]);
 
@@ -81,9 +92,11 @@ export default function StudentLoginScreen({ navigation }: any) {
     setError("");
     setLoading(true);
     try {
+      const tokens = rememberMe ? await loadDeviceTokens() : {};
       const response = await api.post("/auth/student/login", {
         school_id: studentId.trim(),
         password: password,
+        device_token: tokens[studentId.trim().toLowerCase()] || null,
       });
       // Demo accounts get a session straight away, with no email code
       if (response.data.token) {
@@ -125,8 +138,18 @@ export default function StudentLoginScreen({ navigation }: any) {
       const response = await api.post("/auth/student/verify-otp", {
         school_id: studentId.trim(),
         otp: otp,
+        remember_me: rememberMe,
       });
-await setAuth(response.data.token, response.data.user);
+      await setAuth(response.data.token, response.data.user);
+      // Remember me: keep this phone's token, so the next login skips the email code
+      if (rememberMe && response.data.device_token) {
+        const tokens = await loadDeviceTokens();
+        const u = response.data.user || {};
+        [studentId.trim(), u.email, u.school_id]
+          .filter(Boolean)
+          .forEach((k: any) => { tokens[String(k).toLowerCase()] = response.data.device_token; });
+        await AsyncStorage.setItem(DEVICE_KEY, JSON.stringify(tokens));
+      }
       // A temporary password goes straight to the locked screen, with no flash of Home
       let mustChange = false;
       try {
