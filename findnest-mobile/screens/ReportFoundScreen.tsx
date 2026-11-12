@@ -18,7 +18,8 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view
 import { useForcePasswordChange } from "../lib/useForcePasswordChange";
 import api from "../lib/api";
 import { uploadErrorInfo } from "../lib/uploadError";
-import { timeLabels } from "../lib/reportTime";
+import { timeLabelAllowed } from "../lib/reportTime";
+import TimePickerBody from "../components/TimePickerBody";
 
 const categories = ["Electronics", "Personal Belongings", "ID/Cards", "Keys", "School Supplies", "Accessories", "Others"];
 const MAX_PHOTOS = 1;
@@ -266,7 +267,7 @@ const [photoErrorTone, setPhotoErrorTone] = useState<"red" | "amber">("red");
       setSubmitError("Approximate time is required.");
       return;
     }
-    if (!timeLabels(date).includes(time)) {
+    if (!timeLabelAllowed(date, time)) {
       setSubmitError("Choose a time between 6:00 AM and 7:00 PM that is not in the future.");
       return;
     }
@@ -438,8 +439,8 @@ const [photoErrorTone, setPhotoErrorTone] = useState<"red" | "amber">("red");
                 </View>
                 <View style={styles.col}>
                   <Text style={styles.label}>Approx. Time Found<Text style={{ color: "#DC2626" }}> *</Text></Text>
-                  <TouchableOpacity style={[styles.input, styles.selectRow]} onPress={() => setShowTimePicker(true)}>
-                    <Text style={styles.selectText}>{time}</Text>
+                  <TouchableOpacity style={[styles.input, styles.selectRow, !date && { opacity: 0.5 }]} disabled={!date} onPress={() => setShowTimePicker(true)}>
+                    <Text style={styles.selectText}>{time || (date ? "" : "Choose the date first")}</Text>
                     <Ionicons name="time-outline" size={16} color="#6b7280" />
                   </TouchableOpacity>
                 </View>
@@ -606,7 +607,7 @@ const [photoErrorTone, setPhotoErrorTone] = useState<"red" | "amber">("red");
                 <TouchableOpacity
                   key={daysAgo}
                   style={styles.categoryOption}
-                  onPress={() => { setDateObj(d); setShowDatePicker(false); if (time && !timeLabels(toDateString(d)).includes(time)) setTime(""); }}
+                  onPress={() => { setDateObj(d); setShowDatePicker(false); if (time && !timeLabelAllowed(toDateString(d), time)) setTime(""); }}
                 >
                   <View>
                     <Text style={[styles.categoryOptionText, on && styles.categoryOptionTextActive]}>{label}</Text>
@@ -629,19 +630,7 @@ const [photoErrorTone, setPhotoErrorTone] = useState<"red" | "amber">("red");
           <TouchableOpacity activeOpacity={1} style={styles.modalCard}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Approx. Time Found</Text>
-            <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
-              {timeLabels(date).map((t) => (
-                <TouchableOpacity key={t} style={styles.categoryOption} onPress={() => { setTime(t); setShowTimePicker(false); }}>
-                  <Text style={[styles.categoryOptionText, time === t && styles.categoryOptionTextActive]}>{t}</Text>
-                  {time === t ? <Ionicons name="checkmark" size={18} color={GREEN} /> : null}
-                </TouchableOpacity>
-              ))}
-              {timeLabels(date).length === 0 ? (
-                <Text style={{ color: "#DC2626", fontSize: 13, fontWeight: "600", paddingVertical: 12 }}>
-                  No time is available yet today. Choose an earlier date.
-                </Text>
-              ) : null}
-            </ScrollView>
+            <TimePickerBody date={date} current={time} color={GREEN} onPick={(t) => { setTime(t); setShowTimePicker(false); }} />
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
