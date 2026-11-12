@@ -410,7 +410,7 @@ const startDelete = (item: PublicLostReport) => {
                 <Text style={[styles.tabText, tab === "lost" && styles.tabTextOn]}>Reported Lost Items</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.tabBtn, tab === "found" && styles.tabBtnOn]} onPress={() => setTab("found")} activeOpacity={0.85}>
-                <Text style={[styles.tabText, tab === "found" && styles.tabTextOn]}>Your Reported Found Items</Text>
+                <Text style={[styles.tabText, tab === "found" && styles.tabTextOn]}>My Reported Found Items</Text>
               </TouchableOpacity>
             </View>
 
