@@ -387,11 +387,11 @@ const [photoErrorTone, setPhotoErrorTone] = useState<"red" | "amber">("red");
               {/* Fields */}
               <View style={styles.twoCol}>
                 <View style={styles.col}>
-                  <Text style={styles.label}>Item Name{!itemName.trim() ? <Text style={{ color: "#DC2626" }}> *</Text> : null}</Text>
+                  <Text style={styles.label}>Item Name<Text style={{ color: "#DC2626" }}> *</Text></Text>
                   <TextInput style={styles.input} value={itemName} onChangeText={setItemName} />
                 </View>
                 <View style={styles.col}>
-                  <Text style={styles.label}>Category{!aiData.category ? <Text style={{ color: "#DC2626" }}> *</Text> : null}</Text>
+                  <Text style={styles.label}>Category<Text style={{ color: "#DC2626" }}> *</Text></Text>
                   <TouchableOpacity style={[styles.input, styles.selectRow]} onPress={() => setShowCategoryPicker(true)}>
                     <Text style={styles.selectText} numberOfLines={1}>{category}</Text>
                     <Ionicons name="chevron-down" size={16} color="#6b7280" />
@@ -408,18 +408,18 @@ const [photoErrorTone, setPhotoErrorTone] = useState<"red" | "amber">("red");
 
               <View style={styles.twoCol}>
                 <View style={styles.col}>
-                  <Text style={styles.label}>Primary Colors{!primaryColor.trim() ? <Text style={{ color: "#DC2626" }}> *</Text> : null}</Text>
+                  <Text style={styles.label}>Primary Colors<Text style={{ color: "#DC2626" }}> *</Text></Text>
                   <TextInput style={styles.input} value={primaryColor} onChangeText={setPrimaryColor} />
                 </View>
                 <View style={styles.col}>
-                  <Text style={styles.label}>Model and Brand{!brandModel.trim() ? <Text style={{ color: "#DC2626" }}> *</Text> : null}</Text>
+                  <Text style={styles.label}>Model and Brand<Text style={{ color: "#DC2626" }}> *</Text></Text>
                   <TextInput style={styles.input} value={brandModel} onChangeText={setBrandModel} />
                 </View>
               </View>
 
               <View style={styles.twoCol}>
                 <View style={styles.col}>
-                  <Text style={styles.label}>Date Lost{!dateObj ? <Text style={{ color: "#DC2626" }}> *</Text> : null}</Text>
+                  <Text style={styles.label}>Date Lost<Text style={{ color: "#DC2626" }}> *</Text></Text>
                   <TouchableOpacity style={[styles.input, styles.selectRow]} onPress={() => setShowDatePicker(true)}>
                     <Text style={styles.selectText} numberOfLines={1}>
                       {dateObj ? dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Select date"}
@@ -428,7 +428,7 @@ const [photoErrorTone, setPhotoErrorTone] = useState<"red" | "amber">("red");
                   </TouchableOpacity>
                 </View>
                 <View style={styles.col}>
-                  <Text style={styles.label}>Approx. Time{!time ? <Text style={{ color: "#DC2626" }}> *</Text> : null}</Text>
+                  <Text style={styles.label}>Approx. Time<Text style={{ color: "#DC2626" }}> *</Text></Text>
                   <TouchableOpacity style={[styles.input, styles.selectRow]} onPress={() => setShowTimePicker(true)}>
                     <Text style={styles.selectText}>{time}</Text>
                     <Ionicons name="time-outline" size={16} color="#6b7280" />
@@ -437,12 +437,12 @@ const [photoErrorTone, setPhotoErrorTone] = useState<"red" | "amber">("red");
               </View>
 
               <View style={styles.fullField}>
-                <Text style={styles.label}>Last Seen Location{!location.trim() ? <Text style={{ color: "#DC2626" }}> *</Text> : null}</Text>
+                <Text style={styles.label}>Last Seen Location<Text style={{ color: "#DC2626" }}> *</Text></Text>
                 <TextInput style={styles.input} value={location} onChangeText={setLocation} />
               </View>
 
               <View style={styles.fullField}>
-                <Text style={styles.label}>Item Description{!description.trim() ? <Text style={{ color: "#DC2626" }}> *</Text> : null}</Text>
+                <Text style={styles.label}>Item Description<Text style={{ color: "#DC2626" }}> *</Text></Text>
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   value={description}
