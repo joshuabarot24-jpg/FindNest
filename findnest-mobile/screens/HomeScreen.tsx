@@ -102,7 +102,7 @@ export default function HomeScreen({ navigation }: any) {
   const [foundLoading, setFoundLoading] = useState(true);
 
   const [chatbotOpen, setChatbotOpen] = useState(false);
-  const [chatHistory, setChatHistory] = useState<{ role: "user" | "bot"; text: string }[]>([]);
+  const [chatHistory, setChatHistory] = useState<{ role: "user" | "bot"; text: string; support?: boolean }[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatThinking, setChatThinking] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
@@ -111,7 +111,25 @@ export default function HomeScreen({ navigation }: any) {
   const [chatMessage, setChatMessage] = useState("");
   const [chatSending, setChatSending] = useState(false);
   const [chatSent, setChatSent] = useState(false);
+  const [faqSent, setFaqSent] = useState<number[]>([]);
   const [chatError, setChatError] = useState("");
+
+  // Sends a FAQ question to the Guidance Office when the answer was not enough
+  const askOfficeAboutFaq = async (idx: number, question: string) => {
+    if (faqSent.includes(idx)) return;
+    setFaqSent((prev) => [...prev, idx]);
+    try {
+      await api.post("/support", { message: `Sent from the assistant: ${question}` });
+      setChatHistory((prev) => [
+        ...prev,
+        { role: "user", text: question },
+        { role: "bot", text: "I sent your question to the Guidance Office. You will see their reply in Support and get a notification.", support: true },
+      ]);
+    } catch (err: any) {
+      setFaqSent((prev) => prev.filter((i) => i !== idx));
+      setChatHistory((prev) => [...prev, { role: "bot", text: err.response?.data?.message || "Could not send your question. Please try again." }]);
+    }
+  };
 
   const handleAskChatbot = async () => {
     const question = chatInput.trim();
@@ -121,7 +139,7 @@ export default function HomeScreen({ navigation }: any) {
     setChatThinking(true);
     try {
       const res = await api.post("/support/ask", { question });
-      setChatHistory((prev) => [...prev, { role: "bot", text: res.data.answer }]);
+      setChatHistory((prev) => [...prev, { role: "bot", text: res.data.answer, support: !!res.data.escalated }]);
     } catch (err) {
       setChatHistory((prev) => [...prev, { role: "bot", text: "Sorry, something went wrong. Please try again or send us a message below." }]);
     } finally {
@@ -621,7 +639,22 @@ const startDelete = (item: PublicLostReport) => {
                         <Text style={styles.faqQuestion}>{item.q}</Text>
                         <Ionicons name={openFaqIndex === idx ? "chevron-up" : "chevron-down"} size={16} color="#9ca3af" />
                       </TouchableOpacity>
-                      {openFaqIndex === idx ? <Text style={styles.faqAnswer}>{item.a}</Text> : null}
+                      {openFaqIndex === idx ? (
+                        <View>
+                          <Text style={styles.faqAnswer}>{item.a}</Text>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingBottom: 12 }}>
+                            <Text style={{ fontSize: 10.5, color: "#9ca3af" }}>Did this answer your question?</Text>
+                            <TouchableOpacity onPress={() => setOpenFaqIndex(null)}>
+                              <Text style={{ fontSize: 10.5, fontWeight: "800", color: GREEN }}>Yes</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity disabled={faqSent.includes(idx)} onPress={() => askOfficeAboutFaq(idx, item.q)}>
+                              <Text style={{ fontSize: 10.5, fontWeight: "800", color: faqSent.includes(idx) ? "#9ca3af" : GREEN }}>
+                                {faqSent.includes(idx) ? "Sent to the office" : "No, ask the office"}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ) : null}
                     </View>
                   ))}
                   <Text style={styles.faqOrAsk}>Or ask me your own question below!</Text>
@@ -630,7 +663,18 @@ const startDelete = (item: PublicLostReport) => {
                 chatHistory.map((msg, idx) => (
                   <View key={idx} style={[styles.chatBubbleWrap, msg.role === "user" ? { alignItems: "flex-end" } : { alignItems: "flex-start" }]}>
                     <View style={[styles.chatBubble, msg.role === "user" ? styles.chatBubbleUser : styles.chatBubbleBot]}>
-                      <Text style={msg.role === "user" ? styles.chatBubbleUserText : styles.chatBubbleBotText}>{msg.text}</Text>
+                      <View>
+                        <Text style={msg.role === "user" ? styles.chatBubbleUserText : styles.chatBubbleBotText}>{msg.text}</Text>
+                        {msg.support ? (
+                          <TouchableOpacity
+                            onPress={() => navigation.navigate("Support")}
+                            activeOpacity={0.85}
+                            style={{ marginTop: 8, alignSelf: "flex-start", backgroundColor: GREEN, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 14 }}
+                          >
+                            <Text style={{ color: "white", fontWeight: "800", fontSize: 11.5 }}>Open Support</Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </View>
                     </View>
                   </View>
                 ))
