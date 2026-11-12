@@ -85,6 +85,12 @@ export default function StudentLoginScreen({ navigation }: any) {
         school_id: studentId.trim(),
         password: password,
       });
+      // Demo accounts get a session straight away, with no email code
+      if (response.data.token) {
+        await setAuth(response.data.token, response.data.user);
+        navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+        return;
+      }
       setMaskedEmail(response.data.email);
       setStep("otp");
       startResendTimer();
