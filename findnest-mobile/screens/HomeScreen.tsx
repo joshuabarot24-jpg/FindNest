@@ -625,17 +625,6 @@ const startDelete = (item: PublicLostReport) => {
                     </View>
                   ))}
                   <Text style={styles.faqOrAsk}>Or ask me your own question below!</Text>
-                  <TouchableOpacity
-                    style={{ marginTop: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1.5, borderColor: GREEN, backgroundColor: "white", borderRadius: 999, paddingVertical: 11, paddingHorizontal: 16 }}
-                    activeOpacity={0.85}
-                    onPress={() => { setShowMessageBox(true); setIsOverrideRequest(true); }}
-                  >
-                    <Ionicons name="construct-outline" size={18} color={GREEN} />
-                    <Text style={{ color: GREEN, fontWeight: "800", fontSize: 12.5 }}>Request Manual AI Override</Text>
-                  </TouchableOpacity>
-                  <Text style={{ fontSize: 10.5, color: "#6b8f7c", textAlign: "center", marginTop: 6 }}>
-                    Photo unclear and the AI can&apos;t read it? Tap here to ask the office.
-                  </Text>
                 </View>
               ) : (
                 chatHistory.map((msg, idx) => (
@@ -673,14 +662,6 @@ const startDelete = (item: PublicLostReport) => {
             </TouchableOpacity>
             {showMessageBox ? (
               <View style={{ paddingHorizontal: 12, paddingBottom: 14 }}>
-                <TouchableOpacity style={{ flexDirection: "row", gap: 8, marginBottom: 8 }} onPress={() => setIsOverrideRequest(!isOverrideRequest)} activeOpacity={0.8}>
-                  <View style={{ width: 18, height: 18, borderRadius: 4, borderWidth: 1.5, borderColor: GREEN, backgroundColor: isOverrideRequest ? GREEN : "white", alignItems: "center", justifyContent: "center" }}>
-                    {isOverrideRequest ? <Ionicons name="checkmark" size={12} color="white" /> : null}
-                  </View>
-                  <Text style={{ flex: 1, fontSize: 10.5, color: "#6b7280", lineHeight: 15 }}>
-                    This is a request for a manual AI override. My photo is unclear and the AI cannot analyze it, so I need to fill in details manually.
-                  </Text>
-                </TouchableOpacity>
                 <TextInput
                   style={{ backgroundColor: MINT, borderWidth: 1.5, borderColor: "#CFE6D8", borderRadius: 12, padding: 12, fontSize: 12.5, color: "#374151", minHeight: 70, marginBottom: 8 }}
                   placeholder={isOverrideRequest ? "Explain why your photo isn't clear..." : "Type your message here..."}

@@ -86,7 +86,30 @@ export default function ReportLostScreen({ navigation }: any) {
   const [submitted, setSubmitted] = useState(false);
   const [photoError, setPhotoError] = useState(false);
   const [photoErrorMessage, setPhotoErrorMessage] = useState("");
-  const [photoErrorTone, setPhotoErrorTone] = useState<"red" | "amber">("red");
+const [photoErrorTone, setPhotoErrorTone] = useState<"red" | "amber">("red");
+  const [photoProhibited, setPhotoProhibited] = useState(false);
+  const [photoOverridable, setPhotoOverridable] = useState(false);
+  const [overrideSent, setOverrideSent] = useState(false);
+  const [overrideSending, setOverrideSending] = useState(false);
+  const [overrideError, setOverrideError] = useState("");
+
+  // Asks the Guidance Office for a manual override: the administrator approves it in Support
+  const requestOverride = async () => {
+    if (overrideSending || overrideSent) return;
+    setOverrideSending(true);
+    setOverrideError("");
+    try {
+      await api.post("/support", {
+        message: `Manual AI override request from the Report Lost screen. The photo was refused: ${photoErrorMessage}`,
+        is_override_request: true,
+      });
+      setOverrideSent(true);
+    } catch (err: any) {
+      setOverrideError(err.response?.data?.message || "Could not send the request. Please try again.");
+    } finally {
+      setOverrideSending(false);
+    }
+  };
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
@@ -131,6 +154,8 @@ export default function ReportLostScreen({ navigation }: any) {
     setPhotoError(false);
     setPhotoErrorMessage("");
     setPhotoErrorTone("red");
+    setPhotoProhibited(false);
+    setPhotoOverridable(false);
     const isFirstPhoto = photos.length === 0;
     const idx = photos.length;
 
@@ -167,7 +192,7 @@ export default function ReportLostScreen({ navigation }: any) {
       }
       console.error("Photo upload failed:", JSON.stringify(err.response?.data));
       setPhotos((prev) => prev.filter((_, i2) => i2 !== idx));
-      { const info = uploadErrorInfo(err); setPhotoErrorMessage(info.message); setPhotoErrorTone(info.tone); }
+      { const info = uploadErrorInfo(err); setPhotoErrorMessage(info.message); setPhotoErrorTone(info.tone); setPhotoProhibited(!!info.prohibited); setPhotoOverridable(!!info.overridable); }
       setPhotoError(true);
     }
   };
@@ -322,7 +347,7 @@ export default function ReportLostScreen({ navigation }: any) {
                 </View>
               ) : (
                 <TouchableOpacity
-                  style={[styles.uploadBlock, photoError && styles.uploadBlockError]}
+                  style={[styles.uploadBlock, photoError && styles.uploadBlockError, photoProhibited && { borderStyle: "dashed" }]}
                   onPress={() => setShowPhotoOptions(true)}
                   activeOpacity={0.85}
                 >
@@ -334,7 +359,29 @@ export default function ReportLostScreen({ navigation }: any) {
                 </TouchableOpacity>
               )}
               {photoError ? (
+              <View>
+                {photoProhibited ? <Text style={[styles.errorText, { fontWeight: "800", textTransform: "uppercase", marginBottom: 2 }]}>Prohibited Item Detected</Text> : null}
                 <Text style={[styles.errorText, photoErrorTone === "amber" && { color: "#B45309" }]}>{photoErrorMessage || "At least one photo is required before you can submit your report."}</Text>
+                {photoOverridable ? (
+                  overrideSent ? (
+                    <Text style={[styles.errorText, { fontWeight: "800", marginTop: 8 }]}>Request sent. The Guidance Office will review it. Reopen this screen after you are notified.</Text>
+                  ) : (
+                    <View>
+                      <TouchableOpacity
+                        onPress={requestOverride}
+                        disabled={overrideSending}
+                        activeOpacity={0.8}
+                        style={{ marginTop: 8, alignSelf: "flex-start", borderWidth: 1.5, borderColor: photoErrorTone === "amber" ? "#B45309" : "#DC2626", borderRadius: 10, paddingVertical: 6, paddingHorizontal: 12, opacity: overrideSending ? 0.5 : 1 }}
+                      >
+                        <Text style={{ color: photoErrorTone === "amber" ? "#B45309" : "#DC2626", fontWeight: "800", fontSize: 12 }}>
+                          {overrideSending ? "Sending..." : "Request manual override"}
+                        </Text>
+                      </TouchableOpacity>
+                      {overrideError ? <Text style={[styles.errorText, { marginTop: 4 }]}>{overrideError}</Text> : null}
+                    </View>
+                  )
+                ) : null}
+              </View>
               ) : null}
 
               {/* Fields */}
