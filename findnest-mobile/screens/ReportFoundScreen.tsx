@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import * as RNCore from "react-native";
 import {
   View,
   Text,
@@ -122,6 +123,26 @@ const [photoErrorTone, setPhotoErrorTone] = useState<"red" | "amber">("red");
   };
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
+
+  // Something was already entered and the report was not submitted yet
+  const dirty = !submitted && !!(itemName.trim() || description.trim() || location.trim() || primaryColor.trim() || brandModel.trim() || time);
+
+  const confirmLeave = (go: () => void) => {
+    if (!dirty) { go(); return; }
+    RNCore.Alert.alert("Discard this report?", "Everything you entered, including the photo, will be lost.", [
+      { text: "Keep editing", style: "cancel" },
+      { text: "Discard", style: "destructive", onPress: go },
+    ]);
+  };
+
+  useEffect(() => {
+    const sub = RNCore.BackHandler.addEventListener("hardwareBackPress", () => {
+      if (!dirty) return false;
+      confirmLeave(() => navigation.navigate("Home"));
+      return true;
+    });
+    return () => sub.remove();
+  }, [dirty]);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const [itemChoices, setItemChoices] = useState<string[]>([]);
@@ -340,7 +361,7 @@ const [photoErrorTone, setPhotoErrorTone] = useState<"red" | "amber">("red");
             <>
               <View style={styles.headRow}>
                 <Text style={styles.title}>I Found Something</Text>
-                <TouchableOpacity onPress={() => navigation.navigate("Home")} hitSlop={10}>
+                <TouchableOpacity onPress={() => confirmLeave(() => navigation.navigate("Home"))} hitSlop={10}>
                   <Ionicons name="close" size={28} color="#111827" />
                 </TouchableOpacity>
               </View>
@@ -480,7 +501,7 @@ const [photoErrorTone, setPhotoErrorTone] = useState<"red" | "amber">("red");
                   <Text style={styles.crumb}>Report review</Text>
                   <Text style={styles.title}>Review Your Report</Text>
                 </View>
-                <TouchableOpacity onPress={() => navigation.navigate("Home")} hitSlop={10}>
+                <TouchableOpacity onPress={() => confirmLeave(() => navigation.navigate("Home"))} hitSlop={10}>
                   <Ionicons name="close" size={28} color="#111827" />
                 </TouchableOpacity>
               </View>
