@@ -1,6 +1,6 @@
+import { Alert, Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
-import { Platform } from "react-native";
 import api from "./api";
 
 Notifications.setNotificationHandler({
@@ -14,7 +14,11 @@ Notifications.setNotificationHandler({
 
 export async function registerPushToken() {
   try {
-    if (!Device.isDevice || Platform.OS !== "android") return;
+    if (Platform.OS !== "android") return;
+    if (!Device.isDevice) {
+      Alert.alert("Push", "Not a real device");
+      return;
+    }
 
     await Notifications.setNotificationChannelAsync("default", {
       name: "default",
@@ -25,12 +29,16 @@ export async function registerPushToken() {
     if (status !== "granted") {
       status = (await Notifications.requestPermissionsAsync()).status;
     }
-    if (status !== "granted") return;
+    if (status !== "granted") {
+      Alert.alert("Push", "Permission: " + status);
+      return;
+    }
 
     // Native FCM token, because the backend sends through Firebase directly
     const t = await Notifications.getDevicePushTokenAsync();
     await api.post("/fcm/update-token", { fcm_token: String(t.data) });
-  } catch (e) {
-    console.log("Push registration failed", e);
+    Alert.alert("Push", "Token saved");
+  } catch (e: any) {
+    Alert.alert("Push error", String(e?.response?.data?.message || e?.message || e));
   }
 }
