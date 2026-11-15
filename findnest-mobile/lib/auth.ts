@@ -1,8 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { registerPushToken } from "./push";
 
 export async function setAuth(token: string, user: any) {
   await AsyncStorage.setItem("findnest_token", token);
   await AsyncStorage.setItem("findnest_user", JSON.stringify(user));
+  if (user?.role === "student") registerPushToken();
 }
 
 export async function getAuth() {

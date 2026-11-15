@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { getAuth } from "./lib/auth";
+import { registerPushToken } from "./lib/push";
 import { navigationRef } from "./lib/navigation";
 import LandingScreen from "./screens/LandingScreen";
 import StudentLoginScreen from "./screens/StudentLoginScreen";
@@ -31,6 +32,7 @@ export default function App() {
       try {
         const { token, user } = await getAuth();
         setInitialRoute(token && user?.role === "student" ? "Home" : "Landing");
+        if (token && user?.role === "student") registerPushToken();
       } catch {
         setInitialRoute("Landing");
       }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "467112648682",
+    "project_id": "findnest-1b487",
+    "storage_bucket": "findnest-1b487.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:467112648682:android:b49d028d63dfd5db8e1c93",
+        "android_client_info": {
+          "package_name": "com.findnest.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLm5SjMJIRzCL3omAZTtUsaqSKuTchO0Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
