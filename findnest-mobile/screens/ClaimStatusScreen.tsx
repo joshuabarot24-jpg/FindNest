@@ -481,6 +481,9 @@ export default function ClaimStatusScreen({ navigation }: any) {
                 value={proofDescription}
                 onChangeText={(t) => setProofDescription(t.slice(0, 100))}
                 maxLength={100}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
               />
               <Text style={{ textAlign: "right", fontSize: 11, color: "#9ca3af", marginBottom: 10 }}>{proofDescription.length}/100</Text>
 
