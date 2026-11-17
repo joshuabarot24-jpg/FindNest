@@ -45,7 +45,12 @@
           "backgroundColor": "#FFFFFF"
         }
       ],
-      "expo-notifications"
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png"
+        }
+      ]
     ],
     "extra": {
       "eas": {
