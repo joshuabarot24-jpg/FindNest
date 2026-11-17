@@ -100,6 +100,7 @@ export default function HomeScreen({ navigation }: any) {
   const [shown, setShown] = useState(PAGE);
   const [foundRecords, setFoundRecords] = useState<FoundRecord[]>([]);
   const [foundLoading, setFoundLoading] = useState(true);
+  const [selectedFound, setSelectedFound] = useState<FoundRecord | null>(null);
 
   const [chatbotOpen, setChatbotOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState<{ role: "user" | "bot"; text: string; support?: boolean }[]>([]);
@@ -474,7 +475,12 @@ const startDelete = (item: PublicLostReport) => {
               <>
                 <View style={styles.grid}>
                   {myFound.slice(0, shown).map((rec) => (
-                    <View key={rec.id} style={[styles.card, { width: cardWidth }]}>
+                    <TouchableOpacity
+                      key={rec.id}
+                      style={[styles.card, { width: cardWidth }]}
+                      activeOpacity={0.85}
+                      onPress={() => setSelectedFound(rec)}
+                    >
                       <View style={styles.cardImageBox}>
                         {rec.photo_url ? (
                           <Image source={{ uri: rec.photo_url }} style={styles.cardImage} resizeMode="contain" />
@@ -485,7 +491,7 @@ const startDelete = (item: PublicLostReport) => {
                       <Text style={styles.cardName} numberOfLines={1}>{rec.item_name}</Text>
                       <Text style={styles.cardMeta} numberOfLines={1}>{rec.category}</Text>
                       <Text style={styles.cardStatus} numberOfLines={1}>{(rec.status || "").replace(/_/g, " ")}</Text>
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </View>
                 {myFound.length > shown ? (
@@ -540,6 +546,34 @@ const startDelete = (item: PublicLostReport) => {
       </Modal>
 
       {/* Hamburger drawer */}
+      <Modal visible={!!selectedFound} animationType="slide" transparent onRequestClose={() => setSelectedFound(null)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedFound(null)}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHandle} />
+            {selectedFound ? (
+              <>
+                <View style={styles.modalIconBox}>
+                  {selectedFound.photo_url ? (
+                    <Image source={{ uri: selectedFound.photo_url }} style={styles.modalImage} resizeMode="contain" />
+                  ) : (
+                    <Ionicons name="image-outline" size={40} color="#9FC5B0" />
+                  )}
+                </View>
+                <Text style={styles.modalItemName}>{selectedFound.item_name}</Text>
+                <Text style={styles.modalItemLocation}>{selectedFound.category}</Text>
+                <Text style={styles.modalItemDate}>Status: {(selectedFound.status || "").replace(/_/g, " ")}</Text>
+                <View style={styles.modalNote}>
+                  <Text style={styles.modalNoteText}>Only you and the admins can see this report.</Text>
+                </View>
+                <TouchableOpacity onPress={() => setSelectedFound(null)} style={styles.modalCloseButton}>
+                  <Text style={styles.modalCloseText}>Close</Text>
+                </TouchableOpacity>
+              </>
+            ) : null}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       <Modal visible={!!deletingReport} transparent animationType="fade" onRequestClose={() => setDeletingReport(null)}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.delOverlay}>
           <View style={styles.delCard}>
