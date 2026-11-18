@@ -646,7 +646,7 @@ const startDelete = (item: PublicLostReport) => {
       ) : null}
 
       <Modal visible={chatbotOpen} animationType="slide" transparent onRequestClose={() => setChatbotOpen(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.chatModalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.chatModalOverlay}>
           <View style={styles.chatPanel}>
             <View style={styles.chatHeader}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -663,7 +663,7 @@ const startDelete = (item: PublicLostReport) => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.chatBody} contentContainerStyle={{ padding: 14 }}>
+            <ScrollView style={styles.chatBody} contentContainerStyle={{ padding: 14 }} keyboardShouldPersistTaps="handled">
               {chatHistory.length === 0 ? (
                 <View>
                   <Text style={styles.faqSectionLabel}>Common Questions</Text>
