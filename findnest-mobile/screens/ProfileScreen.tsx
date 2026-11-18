@@ -61,7 +61,6 @@ export default function ProfileScreen({ navigation }: any) {
   const doLogout = async () => {
     cachedUser = null;
     try {
-      await api.post("/fcm/update-token", { fcm_token: null }).catch(() => {});
       await api.post("/auth/logout");
     } catch (err) {
       console.error("Logout request failed:", err);
