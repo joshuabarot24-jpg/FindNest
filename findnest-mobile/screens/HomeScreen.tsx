@@ -441,7 +441,7 @@ const startDelete = (item: PublicLostReport) => {
                       >
                         <View style={styles.cardImageBox}>
                           {item.photo_url ? (
-                            <Image source={{ uri: myReportIds.includes(item.id) ? item.photo_url : blurred(item.photo_url, 200) }} style={styles.cardImage} resizeMode="contain" />
+                            <Image source={{ uri: blurred(item.photo_url, 200) }} style={styles.cardImage} resizeMode="contain" />
                           ) : (
                             <Ionicons name="image-outline" size={24} color="#9FC5B0" />
                           )}
