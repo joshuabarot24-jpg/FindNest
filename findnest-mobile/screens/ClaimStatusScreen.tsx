@@ -34,8 +34,11 @@ interface Claim {
   appeal_message: string | null;
   appeal_status: string | null;
   ownership_questions?: OwnershipQuestion[];
+  verification_skipped?: boolean;
+  timeline?: { action: string; at: string }[];
   match: {
-    lost_report: { item_name: string; location_lost: string } | null;
+    matched_at?: string | null;
+    lost_report: { item_name: string; location_lost: string; description?: string | null; created_at?: string } | null;
     found_record: { item_name: string; location_found: string } | null;
   } | null;
 }
@@ -89,9 +92,347 @@ function daysRemaining(deadline: string): number {
   return Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
+function StepTracker({
+  labels,
+  step,
+  open,
+  onSelect,
+  getAt,
+}: {
+  labels: string[];
+  step: number;
+  open: number | null | undefined;
+  onSelect: (stepNum: number) => void;
+  getAt: (stepNum: number) => string | null;
+}) {
+  const last = labels.length - 1;
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16, marginBottom: 4 }}>
+      <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+        {labels.map((label, idx) => {
+          const stepNum = idx + 1;
+          const done = stepNum <= step;
+          const at = done ? getAt(stepNum) : null;
+          return (
+            <View key={label} style={{ width: 64, alignItems: "center" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", width: "100%" }}>
+                <View style={{ flex: 1, height: 2, backgroundColor: idx === 0 ? "transparent" : done ? BLUE : GRAYGREEN }} />
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                  onPress={() => onSelect(stepNum)}
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 13,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: done ? BLUE : GRAYGREEN,
+                    borderWidth: open === stepNum ? 3 : 0,
+                    borderColor: "#8F9BDD",
+                  }}
+                >
+                  <Text style={{ color: done ? "#fff" : "#6b8f7c", fontSize: 10, fontWeight: "800" }}>{stepNum}</Text>
+                </TouchableOpacity>
+                <View style={{ flex: 1, height: 2, backgroundColor: idx === last ? "transparent" : stepNum < step ? BLUE : GRAYGREEN }} />
+              </View>
+              <Text style={{ marginTop: 4, fontSize: 9, fontWeight: "800", textAlign: "center", color: done ? BLUE : "#6b8f7c" }}>{label}</Text>
+              {at ? <Text style={{ marginTop: 2, fontSize: 8, textAlign: "center", color: "#6b8f7c" }}>{timeAgo(at)}</Text> : null}
+            </View>
+          );
+        })}
+      </View>
+    </ScrollView>
+  );
+}
+
+function formatDateTime(dateStr: string) {
+  return new Date(dateStr).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function timeAgo(dateStr: string) {
+  const diff = Math.max(0, Date.now() - new Date(dateStr).getTime());
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min} min ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} hr ago`;
+  const day = Math.floor(hr / 24);
+  return `${day} day${day === 1 ? "" : "s"} ago`;
+}
+
+function getStepDetail(claim: Claim, stepNum: number): { at: string | null; text: string } {
+  const lost = claim.match?.lost_report;
+  const found = claim.match?.found_record;
+  const logAt = (action: string) => claim.timeline?.find((t) => t.action === action)?.at ?? null;
+
+  switch (stepNum) {
+    case 1:
+      return {
+        at: lost?.created_at ?? claim.created_at,
+        text: lost
+          ? `You reported "${lost.item_name}" lost at ${lost.location_lost}.${lost.description ? ` Description: ${lost.description}` : ""}`
+          : "Your lost item report was submitted.",
+      };
+    case 2:
+      return {
+        at: lost?.created_at ?? claim.created_at,
+        text: "The AI checked your photo and description, then searched the found items for possible matches.",
+      };
+    case 3:
+      return {
+        at: claim.match?.matched_at ?? null,
+        text: found
+          ? `The AI found a possible match: "${found.item_name}"${found.location_found ? `, found at ${found.location_found}` : ""}.`
+          : "The AI found a possible match.",
+      };
+    case 4:
+      return {
+        at: claim.claimed_at ?? claim.created_at,
+        text: `You submitted your claim.${claim.proof_description ? ` Your note: ${claim.proof_description}` : ""}`,
+      };
+    case 5:
+      return {
+        at: logAt("Ownership Questions Answered"),
+        text: claim.verification_skipped
+          ? "The verification questions were skipped for this claim. The Guidance Office is reviewing your evidence."
+          : logAt("Ownership Questions Answered")
+            ? "You answered the verification questions. The Guidance Office is reviewing all of your evidence."
+            : "Waiting for you to answer the verification questions.",
+      };
+    case 6:
+      return {
+        at: logAt("Claim Approved"),
+        text:
+          claim.claim_status === "approved" || claim.collected_at
+            ? `Your claim was approved.${claim.pickup_deadline ? ` Collect your item at the Guidance Office by ${formatDate(claim.pickup_deadline)}.` : ""}`
+            : "Waiting for the Guidance Office's decision.",
+      };
+    case 7:
+      return {
+        at: claim.collected_at,
+        text: claim.collected_at ? "Your item was collected at the Guidance Office." : "Not collected yet.",
+      };
+    default:
+      return { at: null, text: "" };
+  }
+}
+
+interface FoundRecord {
+  id: number;
+  item_name: string;
+  location_found: string | null;
+  status: string;
+  created_at: string;
+  surrender_deadline: string | null;
+  receipt_confirmed: boolean;
+  receipt_confirmed_at: string | null;
+  progress?: {
+    matched_at: string | null;
+    claim_status: string | null;
+    claimed_at: string | null;
+    collected_at: string | null;
+  };
+}
+
+const FOUND_STEPS = ["Submitted", "Waiting for Surrender", "Surrendered", "Matched", "Claimed", "Returned"];
+
+function foundStepIndex(r: FoundRecord): number {
+  const p = r.progress;
+  if (p?.collected_at) return 6;
+  if (p?.claimed_at) return 5;
+  if (p?.matched_at) return 4;
+  if (r.receipt_confirmed) return 3;
+  return 2;
+}
+
+function getFoundStepDetail(r: FoundRecord, stepNum: number): { at: string | null; text: string } {
+  const p = r.progress;
+  switch (stepNum) {
+    case 1:
+      return {
+        at: r.created_at,
+        text: `You reported finding "${r.item_name}"${r.location_found ? ` at ${r.location_found}` : ""}.`,
+      };
+    case 2:
+      return {
+        at: r.created_at,
+        text:
+          !r.receipt_confirmed && r.surrender_deadline
+            ? `Hand the item to the Guidance Office by ${formatDate(r.surrender_deadline)} (within 2 school days).`
+            : "You were asked to hand the item to the Guidance Office within 2 school days.",
+      };
+    case 3:
+      return {
+        at: r.receipt_confirmed_at,
+        text: r.receipt_confirmed
+          ? "The Guidance Office confirmed receipt of your item. AI matching has started."
+          : "Waiting for the Guidance Office to confirm they received the item.",
+      };
+    case 4:
+      return {
+        at: p?.matched_at ?? null,
+        text: "The AI found a possible owner for your item. The Guidance Office will verify who it belongs to.",
+      };
+    case 5:
+      return {
+        at: p?.claimed_at ?? null,
+        text:
+          p?.claim_status === "approved"
+            ? "A claim for your item was approved. The owner will collect it at the Guidance Office."
+            : p?.claim_status === "rejected"
+              ? "A claim for your item was rejected. The item is waiting for its real owner."
+              : "Someone claimed your item. The Guidance Office is verifying the claim.",
+      };
+    case 6:
+      return {
+        at: p?.collected_at ?? null,
+        text: p?.collected_at ? "The item was returned to its owner. Thank you for helping!" : "Not returned yet.",
+      };
+    default:
+      return { at: null, text: "" };
+  }
+}
+
+function FoundReportsPanel() {
+  const [records, setRecords] = useState<FoundRecord[]>([]);
+  const [foundLoading, setFoundLoading] = useState(true);
+  const [openFoundStep, setOpenFoundStep] = useState<Record<number, number | null>>({});
+
+  const fetchRecords = async () => {
+    try {
+      const response = await api.get("/found-items/mine");
+      setRecords(response.data.records || []);
+    } catch (err) {
+      console.log("Error fetching found reports:", err);
+    } finally {
+      setFoundLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecords();
+  }, []);
+
+  useAutoRefresh(() => {
+    fetchRecords();
+  });
+
+  if (foundLoading) {
+    return <Text style={styles.loadingText}>Loading found reports...</Text>;
+  }
+
+  if (records.length === 0) {
+    return (
+      <View style={styles.emptyState}>
+        <Ionicons name="cube-outline" size={32} color="#9FC5B0" />
+        <Text style={styles.emptyText}>No found item reports yet</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View>
+      {records.map((record) => {
+        const expired = record.status === "unsurrendered_expired";
+        const step = expired ? 2 : foundStepIndex(record);
+        const open = openFoundStep[record.id];
+        const current = getFoundStepDetail(record, step);
+
+        return (
+          <View key={record.id} style={styles.claimCard}>
+            <Text style={styles.claimItemName}>{record.item_name}</Text>
+            <Text style={styles.claimSubmittedDate}>Submitted {formatDate(record.created_at)}</Text>
+
+            <StepTracker
+              labels={FOUND_STEPS}
+              step={step}
+              open={open}
+              onSelect={(n) => setOpenFoundStep((prev) => ({ ...prev, [record.id]: prev[record.id] === n ? null : n }))}
+              getAt={(n) => getFoundStepDetail(record, n).at}
+            />
+
+            <View style={[styles.timelineWrap, { display: "none" }]}>
+              <View style={styles.timelineLine} />
+              <View style={styles.timelineNodes}>
+                {FOUND_STEPS.map((label, idx) => {
+                  const done = idx + 1 <= step;
+                  return (
+                    <TouchableOpacity
+                      key={label}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                      onPress={() => setOpenFoundStep((prev) => ({ ...prev, [record.id]: prev[record.id] === idx + 1 ? null : idx + 1 }))}
+                      style={[styles.node, done && styles.nodeDone, open === idx + 1 && { transform: [{ scale: 1.6 }] }]}
+                    />
+                  );
+                })}
+              </View>
+              <Text style={styles.timelineCaption}>
+                Step {step} of {FOUND_STEPS.length}: {FOUND_STEPS[step - 1]}
+                {current.at ? ` · ${timeAgo(current.at)}` : ""}
+              </Text>
+            </View>
+
+            {open ? (
+              <View style={styles.stepDetailBox}>
+                <Text style={styles.stepDetailTitle}>{open}. {FOUND_STEPS[open - 1]}</Text>
+                <Text style={styles.stepDetailText}>
+                  {open <= step ? getFoundStepDetail(record, open).text : "This step has not happened yet."}
+                </Text>
+                {open <= step && getFoundStepDetail(record, open).at ? (
+                  <Text style={styles.stepDetailTime}>
+                    {formatDateTime(getFoundStepDetail(record, open).at as string)} · {timeAgo(getFoundStepDetail(record, open).at as string)}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+
+            {expired ? (
+              <View style={styles.bannerRed}>
+                <Text style={styles.bannerRedTitle}>Report Expired</Text>
+                <Text style={styles.bannerRedSub}>
+                  The item was not handed to the Guidance Office within 2 school days, so the report expired and your trust score dropped by 5 points.
+                </Text>
+              </View>
+            ) : record.progress?.collected_at ? (
+              <View style={styles.bannerSage}>
+                <Text style={styles.bannerTitle}>Item Returned to Owner</Text>
+                <Text style={styles.bannerSub}>Thank you for helping. Returned on {formatDate(record.progress.collected_at)}.</Text>
+              </View>
+            ) : !record.receipt_confirmed ? (
+              <View style={styles.bannerLight}>
+                <Text style={styles.bannerTitle}>Waiting for Surrender</Text>
+                <Text style={styles.bannerSub}>
+                  {record.surrender_deadline
+                    ? `Hand the item to the Guidance Office by ${formatDate(record.surrender_deadline)}.`
+                    : "Hand the item to the Guidance Office."}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.bannerSage}>
+                <Text style={styles.bannerTitle}>Item Received</Text>
+                <Text style={styles.bannerSub}>The Guidance Office has your item. We will notify you when the AI finds its owner.</Text>
+              </View>
+            )}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 export default function ClaimStatusScreen({ navigation }: any) {
   useForcePasswordChange(navigation);
   const [claims, setClaims] = useState<Claim[]>([]);
+  const [tab, setTab] = useState<"lost" | "found">("lost");
+  const [openStep, setOpenStep] = useState<Record<number, number | null>>({});
   const [loading, setLoading] = useState(true);
 
   const [pendingMatches, setPendingMatches] = useState<PendingMatch[]>([]);
@@ -336,7 +677,25 @@ export default function ClaimStatusScreen({ navigation }: any) {
           <Text style={styles.pageTitle}>Claim Status</Text>
         </View>
 
-        {!matchesLoading && pendingMatches.length > 0 ? (
+        <View style={styles.tabRow}>
+          {(["lost", "found"] as const).map((key) => (
+            <TouchableOpacity
+              key={key}
+              style={[styles.tabButton, tab === key && styles.tabButtonActive]}
+              onPress={() => setTab(key)}
+            >
+              <Text style={[styles.tabText, tab === key && styles.tabTextActive]}>
+                {key === "lost" ? "Lost Reports" : "Found Reports"}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={tab === "found" ? undefined : { display: "none" }}>
+          <FoundReportsPanel />
+        </View>
+
+        {tab === "lost" && !matchesLoading && pendingMatches.length > 0 ? (
           <View style={{ marginBottom: 20 }}>
             <Text style={styles.sectionHeading}>Possible Matches for Your Lost Items</Text>
             {pendingMatches.map((match) => (
@@ -356,8 +715,8 @@ export default function ClaimStatusScreen({ navigation }: any) {
           </View>
         ) : null}
 
-        {loading ? (
-          <Text style={styles.loadingText}>Loading claims...</Text>
+        {tab === "found" ? null : loading ? (
+          <Text style={styles.loadingText}>Loading lost reports...</Text>
         ) : claims.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="cube-outline" size={32} color="#9FC5B0" />
@@ -378,18 +737,54 @@ export default function ClaimStatusScreen({ navigation }: any) {
                 <Text style={styles.claimSubmittedDate}>Submitted {formatDate(claim.created_at)}</Text>
 
                 {!isTerminal ? (
-                  <View style={styles.timelineWrap}>
+                  <StepTracker
+                    labels={TIMELINE_STEPS}
+                    step={step}
+                    open={openStep[claim.id]}
+                    onSelect={(n) => setOpenStep((prev) => ({ ...prev, [claim.id]: prev[claim.id] === n ? null : n }))}
+                    getAt={(n) => getStepDetail(claim, n).at}
+                  />
+                ) : null}
+
+                {!isTerminal ? (
+                  <View style={[styles.timelineWrap, { display: "none" }]}>
                     <View style={styles.timelineLine} />
                     <View style={styles.timelineNodes}>
                       {TIMELINE_STEPS.map((label, idx) => {
                         const done = idx + 1 <= step;
-                        return <View key={label} style={[styles.node, done && styles.nodeDone]} />;
+                        return (
+                          <TouchableOpacity
+                            key={label}
+                            activeOpacity={0.7}
+                            hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                            onPress={() => setOpenStep((prev) => ({ ...prev, [claim.id]: prev[claim.id] === idx + 1 ? null : idx + 1 }))}
+                            style={[styles.node, done && styles.nodeDone, openStep[claim.id] === idx + 1 && { transform: [{ scale: 1.6 }] }]}
+                          />
+                        );
                       })}
                     </View>
                     <Text style={styles.timelineCaption}>
                       Step {Math.min(step, 7)} of 7: {TIMELINE_STEPS[Math.min(step, 7) - 1]}
+                      {getStepDetail(claim, Math.min(step, 7)).at ? ` · ${timeAgo(getStepDetail(claim, Math.min(step, 7)).at as string)}` : ""}
                     </Text>
                   </View>
+                ) : null}
+
+                {!isTerminal && openStep[claim.id] ? (
+                  (() => {
+                    const n = openStep[claim.id] as number;
+                    const detail = getStepDetail(claim, n);
+                    const reached = n <= step;
+                    return (
+                      <View style={styles.stepDetailBox}>
+                        <Text style={styles.stepDetailTitle}>{n}. {TIMELINE_STEPS[n - 1]}</Text>
+                        <Text style={styles.stepDetailText}>{reached ? detail.text : "This step has not happened yet."}</Text>
+                        {reached && detail.at ? (
+                          <Text style={styles.stepDetailTime}>{formatDateTime(detail.at)} · {timeAgo(detail.at)}</Text>
+                        ) : null}
+                      </View>
+                    );
+                  })()
                 ) : null}
 
                 {/* Status banner */}
@@ -663,6 +1058,15 @@ const styles = StyleSheet.create({
   submitClaimButton: { backgroundColor: GREEN, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 },
   submitClaimButtonText: { color: "white", fontWeight: "800", fontSize: 12 },
   loadingText: { color: "#6b8f7c", fontSize: 13, textAlign: "center", marginTop: 20 },
+  stepDetailBox: { backgroundColor: "#F4F7FB", borderWidth: 1, borderColor: "#D6DCEF", borderRadius: 12, padding: 12, marginTop: 10 },
+  stepDetailTitle: { color: BLUE, fontSize: 13, fontWeight: "800" },
+  stepDetailText: { color: "#4b5563", fontSize: 13, marginTop: 4 },
+  stepDetailTime: { color: "#9ca3af", fontSize: 11, marginTop: 6 },
+  tabRow: { flexDirection: "row", marginBottom: 16 },
+  tabButton: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 999, backgroundColor: "#fff", borderWidth: 1, borderColor: SAGE, marginRight: 8 },
+  tabButtonActive: { backgroundColor: GREEN, borderColor: GREEN },
+  tabText: { color: GREEN, fontSize: 13, fontWeight: "700" },
+  tabTextActive: { color: "#fff" },
   emptyState: { alignItems: "center", paddingVertical: 60, gap: 8 },
   emptyText: { color: "#6b8f7c", fontWeight: "700" },
 
