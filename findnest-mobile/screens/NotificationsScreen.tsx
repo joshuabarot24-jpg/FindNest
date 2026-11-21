@@ -16,6 +16,7 @@ interface NotificationItem {
   is_read: boolean;
   created_at: string;
   match_id?: number | null;
+  report_type?: "lost" | "found" | null;
 }
 
 const GREEN = "#0E4D34";
@@ -88,8 +89,10 @@ export default function NotificationsScreen({ navigation }: any) {
       navigation.navigate("Home");
     } else if (t.includes("support")) {
       navigation.navigate("Support");
+    } else if (notif.report_type === "found") {
+      navigation.navigate("ClaimStatus", { tab: "found", ts: Date.now() });
     } else if (t.includes("match") || t.includes("status") || t.includes("reminder") || t.includes("claim")) {
-      navigation.navigate("ClaimStatus");
+      navigation.navigate("ClaimStatus", { tab: "lost", ts: Date.now() });
     }
   };
 
@@ -159,7 +162,14 @@ export default function NotificationsScreen({ navigation }: any) {
               activeOpacity={0.8}
             >
               <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>{notif.title}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+                  <Text style={styles.cardTitle}>{notif.title}</Text>
+                  {notif.report_type ? (
+                    <View style={[styles.reportBadge, notif.report_type === "found" ? styles.reportBadgeFound : styles.reportBadgeLost]}>
+                      <Text style={styles.reportBadgeText}>{notif.report_type === "found" ? "FOUND REPORT" : "LOST REPORT"}</Text>
+                    </View>
+                  ) : null}
+                </View>
                 <Text style={styles.cardMessage}>{notif.message}</Text>
                 <Text style={styles.cardTime}>{formatTime(notif.created_at)}</Text>
               </View>
@@ -213,5 +223,9 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 14.5, fontWeight: "900", color: "#0A2618" },
   cardMessage: { fontSize: 12.5, color: "#1E3F2E", marginTop: 3, lineHeight: 18, fontWeight: "500" },
   cardTime: { fontSize: 10.5, color: "#3b4a43", marginTop: 8 },
+  reportBadge: { marginLeft: 8, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+  reportBadgeFound: { backgroundColor: GREEN },
+  reportBadgeLost: { backgroundColor: "#1D2A6B" },
+  reportBadgeText: { color: "#fff", fontSize: 9, fontWeight: "900", letterSpacing: 0.4 },
   dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: "#ef4444", marginTop: 4, marginLeft: 8 },
 });

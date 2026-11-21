@@ -428,10 +428,15 @@ function FoundReportsPanel() {
   );
 }
 
-export default function ClaimStatusScreen({ navigation }: any) {
+export default function ClaimStatusScreen({ navigation, route }: any) {
   useForcePasswordChange(navigation);
   const [claims, setClaims] = useState<Claim[]>([]);
   const [tab, setTab] = useState<"lost" | "found">("lost");
+
+  useEffect(() => {
+    const wanted = route?.params?.tab;
+    if (wanted === "found" || wanted === "lost") setTab(wanted);
+  }, [route?.params?.tab, route?.params?.ts]);
   const [openStep, setOpenStep] = useState<Record<number, number | null>>({});
   const [loading, setLoading] = useState(true);
 
